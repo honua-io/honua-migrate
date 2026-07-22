@@ -7,8 +7,7 @@ from collections.abc import Callable
 
 import typer
 
-from honua_esri_assess.app import cli_app as assess_app
-
+from ._assessment_mount import assess_app
 from .contracts import EXIT_APPLY_REFUSED, EXIT_UNAVAILABLE, MigrationError
 
 cli_app = typer.Typer(
