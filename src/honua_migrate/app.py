@@ -9,6 +9,7 @@ import typer
 
 from honua_esri_assess.app import cli_app as assess_app
 
+from .code.python.app import python_app
 from .contracts import EXIT_APPLY_REFUSED, EXIT_UNAVAILABLE, MigrationError
 
 cli_app = typer.Typer(
@@ -65,6 +66,7 @@ plan_app.command("create")(unavailable("plan create"))
 plan_app.command("show")(unavailable("plan show"))
 content_app.command("migrate")(unavailable("content migrate"))
 code_app.command("migrate")(unavailable("code migrate"))
+code_app.add_typer(python_app, name="python")
 apply_app.command("plan")(unavailable("apply plan", apply=True))
 reconcile_app.command("run")(unavailable("reconcile run"))
 
