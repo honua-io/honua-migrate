@@ -10,3 +10,5 @@ dist/
 *.log
 EsriFootprint.json
 reports/
+experiments/onboarding/.local/
+experiments/onboarding/finder-slice/.vite/

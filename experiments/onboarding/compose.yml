@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgis/postgis:18-3.6
+    mem_limit: 512m
+    environment:
+      POSTGRES_DB: onboarding
+      POSTGRES_USER: onboarding
+      POSTGRES_PASSWORD: ${ONBOARDING_DB_PASSWORD:?set in the local env file}
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U onboarding -d onboarding]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7.2-alpine
+    mem_limit: 128m
+    command: redis-server --appendonly no
+  honua:
+    image: ghcr.io/honua-io/honua-server@sha256:54926040d8b543cac746289c601fb77202ef4446e00a22fa5539836e4bedc8bb
+    mem_limit: 1g
+    ports:
+      - 127.0.0.1:${ONBOARDING_PORT:-18613}:8080
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      Kestrel__Endpoints__Http__Url: http://+:8080
+      Kestrel__Endpoints__Http__Protocols: Http1
+      HONUA_ADMIN_PASSWORD: ${ONBOARDING_ADMIN_PASSWORD:?set in the local env file}
+      ConnectionStrings__DefaultConnection: Host=postgres;Database=onboarding;Username=onboarding;Password=${ONBOARDING_DB_PASSWORD}
+      ConnectionStrings__honua: Host=postgres;Database=onboarding;Username=onboarding;Password=${ONBOARDING_DB_PASSWORD}
+      ConnectionStrings__Redis: redis:6379
+      PUBLIC_BASE_URL: http://127.0.0.1:${ONBOARDING_PORT:-18613}
+      HostValidation__AllowedHosts__0: 127.0.0.1
+      HostValidation__AllowedHosts__1: localhost
+      Security__ConnectionEncryption__MasterKey: ${ONBOARDING_MASTER_KEY:?set in the local env file}
+      Security__ConnectionEncryption__Salt: ${ONBOARDING_SALT:?set in the local env file}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
