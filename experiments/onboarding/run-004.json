@@ -1,0 +1,383 @@
+{
+  "artifactVersion": "honua.onboarding-exploration/v1",
+  "runId": "run-004",
+  "conversionComplete": false,
+  "backendMode": "fresh-import",
+  "serverHostBaseCommit": "93d75f2eb11f81c2152bbcaf5b29e1773d2479d0",
+  "serverComponentCommits": [
+    "04f7e4c783efa78f49f64b7b60e6b96d3f0c2762",
+    "eb754214b82039b526adb5a29cf676b5d2dad142"
+  ],
+  "sdkPackage": "@honua/sdk-js@0.1.9-beta.0",
+  "cliCommit": "f822262dfef0ec4329f34b60bd55f6333f8d1703",
+  "jobs": [
+    {
+      "resource": "editor-areas",
+      "jobId": "1c1533776cd7",
+      "serviceName": "onboarding-editor-areas-004",
+      "sourceLayerId": 0,
+      "publishedLayerId": 4,
+      "status": 9,
+      "normalizedStatus": "needs-review",
+      "rowsCommitted": 49,
+      "failedRows": 0,
+      "serverDuration": "00:00:03.6440701",
+      "terminal": true,
+      "fidelityVerified": false
+    },
+    {
+      "resource": "editor-hazards",
+      "jobId": "8077f149e255",
+      "serviceName": "onboarding-editor-hazards-004",
+      "sourceLayerId": 0,
+      "publishedLayerId": 2,
+      "status": 9,
+      "normalizedStatus": "needs-review",
+      "rowsCommitted": 4246,
+      "failedRows": 0,
+      "serverDuration": "00:00:26.8577735",
+      "terminal": true,
+      "fidelityVerified": false
+    },
+    {
+      "resource": "editor-roads",
+      "jobId": "fa751029e944",
+      "serviceName": "onboarding-editor-roads-004",
+      "sourceLayerId": 0,
+      "publishedLayerId": 3,
+      "status": 9,
+      "normalizedStatus": "needs-review",
+      "rowsCommitted": 35,
+      "failedRows": 0,
+      "serverDuration": "00:00:01.6506539",
+      "terminal": true,
+      "fidelityVerified": false
+    },
+    {
+      "resource": "heli-census",
+      "jobId": "d4d86ebb3678",
+      "serviceName": "onboarding-heli-census-004",
+      "sourceLayerId": 0,
+      "publishedLayerId": 5,
+      "status": 8,
+      "normalizedStatus": "completed",
+      "rowsCommitted": 579,
+      "failedRows": 0,
+      "serverDuration": "00:00:04.5526194",
+      "terminal": true,
+      "fidelityVerified": true
+    },
+    {
+      "resource": "heli-complaints",
+      "jobId": "0e0a61b091d7",
+      "serviceName": "onboarding-heli-complaints-004",
+      "sourceLayerId": 0,
+      "publishedLayerId": 6,
+      "status": 9,
+      "normalizedStatus": "needs-review",
+      "rowsCommitted": 22587,
+      "failedRows": 0,
+      "serverDuration": "00:01:40.3428277",
+      "terminal": true,
+      "fidelityVerified": false
+    },
+    {
+      "resource": "heli-flights",
+      "jobId": "556335822d4c",
+      "serviceName": "onboarding-heli-flights-004",
+      "sourceLayerId": 0,
+      "publishedLayerId": 1,
+      "status": 9,
+      "normalizedStatus": "needs-review",
+      "rowsCommitted": 1963,
+      "failedRows": 0,
+      "serverDuration": "00:00:10.4758223",
+      "terminal": true,
+      "fidelityVerified": false
+    },
+    {
+      "resource": "heli-flights-z",
+      "jobId": "c8112cba84a7",
+      "serviceName": "onboarding-heli-flights-z-004",
+      "sourceLayerId": 0,
+      "publishedLayerId": 8,
+      "status": 9,
+      "normalizedStatus": "needs-review",
+      "rowsCommitted": 1963,
+      "failedRows": 0,
+      "serverDuration": "00:00:09.3642059",
+      "terminal": true,
+      "fidelityVerified": false
+    },
+    {
+      "resource": "heli-summary-parent",
+      "jobId": "c59c32699e25",
+      "serviceName": "onboarding-heli-summary-parent-004",
+      "sourceLayerId": 0,
+      "publishedLayerId": 7,
+      "status": 8,
+      "normalizedStatus": "completed",
+      "rowsCommitted": 579,
+      "failedRows": 0,
+      "serverDuration": "00:00:04.7263401",
+      "terminal": true,
+      "fidelityVerified": true
+    },
+    {
+      "resource": "heli-summary",
+      "jobId": "bc5a133e9d6a",
+      "serviceName": "onboarding-heli-summary-004",
+      "sourceLayerId": 1,
+      "publishedLayerId": null,
+      "status": 10,
+      "normalizedStatus": "failed",
+      "rowsCommitted": 0,
+      "failedRows": 0,
+      "serverDuration": "00:00:03.1465587",
+      "terminal": true,
+      "fidelityVerified": false
+    }
+  ],
+  "commandMetrics": [
+    {
+      "stage": "editor-roads-terminal",
+      "status": "failed",
+      "elapsedSeconds": 2.253,
+      "exitCode": 10
+    },
+    {
+      "stage": "heli-summary-plan",
+      "status": "failed",
+      "elapsedSeconds": 1.916,
+      "exitCode": 2
+    },
+    {
+      "stage": "editor-roads-plan",
+      "status": "passed",
+      "elapsedSeconds": 1.971,
+      "exitCode": 0
+    },
+    {
+      "stage": "editor-roads-apply",
+      "status": "passed",
+      "elapsedSeconds": 2.208,
+      "exitCode": 0
+    },
+    {
+      "stage": "editor-areas-apply",
+      "status": "passed",
+      "elapsedSeconds": 2.227,
+      "exitCode": 0
+    },
+    {
+      "stage": "heli-summary-resume",
+      "status": "failed",
+      "elapsedSeconds": 4.246,
+      "exitCode": 10
+    },
+    {
+      "stage": "heli-census-resume",
+      "status": "passed",
+      "elapsedSeconds": 4.257,
+      "exitCode": 0
+    },
+    {
+      "stage": "heli-census-apply",
+      "status": "passed",
+      "elapsedSeconds": 2.95,
+      "exitCode": 0
+    },
+    {
+      "stage": "editor-hazards-terminal",
+      "status": "failed",
+      "elapsedSeconds": 28.35,
+      "exitCode": 10
+    },
+    {
+      "stage": "heli-flights-z-resume",
+      "status": "failed",
+      "elapsedSeconds": 11.98,
+      "exitCode": 10
+    },
+    {
+      "stage": "heli-flights-terminal",
+      "status": "failed",
+      "elapsedSeconds": 11.178,
+      "exitCode": 10
+    },
+    {
+      "stage": "heli-summary-parent-encoded-plan",
+      "status": "passed",
+      "elapsedSeconds": 2.664,
+      "exitCode": 0
+    },
+    {
+      "stage": "heli-flights-z-plan",
+      "status": "passed",
+      "elapsedSeconds": 1.932,
+      "exitCode": 0
+    },
+    {
+      "stage": "heli-complaints-resume",
+      "status": "failed",
+      "elapsedSeconds": 102.154,
+      "exitCode": 10
+    },
+    {
+      "stage": "heli-summary-apply",
+      "status": "passed",
+      "elapsedSeconds": 2.422,
+      "exitCode": 0
+    },
+    {
+      "stage": "heli-flights-apply",
+      "status": "passed",
+      "elapsedSeconds": 3.521,
+      "exitCode": 0
+    },
+    {
+      "stage": "editor-readonly-build",
+      "status": "passed",
+      "elapsedSeconds": 5.376,
+      "exitCode": 0
+    },
+    {
+      "stage": "heli-complaints-apply",
+      "status": "passed",
+      "elapsedSeconds": 2.092,
+      "exitCode": 0
+    },
+    {
+      "stage": "editor-areas-plan",
+      "status": "passed",
+      "elapsedSeconds": 2.391,
+      "exitCode": 0
+    },
+    {
+      "stage": "heli-summary-parent-resume",
+      "status": "passed",
+      "elapsedSeconds": 5.008,
+      "exitCode": 0
+    },
+    {
+      "stage": "dimension-publication-format",
+      "status": "passed",
+      "elapsedSeconds": 199.302,
+      "exitCode": 0
+    },
+    {
+      "stage": "heli-summary-encoded-plan",
+      "status": "passed",
+      "elapsedSeconds": 1.759,
+      "exitCode": 0
+    },
+    {
+      "stage": "heli-flights-plan",
+      "status": "passed",
+      "elapsedSeconds": 1.84,
+      "exitCode": 0
+    },
+    {
+      "stage": "editor-hazards-plan",
+      "status": "passed",
+      "elapsedSeconds": 2.205,
+      "exitCode": 0
+    },
+    {
+      "stage": "editor-hazards-apply",
+      "status": "passed",
+      "elapsedSeconds": 2.091,
+      "exitCode": 0
+    },
+    {
+      "stage": "editor-areas-terminal",
+      "status": "failed",
+      "elapsedSeconds": 3.847,
+      "exitCode": 10
+    },
+    {
+      "stage": "heli-complaints-plan",
+      "status": "passed",
+      "elapsedSeconds": 1.87,
+      "exitCode": 0
+    },
+    {
+      "stage": "heli-summary-parent-apply",
+      "status": "passed",
+      "elapsedSeconds": 2.234,
+      "exitCode": 0
+    },
+    {
+      "stage": "heli-flights-z-apply",
+      "status": "passed",
+      "elapsedSeconds": 2.312,
+      "exitCode": 0
+    },
+    {
+      "stage": "heli-census-plan",
+      "status": "passed",
+      "elapsedSeconds": 1.98,
+      "exitCode": 0
+    }
+  ],
+  "dimensionalVerification": [
+    {
+      "attempt": "dimension-publication",
+      "operation": "build",
+      "project": "src/Honua.Core/Honua.Core.csproj",
+      "exitCode": 0,
+      "elapsedSeconds": 65.522
+    },
+    {
+      "attempt": "dimension-publication",
+      "operation": "build",
+      "project": "src/Honua.Db/Postgres/Honua.Postgres.csproj",
+      "exitCode": 0,
+      "elapsedSeconds": 37.407
+    },
+    {
+      "attempt": "dimension-publication",
+      "operation": "build",
+      "project": "tests/dotnet/Honua.Db.Postgres.Tests/Honua.Postgres.Tests.csproj",
+      "exitCode": 0,
+      "elapsedSeconds": 63.478
+    },
+    {
+      "attempt": "dimension-publication",
+      "operation": "test",
+      "project": "tests/dotnet/Honua.Db.Postgres.Tests/Honua.Postgres.Tests.csproj",
+      "exitCode": 1,
+      "elapsedSeconds": 23.312
+    },
+    {
+      "attempt": "dimension-publication-retry",
+      "operation": "build",
+      "project": "src/Honua.Db/Postgres/Honua.Postgres.csproj",
+      "exitCode": 0,
+      "elapsedSeconds": 51.496
+    },
+    {
+      "attempt": "dimension-publication-retry",
+      "operation": "build",
+      "project": "tests/dotnet/Honua.Db.Postgres.Tests/Honua.Postgres.Tests.csproj",
+      "exitCode": 0,
+      "elapsedSeconds": 13.952
+    },
+    {
+      "attempt": "dimension-publication-retry",
+      "operation": "test",
+      "project": "tests/dotnet/Honua.Db.Postgres.Tests/Honua.Postgres.Tests.csproj",
+      "exitCode": 0,
+      "elapsedSeconds": 14.865
+    }
+  ],
+  "modelTokens": null,
+  "modelCostUsd": null,
+  "queueWaitSeconds": null,
+  "limits": [
+    "Partial command ledger; not complete agent-cost accounting",
+    "Mutable live source, one-day flight profile",
+    "Component overlay; not full fresh host build",
+    "No full four-app or snapshot-restore qualification"
+  ]
+}

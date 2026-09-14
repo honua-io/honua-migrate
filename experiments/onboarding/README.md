@@ -6,6 +6,10 @@ This directory starts the learning loop; it is not a complete E2E qualification 
 See [the first-run report](run-001.md), [pinned inputs and outcomes](run-001.json)
 and [measured command stages](run-001-metrics.json).
 
+The latest [run-004 report](run-004.md) records fresh Editor/helicopter imports,
+dimensional and feature-type fixes, browser observations and remaining service gaps.
+The first-run sections below describe their historical environment and limitations.
+
 ## Backend reuse
 
 Keep two independently labelled backend modes:
@@ -15,7 +19,9 @@ Keep two independently labelled backend modes:
 
 Fresh agent conversion starts from original source in either backend mode. Previous converted solutions belong only to deterministic replay. Save failed attempts, not just the best result.
 
-Snapshot implementation is deliberately deferred until a qualified backend exists. The current venue import needs review and the third dependency has not been imported. The running local stack is reusable for exploration, but is not a qualified snapshot.
+A local database dump and private configuration/cache checkpoint now support
+recovery and continued exploration. Snapshot restore and attachment completeness
+still require qualification before this becomes an admitted backend baseline.
 
 A future snapshot manifest must bind source inventory/data profile, imported ID mapping, database/PostGIS schema version, server image digest, importer version, configuration and style digests, authorization scope and fidelity receipt. Invalidate incompatible snapshots, keep periodic fresh imports, and separate import, restore and app conversion costs. Editing attempts each receive an isolated writable restore. Restore SQL/configuration together; include attachment/object-store assets when present. Credentials, private signing keys and encryption key material remain outside portable snapshots and must be re-provisioned consistently with encrypted configuration. Do not share a mutable target across editing attempts.
 
