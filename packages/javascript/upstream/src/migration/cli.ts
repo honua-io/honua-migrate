@@ -25,7 +25,7 @@ import {
 } from "./output-writer.js";
 import { getJsParityMatrix, summarizeJsParityMatrix } from "./parity-matrix.js";
 import { runLayerReconciliation, summarizeLayerReconciliation } from "./reconcile.js";
-import { buildJsMigrationReport } from "./report.js";
+import { type ArcGisUsageInventory, type MigrationReadiness, buildJsMigrationReport } from "./report.js";
 import { getJsRuntimeParityMatrix, summarizeJsRuntimeParity } from "./runtime-matrix.js";
 import { emitEsriSampleCorpusEvidence } from "./sample-corpus-evidence.js";
 import { scanArcGisUsage, summarizeArcGisScan } from "./scanner.js";
@@ -105,7 +105,7 @@ interface ParsedArgs {
 interface FixtureMetricSnapshot {
   fixture: string;
   rootDir: string;
-  readiness: "ready" | "assisted" | "blocked";
+  readiness: MigrationReadiness;
   scanSummary: string;
   flags: string[];
   totalCallSites: number;
@@ -130,6 +130,7 @@ interface FixtureMetricsSummary {
   ready: number;
   assisted: number;
   blocked: number;
+  noArcGisUsage: number;
   totalCallSites: number;
   autoMigratedCallSites: number;
   manualCallSites: number;
@@ -437,7 +438,8 @@ function runWidgets(args: ParsedArgs): void {
 
   if (args.gatePct !== undefined) {
     const gate = evaluateWidgetGate(report, args.gatePct);
-    process.stdout.write(`widgetGate=${gate.passed ? "pass" : "fail"} automatedPct=${gate.automatedPct.toFixed(1)}\n`);
+    const automatedPct = gate.automatedPct === null ? "n/a" : gate.automatedPct.toFixed(1);
+    process.stdout.write(`widgetGate=${gate.passed ? "pass" : "fail"} automatedPct=${automatedPct}\n`);
     if (!gate.passed) {
       process.stdout.write("gatingFailures:\n");
       for (const failure of gate.failures) {
@@ -902,6 +904,7 @@ function summarizeFixtureMetrics(fixtures: readonly FixtureMetricSnapshot[]): Fi
   const ready = fixtures.filter((fixture) => fixture.readiness === "ready").length;
   const assisted = fixtures.filter((fixture) => fixture.readiness === "assisted").length;
   const blocked = fixtures.filter((fixture) => fixture.readiness === "blocked").length;
+  const noArcGisUsage = fixtures.filter((fixture) => fixture.readiness === "no-arcgis-usage").length;
   const totalCallSites = fixtures.reduce((sum, fixture) => sum + fixture.totalCallSites, 0);
   const autoMigratedCallSites = fixtures.reduce((sum, fixture) => sum + fixture.autoMigratedCallSites, 0);
   const manualCallSites = fixtures.reduce((sum, fixture) => sum + fixture.manualCallSites, 0);
@@ -919,6 +922,7 @@ function summarizeFixtureMetrics(fixtures: readonly FixtureMetricSnapshot[]): Fi
     ready,
     assisted,
     blocked,
+    noArcGisUsage,
     totalCallSites,
     autoMigratedCallSites,
     manualCallSites,
@@ -966,12 +970,18 @@ function evaluateFixtureMetricsGates(
       `Blocked fixture readiness detected (${summary.blocked}): ${blockedFixtures.join(", ") || "unknown"}.`,
     );
   }
-  if (options.maxManualRatio !== undefined && summary.manualRewriteRatio > options.maxManualRatio) {
+  if (options.maxManualRatio !== undefined && summary.manualRewriteDenominator === 0) {
+    failures.push("Manual rewrite ratio has no denominator (0 codemod-scoped call sites discovered).");
+  } else if (options.maxManualRatio !== undefined && summary.manualRewriteRatio > options.maxManualRatio) {
     failures.push(
       `Manual rewrite ratio ${summary.manualRewriteRatio.toFixed(3)} exceeds max ${options.maxManualRatio.toFixed(3)}.`,
     );
   }
-  if (
+  if (options.maxManualInterventionRatio !== undefined && summary.manualInterventionDenominator === 0) {
+    failures.push(
+      "Manual intervention ratio has no denominator (0 codemod-scoped call sites and 0 unhandled module sites discovered).",
+    );
+  } else if (
     options.maxManualInterventionRatio !== undefined &&
     summary.manualInterventionRatio > options.maxManualInterventionRatio
   ) {
@@ -985,6 +995,22 @@ function evaluateFixtureMetricsGates(
     passed: failures.length === 0,
     failures,
   };
+}
+
+function formatUsageInventory(inventory: ArcGisUsageInventory): string {
+  return [
+    `moduleSites:${inventory.moduleSites}`,
+    `handled:${inventory.handledModuleSites}`,
+    `unsupported:${inventory.unsupportedModuleSites}`,
+    ...Object.entries(inventory.moduleSitesByStyle).map(([style, count]) => `${style}:${count}`),
+    `callSites:${inventory.codemodScopedCallSites}`,
+    `automatic:${inventory.automaticCallSites}`,
+    `manual:${inventory.manualCallSites}`,
+    `widgetSites:${inventory.widgetSites}`,
+    `honuaWidgets:${inventory.honuaWidgetSites}`,
+    `arcgisRuntimeWidgets:${inventory.arcgisRuntimeWidgetSites}`,
+    `residualArcGisDependencies:${inventory.residualArcGisDependencies.length}`,
+  ].join(",");
 }
 
 function runCodemod(args: ParsedArgs): void {
@@ -1018,6 +1044,13 @@ function runCodemod(args: ParsedArgs): void {
   process.stdout.write("\n");
 
   process.stdout.write(`gates=${formatGateResults(report.gates)}\n`);
+  process.stdout.write(`usageInventory=${formatUsageInventory(report.usageInventory)}\n`);
+  if (report.usageInventory.residualArcGisDependencies.length > 0) {
+    process.stdout.write("residualArcGisDependencies:\n");
+    for (const dependency of report.usageInventory.residualArcGisDependencies) {
+      process.stdout.write(`- ${dependency.manifest} ${dependency.section} ${dependency.name}@${dependency.version}\n`);
+    }
+  }
 
   if (
     (scanReport.imports.length === 0 || scanReport.filesWithArcGisImports === 0) &&

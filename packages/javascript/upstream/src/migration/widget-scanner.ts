@@ -65,8 +65,12 @@ export interface WidgetReadinessSummary {
   automatedWidgets: number;
   assistedWidgets: number;
   manualWidgets: number;
-  /** Share of usage sites with an automated disposition, 0-100. 100 when no widgets are used. */
-  automatedPct: number;
+  /**
+   * Share of usage sites with an automated disposition, 0-100. `null` when no
+   * widget usage sites were discovered: there is no denominator, and an empty
+   * scan must not read as 100% automated.
+   */
+  automatedPct: number | null;
 }
 
 export interface WidgetReadinessReport {
@@ -84,7 +88,7 @@ export interface WidgetReadinessReport {
 
 export interface WidgetGateEvaluation {
   gatePct: number;
-  automatedPct: number;
+  automatedPct: number | null;
   passed: boolean;
   failures: string[];
 }
@@ -183,7 +187,12 @@ export function buildWidgetReadinessReport(scan: WidgetScanResult): WidgetReadin
 export function evaluateWidgetGate(report: WidgetReadinessReport, gatePct: number): WidgetGateEvaluation {
   const automatedPct = report.summary.automatedPct;
   const failures: string[] = [];
-  if (automatedPct < gatePct) {
+  if (automatedPct === null) {
+    failures.push(
+      `no classic ArcGIS widget usage sites were discovered in ${report.filesScanned} scanned files, so there is no ` +
+        `automated share to hold to the --gate threshold ${gatePct.toFixed(1)}%`,
+    );
+  } else if (automatedPct < gatePct) {
     failures.push(
       `automated widget-migration share ${automatedPct.toFixed(1)}% is below the --gate threshold ${gatePct.toFixed(1)}%`,
     );
@@ -298,14 +307,16 @@ function summarizeWidgetRows(widgets: readonly WidgetReadinessRow[]): WidgetRead
     automatedWidgets,
     assistedWidgets,
     manualWidgets,
-    automatedPct: totalSites === 0 ? 100 : (automatedSites / totalSites) * 100,
+    automatedPct: totalSites === 0 ? null : (automatedSites / totalSites) * 100,
   };
 }
 
 function buildSummaryLine(summary: WidgetReadinessSummary): string {
   const split =
-    `${summary.automatedSites} automated / ${summary.assistedSites} assisted / ${summary.manualSites} manual ` +
-    `of ${summary.totalSites} widget usage sites (${summary.automatedPct.toFixed(1)}% automated)`;
+    summary.automatedPct === null
+      ? "No classic ArcGIS widget usage sites discovered, so no automated share is reported"
+      : `${summary.automatedSites} automated / ${summary.assistedSites} assisted / ${summary.manualSites} manual ` +
+        `of ${summary.totalSites} widget usage sites (${summary.automatedPct.toFixed(1)}% automated)`;
   return (
     `${split}. Every classic ArcGIS JS widget is deprecated at ${ARCGIS_WIDGET_DEPRECATION_RELEASE} and is ` +
     `removed at ${ARCGIS_WIDGET_REMOVAL_RELEASE} ? ${ARCGIS_WIDGET_REMOVAL_TIMEFRAME}.`

@@ -345,14 +345,22 @@ describe("buildWidgetReadinessReport", () => {
     expect(row?.target).toContain("Not in widget-disposition data");
   });
 
-  it("reports a 100% automated share when no widgets are used", () => {
+  it("reports no automated share, and fails every gate threshold, when no widgets are used", () => {
     const root = makeTempProject();
     fs.writeFileSync(path.join(root, "clean.ts"), "export const ok = true;\n", "utf8");
 
     const report = buildWidgetReadinessReport(scanWidgetUsage(root));
     expect(report.summary.totalSites).toBe(0);
-    expect(report.summary.automatedPct).toBe(100);
-    expect(evaluateWidgetGate(report, 100).passed).toBe(true);
+    expect(report.summary.automatedPct).toBeNull();
+    expect(report.summaryLine).toContain("No classic ArcGIS widget usage sites discovered");
+    expect(report.summaryLine).toContain(ARCGIS_WIDGET_REMOVAL_TIMEFRAME);
+
+    const gate = evaluateWidgetGate(report, 0);
+    expect(gate.passed).toBe(false);
+    expect(gate.automatedPct).toBeNull();
+    expect(gate.failures).toEqual([
+      "no classic ArcGIS widget usage sites were discovered in 1 scanned files, so there is no automated share to hold to the --gate threshold 0.0%",
+    ]);
   });
 });
 

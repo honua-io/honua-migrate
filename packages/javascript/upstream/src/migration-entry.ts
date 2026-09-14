@@ -1,5 +1,11 @@
 export { scanArcGisUsage, summarizeArcGisScan } from "./migration/scanner.js";
-export type { ArcGisImportHit, ArcGisScanReport } from "./migration/scanner.js";
+export type {
+  ArcGisDependencyHit,
+  ArcGisDependencyManifest,
+  ArcGisDependencySection,
+  ArcGisImportHit,
+  ArcGisScanReport,
+} from "./migration/scanner.js";
 export {
   ARCGIS_WIDGET_DEPRECATION_RELEASE,
   ARCGIS_WIDGET_INVENTORY_SOURCE,
@@ -92,6 +98,7 @@ export { SUPPORTED_ARCGIS_MODULES } from "./migration/codemod.js";
 export { buildJsMigrationReport } from "./migration/report.js";
 export type {
   ArcGisModuleSummary,
+  ArcGisUsageInventory,
   ArcGisUsageStyle,
   JsMigrationReport,
   ManualInterventionMetric,
@@ -99,6 +106,8 @@ export type {
   MigrationGateResult,
   MigrationReadiness,
   MigrationReasonSummary,
+  WidgetRuntime,
+  WidgetRuntimeRequirement,
 } from "./migration/report.js";
 export { evaluateMigrationGates } from "./migration/gating.js";
 export type { MigrationGateEvaluation, MigrationGateOptions } from "./migration/gating.js";

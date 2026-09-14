@@ -1858,7 +1858,7 @@ describe("arcgis migration integration", () => {
       {
         gate: "no-manual-todos",
         passed: true,
-        detail: "all codemod-scoped call sites auto-migrated",
+        detail: "no codemod-scoped call sites discovered",
       },
       {
         gate: "no-unhandled-modules",
