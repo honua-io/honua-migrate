@@ -17,7 +17,7 @@ class RecorderTests(unittest.TestCase):
             "--stage", "recorder-test", "--timeout", str(timeout), "--", sys.executable,
             "-c", code], capture_output=True, text=True, timeout=20, env=env)
         receipt = json.loads(next((ROOT / ".local" / run).glob("*.json")).read_text())
-        output = (ROOT / ".local" / run / receipt["log"]).read_text()
+        output = (ROOT / ".local" / run / receipt["log"]).read_text(encoding="utf-8")
         return process, receipt, output
 
     def test_exit_status_is_not_conversion_success_and_secrets_are_redacted(self):
@@ -33,6 +33,17 @@ class RecorderTests(unittest.TestCase):
         process, receipt, _ = self.invoke("raise SystemExit(7)")
         self.assertEqual(process.returncode, 7)
         self.assertEqual(receipt["status"], "failed")
+
+    def test_unicode_output_preserves_exit_code_on_legacy_console(self):
+        for code in (0, 7):
+            process, receipt, output = self.invoke(
+                f"import sys;sys.stdout.buffer.write('\\u2502\\U0001f5fa'.encode('utf-8'));sys.exit({code})",
+                extra={"PYTHONIOENCODING": "cp1252:strict"},
+            )
+            self.assertEqual(process.returncode, code)
+            self.assertEqual(receipt["exitCode"], code)
+            self.assertEqual(output, "\u2502\U0001f5fa")
+            self.assertNotIn("Traceback", process.stderr)
 
     def test_timeout_stops_nested_process_holding_output_pipe(self):
         process, receipt, _ = self.invoke("import subprocess,sys,time;subprocess.Popen([sys.executable,'-c','import time;time.sleep(30)']);time.sleep(30)", timeout=1)

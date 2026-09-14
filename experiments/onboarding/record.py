@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 import time
 import uuid
 from pathlib import Path
@@ -16,6 +17,9 @@ ROOT = Path(__file__).resolve().parent
 
 
 def main() -> int:
+    # Console rendering must not change the recorded child exit status. Keep the
+    # original UTF-8 log intact, escaping only characters the terminal cannot print.
+    sys.stdout.reconfigure(errors="backslashreplace")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", required=True)
     parser.add_argument("--stage", required=True)
