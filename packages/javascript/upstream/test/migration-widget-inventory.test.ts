@@ -348,4 +348,24 @@ describe("widget survival guide", () => {
     const guide = fs.readFileSync(GUIDE_FILE, "utf8");
     expect(() => validateGuideLinks(guide, WIDGET_SURVIVAL_GUIDE_PATH, PACKAGE_ROOT)).not.toThrow();
   });
+
+  it("links relatively only to files the npm package ships, so the published guide has no dead links", () => {
+    const guide = fs.readFileSync(GUIDE_FILE, "utf8");
+    const packageJson = JSON.parse(fs.readFileSync(path.join(PACKAGE_ROOT, "package.json"), "utf8")) as {
+      files: string[];
+    };
+    const shipped = new Set(packageJson.files);
+    expect(shipped.has(path.dirname(WIDGET_SURVIVAL_GUIDE_PATH))).toBe(true);
+    const relativeTargets = [...guide.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)]
+      .map((match) => match[1])
+      .filter((href) => !/^(?:https?:|mailto:|#)/.test(href));
+    expect(relativeTargets.length).toBeGreaterThan(0);
+    for (const href of relativeTargets) {
+      const target = path.relative(PACKAGE_ROOT, path.resolve(path.dirname(GUIDE_FILE), href.split("#", 1)[0]));
+      expect(
+        shipped.has(target.split(path.sep)[0]),
+        `${href} resolves to ${target}, which the npm package does not ship`,
+      ).toBe(true);
+    }
+  });
 });
