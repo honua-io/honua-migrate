@@ -15,7 +15,7 @@ Every classic ArcGIS JS widget is deprecated as of 5.0 (some since 4.32), and ex
 
 This guide answers, for each deprecated widget (`esri/widgets/*` / `@arcgis/core/widgets/*`), what happens if you migrate to Honua/MapLibre instead of rewriting onto Esri's web components. Dispositions are deliberately honest — including "no equivalent" — in the spirit of the [migration punch list](https://github.com/honua-io/honua-sdk-js/blob/trunk/docs/migration-punch-list.md).
 
-This document is generated from the versioned disposition data in [`upstream/src/migration/widget-dispositions.ts`](../upstream/src/migration/widget-dispositions.ts) (v1.1.0); the `honua-js-migrate widgets` scanner consumes the same data, so the scanner report and this guide cannot drift apart.
+This document is generated from the versioned disposition data in [`upstream/src/migration/widget-dispositions.ts`](https://github.com/honua-io/honua-migrate/blob/javascript-v0.1.3-beta.0/packages/javascript/upstream/src/migration/widget-dispositions.ts) (v1.1.0); the `honua-js-migrate widgets` scanner consumes the same data, so the scanner report and this guide cannot drift apart.
 
 ## Pinned sources
 

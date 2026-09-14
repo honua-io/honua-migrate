@@ -19,6 +19,16 @@ const OUTPUT_PATH = "docs/widget-survival-guide.md";
 const DATA_MODULE = "dist/migration/widget-dispositions.js";
 const SDK_JS_BLOB = "https://github.com/honua-io/honua-sdk-js/blob/trunk/";
 const PUNCH_LIST = `${SDK_JS_BLOB}docs/migration-punch-list.md`;
+// The guide ships in the npm package, which does not include upstream/, so the
+// data source is linked by repository URL rather than by relative path. It is
+// pinned to the `javascript-v<version>` release tag (rather than /blob/trunk/)
+// so a guide already shipped in an older npm version keeps linking to the
+// dataset it was actually generated from, not a later disposition change on
+// trunk.
+const PACKAGE_VERSION = JSON.parse(fs.readFileSync(path.resolve(ROOT, "package.json"), "utf8")).version;
+const DATA_SOURCE =
+  `https://github.com/honua-io/honua-migrate/blob/javascript-v${PACKAGE_VERSION}/` +
+  "packages/javascript/upstream/src/migration/widget-dispositions.ts";
 
 const DISPOSITION_LABELS = {
   automated: "Automated",
@@ -98,7 +108,7 @@ export function generateWidgetSurvivalGuideMarkdown(data) {
   lines.push("");
   lines.push(
     "This document is generated from the versioned disposition data in " +
-      "[`upstream/src/migration/widget-dispositions.ts`](../upstream/src/migration/widget-dispositions.ts) " +
+      `[\`upstream/src/migration/widget-dispositions.ts\`](${DATA_SOURCE}) ` +
       `(v${WIDGET_DISPOSITION_DATA_VERSION}); the \`honua-js-migrate widgets\` scanner consumes the same data, so ` +
       "the scanner report and this guide cannot drift apart.",
   );
