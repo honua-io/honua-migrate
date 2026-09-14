@@ -152,6 +152,20 @@
       "terminal": true,
       "fidelityVerified": false,
       "boundedRowAndDateQueryParityVerified": true
+    },
+    {
+      "resource": "heli-flights-full",
+      "jobId": "f623fecfc1ff",
+      "serviceName": "onboarding-heli-flights-full-004",
+      "sourceLayerId": 0,
+      "status": 4,
+      "terminal": false,
+      "featuresProcessed": 189000,
+      "estimatedTotalFeatures": 698843,
+      "failedRows": 0,
+      "serverDuration": "00:14:30.6706606",
+      "fidelityVerified": false,
+      "observation": "in-progress server status; processed rows are not yet terminal import or reconciliation proof"
     }
   ],
   "commandMetrics": [
@@ -1072,7 +1086,7 @@
     "sdkIssue": 1724,
     "serverIssue": 4850,
     "sdkCommit": "f5ab5c468",
-    "status": "sdk-fix-written-verification-queued-server-budget-open",
+    "status": "exact-head-sdk-ci-passed-live-automatic-post-observed-server-budget-remains",
     "getRequestTargetBytes": 40245,
     "postBodyBytes": 40177,
     "baselineGetError": 431,
@@ -1080,7 +1094,23 @@
     "serverRejection": "geometry exceeds generic 8192-character parameter limit",
     "sourceRows": 734,
     "sdkInstallSeconds": 38.753,
-    "sdkPr": 1725
+    "sdkPr": 1725,
+    "sdkCiRunId": 34830168287,
+    "sdkNewRegressionTestsPassed": 8,
+    "sdkDistSha256": "a2747df0e5d8d4139cfdc19b242756d47b866ca53fe53c73f1fa32653d11b550",
+    "sdkPrDraft": false,
+    "localRunner": "stopped while waiting after exact-head CI evidence superseded redundant SDK checks",
+    "compiledDiagnostic": {
+      "qualification": "CI-built JavaScript with synthetic detailed polygon; not an installed-package, aircraft-corridor, or local-build reuse qualification",
+      "vertices": 1401,
+      "requestTargetBytes": 67,
+      "bodyBytes": 67608,
+      "method": "POST",
+      "httpStatus": 200,
+      "geoServicesErrorCode": 400,
+      "error": "geometry exceeds maximum length of 8192"
+    },
+    "installedCandidateQualified": false
   },
   "geometryInputBudgetCheckpoint": {
     "serverIssue": 4850,
@@ -1093,5 +1123,23 @@
     "genericTextLimitUnchanged": 8192,
     "validation": "unit boundaries and routed inside/outside feature identity/count comparisons for FeatureServer and MapServer; not yet executed",
     "liveCandidateQualified": false
+  },
+  "fullFlightImportCheckpoint": {
+    "planId": "arcgis-plan-691d82af49da70262f7500d2d0602edf07a6de7918e20525a21a285aa844e079",
+    "jobId": "f623fecfc1ff",
+    "status": "running-on-server",
+    "backendPort": 18617,
+    "batchSize": 1000,
+    "pollingWindow": "first resume returned nonterminal after 600 seconds; subsequent product status calls confirm progress on the same job",
+    "next": "resume/status the same job; never reapply to restart polling",
+    "observedAt": "2026-09-14T10:30:25.776Z"
+  },
+  "appRuntimeMaintenanceCheckpoint": {
+    "observedAt": "2026-09-14T10:30:25.776Z",
+    "issue": "helicopter node_modules dependencies are missing while its Vite process remains alive; cause not independently established",
+    "privateSnapshotCommit": "06b8e748a",
+    "status": "tracked source and private environment copied outside source control; npm ci/check/build queued after calendar and geometry runners",
+    "existingRuntimeReplaced": false,
+    "browserQualification": "must restore dependencies before further checks"
   }
 }
