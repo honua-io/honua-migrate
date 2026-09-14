@@ -1429,5 +1429,15 @@
       "attachment inventory/bytes/content and parent-ID reconciliation",
       "local CRUD, reload persistence, cancellation and attachment browser interactions"
     ]
+  },
+  "calendarReviewVerification": {
+    "commit": "94ab0094fa8349157be7347612c462addba5e16f",
+    "previousStatus": "failed-before-tests",
+    "reason": "MSB3027/MSB3021: original demo PID7524 locks Debug assemblies",
+    "failedReceipt": "calendar-review-verification.json",
+    "retryStatus": "queued",
+    "retryConfiguration": "Release",
+    "retryReceipt": "calendar-release-verification.json",
+    "existingDemoPreserved": true
   }
 }
