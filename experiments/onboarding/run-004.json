@@ -567,7 +567,6 @@
   "sdkDateOnlyFix": {
     "issue": "honua-sdk-js#1718",
     "pullRequest": "https://github.com/honua-io/honua-sdk-js/pull/1720",
-    "candidateCommit": "6832c8c21",
     "candidateVerified": false,
     "baseline": {
       "buildPassed": true,
@@ -605,6 +604,91 @@
     "publishedOriginalSourceDiscovery": "failed-unknown-instead-of-date",
     "candidateReadback": "pending",
     "postFixGates": "pending",
-    "queueWaitSeconds": null
+    "queueWaitSeconds": null,
+    "firstCandidateCommit": "6832c8c21",
+    "candidateCommit": "e77171323",
+    "firstCandidateVerificationCommands": [
+      {
+        "command": [
+          "npm.cmd",
+          "run",
+          "check"
+        ],
+        "exitCode": 0,
+        "elapsedSeconds": 5.664,
+        "log": "sdk-dateonly-fixed-step-0.log"
+      },
+      {
+        "command": [
+          "npm.cmd",
+          "run",
+          "typecheck"
+        ],
+        "exitCode": 0,
+        "elapsedSeconds": 142.73,
+        "log": "sdk-dateonly-fixed-step-1.log"
+      },
+      {
+        "command": [
+          "npm.cmd",
+          "test",
+          "--",
+          "test/connect-schema-v2.test.ts",
+          "test/pbf-decoder.test.ts",
+          "test/query-planner-semantic-geoservices-odata.test.ts"
+        ],
+        "exitCode": 0,
+        "elapsedSeconds": 271.346,
+        "log": "sdk-dateonly-fixed-step-2.log"
+      }
+    ],
+    "firstCandidateArtifact": {
+      "name": "@honua/sdk-js",
+      "version": "0.1.9-beta.0",
+      "size": 10325335,
+      "unpackedSize": 29545140,
+      "shasum": "2946b2b5791d987e7b8c57b8069fc484abac0d31",
+      "integrity": "sha512-6C65OyNyuTF8E1/xqBHY+EH8qr58lRvA0+uJ95nq8FEWPXJ3wQqcg10vhwBP80XFhD2D5DcYjg5im/CCxJy5Bw==",
+      "entryCount": 2117,
+      "sha256": "6e72e681d2b13ebe7b4ad29dad3662e3aabc818c530d7971d674fea20d7de508",
+      "sourceCommit": "6832c8c21c2469267fa54f69f6fca40668a6495c",
+      "registryPublished": false
+    },
+    "firstCandidatePackCommands": [
+      {
+        "command": [
+          "npm.cmd",
+          "pack",
+          "--json",
+          "--pack-destination",
+          "C:/Users/mike/.honua/onboarding-cache/run-004/sdk-candidate-artifact"
+        ],
+        "exitCode": 0,
+        "elapsedSeconds": 12.105,
+        "log": "sdk-dateonly-pack-step-0.log"
+      }
+    ],
+    "firstCandidateInstallCommands": [
+      {
+        "command": [
+          "npm.cmd",
+          "install"
+        ],
+        "exitCode": 0,
+        "elapsedSeconds": 40.959,
+        "log": "sdk-dateonly-candidate-install-step-0.log"
+      }
+    ],
+    "firstCandidateLiveReadback": {
+      "jsonOriginalSource": "passed-typed-DATE-1963-rows",
+      "pbfOriginalSource": "failed-empty-attribute-objects",
+      "targetReadback": "not-reached",
+      "cause": [
+        "positional-values-without-optional-index-dropped",
+        "sint64-value-tag-8-not-decoded"
+      ],
+      "elapsedSeconds": 2.133
+    },
+    "secondCandidateVerification": "pending"
   }
 }
