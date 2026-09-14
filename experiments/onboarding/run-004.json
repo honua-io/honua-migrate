@@ -1231,9 +1231,15 @@
       "initialHarnessAssumption": "Direct object-ID equality failed; original evidence retained, same captures rechecked through unique complaint keys and each service ID-to-feature membership"
     },
     "remaining": [
+      "fix both review gaps and add regressions",
       "browser interaction replay",
       "fresh conversion replay",
       "normal PR landing"
+    ],
+    "prState": "draft",
+    "reviewGaps": [
+      "Supported application/json and multipart/form-data body values bypass middleware geometry size/vertex checks",
+      "Supported curvePaths/curveRings are rejected by current vertex counter; preserve true-curve query filters and budget densification"
     ]
   },
   "fullFlightImportCheckpoint": {
@@ -1307,17 +1313,24 @@
     "commit": "104055e1e",
     "branch": "fix/nonspatial-import-publication-20260914",
     "base": "b52bd1dd8",
-    "status": "real PostGIS regressions running; scoped formatting follows",
+    "status": "68 real PostGIS regression cases passed; scoped formatting queued",
     "filesChanged": 10,
     "testScope": "real PostGIS table import/publication, canonical Table metadata, no spatial storage or STAC publication, Join_ID values, nulls, paging, and no geometry column/index",
     "remaining": [
-      "execute regressions and scoped format",
+      "scoped formatting and normal PR review",
       "public table endpoint qualification",
       "relationship identity/key mapping and fidelity findings",
       "rollback coverage",
       "fresh 877-row summary and 579-row parent readback"
     ],
-    "prCreated": false
+    "prCreated": false,
+    "testEvidence": {
+      "path": "nonspatial-publication-tests/nonspatial-publication.trx",
+      "passed": 68,
+      "failed": 0,
+      "skipped": 0,
+      "nonspatialCase": "Honua.Db.Postgres.Tests.Features.Import.GeoservicesImportSubtypePersistenceTests.ImportLayerAsync_WithNonSpatialTable_PublishesQueryableRowsWithoutGeometry"
+    }
   },
   "publicationRecoveryCheckpoint": {
     "serverIssue": 4854,
@@ -1345,5 +1358,31 @@
     "recoveryConnectionHealthy": true,
     "sourceMetadataRecoveryPlanPrepared": true,
     "publicationRetried": false
+  },
+  "editingMetadataCheckpoint": {
+    "serverIssue": 4825,
+    "branch": "fix/imported-editing-metadata-20260914",
+    "baseCommit": "013ffa0d1",
+    "commit": "a21a290da1c64986e0e720ee2ae00bfd8761ae0a",
+    "status": "implementation pushed; tests and scoped formatting queued",
+    "filesChanged": 15,
+    "qualified": false,
+    "deployed": false,
+    "prCreated": false,
+    "changes": [
+      "source declared or typed GlobalID captured and normalized to published UUID field",
+      "attachment support forwarded when copying requested and a store exists",
+      "canonical attachment flag read by FeatureServer/MapServer instead of annotation-only advertisement",
+      "visible GlobalID metadata and non-editable GlobalID field type advertised by FeatureServer",
+      "retained-table admin request accepts identity and attachment bindings without edit grants"
+    ],
+    "testScope": "four real PostGIS import cases plus existing subtype/dimension/attachment-copy regressions, seven protocol metadata cases, two real admin/FeatureServer cases",
+    "remaining": [
+      "execute regressions and scoped format",
+      "normal PR review",
+      "explicit target edit enablement and fresh Editor retry",
+      "attachment inventory/bytes/content and parent-ID reconciliation",
+      "local CRUD, reload persistence, cancellation and attachment browser interactions"
+    ]
   }
 }
