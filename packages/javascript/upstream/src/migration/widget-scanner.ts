@@ -3,6 +3,7 @@ import path from "node:path";
 import ts from "typescript";
 import {
   ARCGIS_WIDGET_DEPRECATION_RELEASE,
+  ARCGIS_WIDGET_LIFECYCLE_STATEMENT,
   ARCGIS_WIDGET_REMOVAL_RELEASE,
   ARCGIS_WIDGET_REMOVAL_TIMEFRAME,
   WIDGET_DISPOSITION_DATA_VERSION,
@@ -143,7 +144,7 @@ export function buildWidgetReadinessReport(scan: WidgetScanResult): WidgetReadin
         disposition: "support-module",
         bucket: "manual",
         target:
-          `Support-module import ? honua-migrate only rewrites the root ${widget} widget module; ` +
+          `Support-module import — honua-migrate only rewrites the root ${widget} widget module; ` +
           `migrate these by hand (root ${widget} disposition: ${disposition?.disposition ?? "unknown"}).`,
         guideLink: `${WIDGET_SURVIVAL_GUIDE_PATH}#${widgetSurvivalGuideAnchor(widget)}`,
         count: sites.length,
@@ -203,7 +204,7 @@ export function evaluateWidgetGate(report: WidgetReadinessReport, gatePct: numbe
 export function formatWidgetReadinessTable(report: WidgetReadinessReport): string {
   const lines: string[] = [];
   lines.push(
-    `ArcGIS widget readiness ? deprecated at ${report.deprecationRelease}, removed at ${report.removalRelease} (${report.removalTimeframe})`,
+    `ArcGIS widget readiness — deprecated at ${report.deprecationRelease}; removals begin at ${report.removalRelease} (${report.removalTimeframe})`,
   );
   lines.push(
     `filesScanned=${report.filesScanned} filesWithWidgetUsage=${report.filesWithWidgetUsage} widgetUsageSites=${report.summary.totalSites} dispositionData=v${report.dispositionDataVersion}`,
@@ -242,10 +243,7 @@ export function formatWidgetReadinessMarkdown(report: WidgetReadinessReport): st
   const lines: string[] = [];
   lines.push("# ArcGIS widget readiness report");
   lines.push("");
-  lines.push(
-    `Classic ArcGIS JS widgets are deprecated at ${report.deprecationRelease} and are removed at ` +
-      `${report.removalRelease} (${report.removalTimeframe}). Disposition data v${report.dispositionDataVersion}.`,
-  );
+  lines.push(`${ARCGIS_WIDGET_LIFECYCLE_STATEMENT} Disposition data v${report.dispositionDataVersion}.`);
   lines.push("");
   lines.push(`- Files scanned: ${report.filesScanned}`);
   lines.push(`- Files with widget usage: ${report.filesWithWidgetUsage}`);
@@ -261,7 +259,7 @@ export function formatWidgetReadinessMarkdown(report: WidgetReadinessReport): st
     );
   }
   if (report.widgets.length === 0) {
-    lines.push("| _none detected_ | 0 | ? | ? |");
+    lines.push("| _none detected_ | 0 | — | — |");
   }
   lines.push("");
   if (report.widgets.length > 0) {
@@ -271,7 +269,7 @@ export function formatWidgetReadinessMarkdown(report: WidgetReadinessReport): st
       lines.push(`### ${rowDisplayName(row)}`);
       lines.push("");
       for (const site of row.sites) {
-        lines.push(`- \`${site.file}:${site.line}\` ? \`${site.modulePath}\` (${site.importStyle})`);
+        lines.push(`- \`${site.file}:${site.line}\` — \`${site.modulePath}\` (${site.importStyle})`);
       }
       lines.push("");
     }
@@ -317,10 +315,7 @@ function buildSummaryLine(summary: WidgetReadinessSummary): string {
       ? "No classic ArcGIS widget usage sites discovered, so no automated share is reported"
       : `${summary.automatedSites} automated / ${summary.assistedSites} assisted / ${summary.manualSites} manual ` +
         `of ${summary.totalSites} widget usage sites (${summary.automatedPct.toFixed(1)}% automated)`;
-  return (
-    `${split}. Every classic ArcGIS JS widget is deprecated at ${ARCGIS_WIDGET_DEPRECATION_RELEASE} and is ` +
-    `removed at ${ARCGIS_WIDGET_REMOVAL_RELEASE} ? ${ARCGIS_WIDGET_REMOVAL_TIMEFRAME}.`
-  );
+  return `${split}. ${ARCGIS_WIDGET_LIFECYCLE_STATEMENT}`;
 }
 
 function rowDisplayName(row: WidgetReadinessRow): string {

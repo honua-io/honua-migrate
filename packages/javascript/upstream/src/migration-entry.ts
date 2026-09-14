@@ -8,7 +8,9 @@ export type {
 } from "./migration/scanner.js";
 export {
   ARCGIS_WIDGET_DEPRECATION_RELEASE,
+  ARCGIS_WIDGET_INVENTORY_PIN,
   ARCGIS_WIDGET_INVENTORY_SOURCE,
+  ARCGIS_WIDGET_LIFECYCLE_STATEMENT,
   ARCGIS_WIDGET_REMOVAL_RELEASE,
   ARCGIS_WIDGET_REMOVAL_TIMEFRAME,
   getWidgetDisposition,
@@ -22,6 +24,8 @@ export {
   widgetSurvivalGuideAnchor,
 } from "./migration/widget-dispositions.js";
 export type {
+  ArcGisWidgetInventoryExclusion,
+  ArcGisWidgetInventoryPin,
   WidgetDisposition,
   WidgetDispositionKind,
   WidgetMigrationBucket,

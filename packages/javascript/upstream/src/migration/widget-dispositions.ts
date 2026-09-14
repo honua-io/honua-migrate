@@ -2,39 +2,167 @@
  * Shared widget-disposition data for the Esri Widget Cliff workstream.
  *
  * Every classic ArcGIS JS widget (`esri/widgets/*` / `@arcgis/core/widgets/*`)
- * is deprecated as of ArcGIS JS 5.0 and is removed at 6.0 ("as early as
- * Q1 2027"). This module is the single source of truth consumed by both the
- * generated survival guide (`docs/widget-survival-guide.md`, via
- * `scripts/generate-widget-survival-guide.mjs`) and the widget-usage scanner
- * (`src/migration/widget-scanner.ts`). Drift between the guide and this data
- * fails CI (`npm run docs:widget-guide:check`).
+ * is deprecated as of ArcGIS Maps SDK for JavaScript 5.0. Existing widget apps
+ * keep working; Esri plans to begin removing widgets at 6.0 ("as early as
+ * Q1 2027"), each once its component no longer wraps widget code. This module
+ * is the single source of truth consumed by both the generated survival guide
+ * (`docs/widget-survival-guide.md`, via
+ * `upstream/scripts/generate-widget-survival-guide.mjs`) and the widget-usage
+ * scanner (`src/migration/widget-scanner.ts`). Drift between the guide and this
+ * data fails `npm test`.
  *
  * Dispositions are grounded in what actually ships today:
- * - `automated` / `compat-shim` entries are backed by real shims under
- *   `src/esri-compat/` and codemod rewrite specs in
+ * - `automated` / `compat-shim` entries are backed by real shims in
+ *   `@honua/sdk-esri-compat` and codemod rewrite specs in
  *   `src/migration/codemod.ts::SUPPORTED_ARCGIS_MODULE_KIND_BY_PATH`.
- * - Gaps follow the honest accounting in `docs/migration-punch-list.md`
+ * - Gaps follow the honest accounting in the honua-sdk-js migration punch list
  *   (scene/3D widgets have no equivalent; visual parity is not byte-identical).
+ * - The row set is exactly the pinned deprecated-widget inventory below.
  */
 
 /** Version of this disposition dataset. Bump when rows or taxonomy change. */
-export const WIDGET_DISPOSITION_DATA_VERSION = "1.0.0";
+export const WIDGET_DISPOSITION_DATA_VERSION = "1.1.0";
 
-/** ArcGIS JS release that deprecated every classic widget. */
+/** ArcGIS Maps SDK for JavaScript release that deprecated every classic widget (February 2026). */
 export const ARCGIS_WIDGET_DEPRECATION_RELEASE = "5.0";
 
-/** ArcGIS JS release that removes the classic widgets. */
+/**
+ * ArcGIS release at which Esri plans to *begin* removing classic widgets. Removal is staged: a
+ * widget stays until its component no longer wraps widget code, so 6.0 is not a single cutoff.
+ */
 export const ARCGIS_WIDGET_REMOVAL_RELEASE = "6.0";
 
-/** Esri's stated removal timeframe for the 6.0 release. */
+/** Esri's stated timeframe for the first widget removals. */
 export const ARCGIS_WIDGET_REMOVAL_TIMEFRAME = "as early as Q1 2027";
 
 /**
- * Pinned source for the deprecated-widget inventory. The list is maintained
- * manually per ArcGIS release; update the URL/release together with the rows.
+ * The precise lifecycle claim every report and the guide make. It deliberately does not say that
+ * widget apps already stopped working, or that every widget disappears at once.
  */
-export const ARCGIS_WIDGET_INVENTORY_SOURCE =
-  "https://developers.arcgis.com/javascript/latest/api-reference/esri-widgets.html";
+export const ARCGIS_WIDGET_LIFECYCLE_STATEMENT = [
+  `Every classic ArcGIS JS widget is deprecated as of ${ARCGIS_WIDGET_DEPRECATION_RELEASE} (some since 4.32),`,
+  `and existing widget-based apps keep working on ${ARCGIS_WIDGET_DEPRECATION_RELEASE.split(".")[0]}.x.`,
+  `Esri plans to begin removing widgets at ${ARCGIS_WIDGET_REMOVAL_RELEASE} (${ARCGIS_WIDGET_REMOVAL_TIMEFRAME}),`,
+  "each once its component no longer wraps widget code.",
+].join(" ");
+
+export interface ArcGisWidgetInventoryExclusion {
+  /** Top-level `widgets/*` module name shipped in the pinned package. */
+  module: string;
+  reason: "not-deprecated" | "untyped";
+}
+
+export interface ArcGisWidgetInventoryPin {
+  package: "@arcgis/core";
+  version: string;
+  /** npm `dist.integrity` of the pinned tarball. */
+  integrity: string;
+  /** Date the pin was derived and the lifecycle sources were read. */
+  retrieved: string;
+  /** How `widgets` is derived from the tarball; `upstream/scripts/arcgis-widget-inventory.mjs` re-derives it. */
+  method: string;
+  /** Esri pages the lifecycle statement quotes. */
+  lifecycleSources: readonly string[];
+  /** ArcGIS release named by each deprecated widget's class-level `@deprecated since` tag. */
+  deprecatedSince: Readonly<Record<string, string>>;
+  /** Deprecated top-level widget modules, sorted (the keys of `deprecatedSince`). */
+  widgets: readonly string[];
+  /** Top-level modules the method leaves out, with the reason. */
+  excludedModules: readonly ArcGisWidgetInventoryExclusion[];
+}
+
+const ARCGIS_WIDGET_DEPRECATED_SINCE: Readonly<Record<string, string>> = {
+  AreaMeasurement2D: "5.0",
+  AreaMeasurement3D: "4.33",
+  Attachments: "5.0",
+  Attribution: "5.0",
+  BasemapGallery: "4.32",
+  BasemapLayerList: "5.0",
+  BasemapToggle: "4.32",
+  BatchAttributeForm: "5.0",
+  Bookmarks: "4.34",
+  BuildingExplorer: "5.0",
+  CatalogLayerList: "5.0",
+  Compass: "4.32",
+  CoordinateConversion: "4.34",
+  Daylight: "4.34",
+  DirectLineMeasurement3D: "4.33",
+  DirectionalPad: "4.32",
+  Directions: "5.0",
+  DistanceMeasurement2D: "5.0",
+  Editor: "5.0",
+  ElevationProfile: "5.0",
+  Expand: "4.34",
+  Feature: "4.34",
+  FeatureForm: "5.0",
+  FeatureTable: "5.0",
+  FeatureTemplates: "5.0",
+  Features: "4.34",
+  FloorFilter: "5.0",
+  Fullscreen: "4.32",
+  Histogram: "5.0",
+  HistogramRangeSlider: "5.0",
+  Home: "4.32",
+  LayerList: "5.0",
+  Legend: "4.34",
+  LineOfSight: "4.33",
+  Locate: "4.32",
+  Measurement: "5.0",
+  NavigationToggle: "4.32",
+  OrientedImageryViewer: "5.0",
+  Popup: "5.0",
+  Print: "4.33",
+  ScaleBar: "4.32",
+  ScaleRangeSlider: "5.0",
+  Search: "4.33",
+  ShadowCast: "5.0",
+  Sketch: "5.0",
+  Slice: "4.33",
+  Slider: "5.0",
+  Swipe: "4.32",
+  TableList: "5.0",
+  TimeSlider: "5.0",
+  TimeZoneLabel: "4.33",
+  Track: "4.32",
+  UtilityNetworkAssociations: "5.0",
+  UtilityNetworkTrace: "5.0",
+  UtilityNetworkValidateTopology: "5.0",
+  ValuePicker: "5.0",
+  VideoPlayer: "4.33",
+  Weather: "4.33",
+  Zoom: "4.32",
+};
+
+/**
+ * Pinned deprecated-widget inventory. Re-derive it from a newer `@arcgis/core` tarball with
+ * `npm run inventory:arcgis-widgets -- <tarball>` and update the rows together with the pin.
+ * `@arcgis/core@5.1.24` ships the same top-level widget set (checked 2026-09-14).
+ */
+export const ARCGIS_WIDGET_INVENTORY_PIN: ArcGisWidgetInventoryPin = {
+  package: "@arcgis/core",
+  version: "5.0.19",
+  integrity: "sha512-OciZxzB16sTxtyfESqjuTC6rkMpwcmAzx2iQip3r1NE0IW869Eo5beyonILcHGCx9werUUd/5UhgmOI9MlX4lw==",
+  retrieved: "2026-09-14",
+  method:
+    "Top-level package/widgets/<Name>.js modules whose package/widgets/<Name>.d.ts class JSDoc carries " +
+    "`@deprecated since <version>`.",
+  lifecycleSources: [
+    "https://developers.arcgis.com/javascript/latest/v5-0/",
+    "https://developers.arcgis.com/javascript/latest/components-transition-plan/",
+  ],
+  deprecatedSince: ARCGIS_WIDGET_DEPRECATED_SINCE,
+  widgets: Object.keys(ARCGIS_WIDGET_DEPRECATED_SINCE).sort(),
+  excludedModules: [
+    { module: "FovOverlay", reason: "untyped" },
+    { module: "PanoramicVideoViewer", reason: "untyped" },
+    { module: "PanoramicViewer", reason: "untyped" },
+    { module: "Spinner", reason: "untyped" },
+    { module: "Widget", reason: "not-deprecated" },
+  ],
+};
+
+/** Pinned source for the deprecated-widget inventory: the exact published `@arcgis/core` release. */
+export const ARCGIS_WIDGET_INVENTORY_SOURCE = `https://www.npmjs.com/package/${ARCGIS_WIDGET_INVENTORY_PIN.package}/v/${ARCGIS_WIDGET_INVENTORY_PIN.version}`;
 
 export type WidgetDispositionKind =
   | "automated"
@@ -130,13 +258,25 @@ const AUTOMATED_NOTE =
 
 const COMPAT_SHIM_NOTE =
   "The honua-migrate codemod rewrites the import and safe constructor call sites, but the shim covers " +
-  "the core workflow rather than the full ArcGIS surface ? plan hands-on verification of app-specific " +
+  "the core workflow rather than the full ArcGIS surface — plan hands-on verification of app-specific " +
   "behavior after migration. Rendering is not byte-identical to ArcGIS.";
 
 const SCENE_3D_NOTE =
-  "SceneView/3D analysis widget. Honua's SceneViewCompat is 2D-behavior only and no Honua or MapLibre " +
+  "SceneView/3D widget. Honua's SceneViewCompat is 2D-behavior only and no Honua or MapLibre " +
   "surface reproduces this widget today (see docs/migration-punch-list.md, parity gap 1). Apps that " +
   "depend on it need a product decision, not a code rewrite.";
+
+const NO_REWRITE_NOTE =
+  "There is no shim and no codemod rewrite for this widget, so the scanner counts its sites as manual.";
+
+const ARCGIS_LAYER_TYPE_NOTE =
+  "The widget only works with an ArcGIS-specific layer or information model that Honua does not serve today, " +
+  "so there is nothing to point it at after migration. Apps that depend on it need a product decision, not a " +
+  "code rewrite.";
+
+const UTILITY_NETWORK_NOTE =
+  "Requires ArcGIS Utility Network services. Honua has no utility-network model, and utility-network editing " +
+  "is already outside the Editor shim. Apps that depend on it need a product decision, not a code rewrite.";
 
 /**
  * Documentation source rows consumed by the repository guide generator.
@@ -426,12 +566,136 @@ export const WIDGET_DISPOSITION_DOCUMENTATION: readonly WidgetDispositionData[] 
     "There is no ElevationProfile shim and no automated rewrite. The workaround is honest but real work: " +
       "profile sampling, unit handling, and chart UX are app code you own after migration.",
   ),
+  widgetEntry(
+    "Attachments",
+    "manual-workaround",
+    "No drop-in widget. List a feature's attachments with FeatureLayerCompat.queryAttachments and render the " +
+      "list in your own UI.",
+    `${NO_REWRITE_NOTE} Attachment upload, delete, and keyword filtering are app code you write against the service.`,
+  ),
+  widgetEntry(
+    "BatchAttributeForm",
+    "manual-workaround",
+    "No drop-in widget. Edit each selected feature with FeatureFormCompat and save the batch with " +
+      "FeatureLayerCompat.applyEdits.",
+    `${NO_REWRITE_NOTE} Multi-feature field grouping, validation summaries, and partial-failure handling are yours to build.`,
+  ),
+  widgetEntry(
+    "DirectionalPad",
+    "manual-workaround",
+    "No drop-in widget. Wire your own pan and rotate buttons to MapViewCompat.goTo.",
+    `${NO_REWRITE_NOTE} The ArcGIS widget is MapView-only, so the workaround covers the same 2D surface.`,
+  ),
+  widgetEntry(
+    "Features",
+    "manual-workaround",
+    "No drop-in widget. Page through the selected features yourself and render each one with FeatureCompat.",
+    `${NO_REWRITE_NOTE} Paging controls, selection sync with the view, and action menus are app code you own.`,
+  ),
+  widgetEntry(
+    "Histogram",
+    "manual-workaround",
+    "No drop-in widget. Compute bins from your own feature query and draw them with your charting library.",
+    `${NO_REWRITE_NOTE} ArcGIS smart-mapping statistics are not reproduced, so bin boundaries must be computed by the app.`,
+  ),
+  widgetEntry(
+    "HistogramRangeSlider",
+    "manual-workaround",
+    "No drop-in widget. Pair your own histogram chart with a range input and apply the chosen range as a layer filter.",
+    `${NO_REWRITE_NOTE} Smart-mapping statistics and the widget's filter-expression helpers are not reproduced.`,
+  ),
+  widgetEntry(
+    "ScaleRangeSlider",
+    "manual-workaround",
+    "No drop-in widget. Drive FeatureLayerCompat.setScaleRange from your own control.",
+    `${NO_REWRITE_NOTE} The widget's scale-preview thumbnails and region presets are not reproduced.`,
+  ),
+  widgetEntry(
+    "Slider",
+    "manual-workaround",
+    'No drop-in widget. Use a native `<input type="range">` or your UI library\'s slider.',
+    `${NO_REWRITE_NOTE} Tick configuration, thumb labels, and segment dragging are whatever your control provides.`,
+  ),
+  widgetEntry(
+    "TimeZoneLabel",
+    "manual-workaround",
+    "No drop-in widget. Show the time zone yourself, e.g. from Intl.DateTimeFormat().resolvedOptions().timeZone.",
+    `${NO_REWRITE_NOTE} The ArcGIS widget reads the MapView time zone; the app decides which time zone its dates use.`,
+  ),
+  widgetEntry(
+    "ValuePicker",
+    "manual-workaround",
+    "No drop-in widget. Build your own previous/play/next control; for stepping a time extent, TimeSliderCompat " +
+      "already covers time-aware layers.",
+    `${NO_REWRITE_NOTE} Collection, label, and combobox value sources are app code you own.`,
+  ),
   // --- no-equivalent: SceneView/3D analysis widgets ---
   widgetEntry("Daylight", "no-equivalent", "None. Requires a 3D scene with sun/shadow simulation.", SCENE_3D_NOTE),
   widgetEntry("LineOfSight", "no-equivalent", "None. Requires 3D scene geometry intersection analysis.", SCENE_3D_NOTE),
   widgetEntry("ShadowCast", "no-equivalent", "None. Requires a 3D scene with shadow accumulation.", SCENE_3D_NOTE),
   widgetEntry("Slice", "no-equivalent", "None. Requires 3D scene slicing.", SCENE_3D_NOTE),
   widgetEntry("Weather", "no-equivalent", "None. Requires a 3D scene atmosphere/weather renderer.", SCENE_3D_NOTE),
+  widgetEntry("AreaMeasurement3D", "no-equivalent", "None. Requires 3D scene area measurement.", SCENE_3D_NOTE),
+  widgetEntry(
+    "BuildingExplorer",
+    "no-equivalent",
+    "None. Requires a SceneView with building scene layers.",
+    SCENE_3D_NOTE,
+  ),
+  widgetEntry(
+    "DirectLineMeasurement3D",
+    "no-equivalent",
+    "None. Requires 3D scene direct-line measurement.",
+    SCENE_3D_NOTE,
+  ),
+  widgetEntry(
+    "NavigationToggle",
+    "no-equivalent",
+    "None. Toggles SceneView mouse navigation between pan and rotate; MapLibre 2D navigation has no such mode.",
+    SCENE_3D_NOTE,
+  ),
+  widgetEntry(
+    "CatalogLayerList",
+    "no-equivalent",
+    "None. Lists the footprints and dynamic group of an ArcGIS catalog layer, which Honua does not model.",
+    ARCGIS_LAYER_TYPE_NOTE,
+  ),
+  widgetEntry(
+    "FloorFilter",
+    "no-equivalent",
+    "None. Filters floor-aware maps by ArcGIS Indoors site, facility, and level, which Honua does not model.",
+    ARCGIS_LAYER_TYPE_NOTE,
+  ),
+  widgetEntry(
+    "OrientedImageryViewer",
+    "no-equivalent",
+    "None. Browses images from an ArcGIS oriented imagery layer, which Honua does not serve.",
+    ARCGIS_LAYER_TYPE_NOTE,
+  ),
+  widgetEntry(
+    "VideoPlayer",
+    "no-equivalent",
+    "None. Plays an ArcGIS video layer with its map footprint, which Honua does not serve.",
+    ARCGIS_LAYER_TYPE_NOTE,
+  ),
+  widgetEntry(
+    "UtilityNetworkAssociations",
+    "no-equivalent",
+    "None. Manages ArcGIS Utility Network associations.",
+    UTILITY_NETWORK_NOTE,
+  ),
+  widgetEntry(
+    "UtilityNetworkTrace",
+    "no-equivalent",
+    "None. Runs ArcGIS Utility Network named trace configurations.",
+    UTILITY_NETWORK_NOTE,
+  ),
+  widgetEntry(
+    "UtilityNetworkValidateTopology",
+    "no-equivalent",
+    "None. Validates ArcGIS Utility Network dirty areas.",
+    UTILITY_NETWORK_NOTE,
+  ),
 ];
 
 function publicWidgetDisposition(entry: WidgetDispositionData): WidgetDisposition {
