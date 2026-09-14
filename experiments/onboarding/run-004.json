@@ -1555,7 +1555,7 @@
     "recoveryConnectionHealthy": true,
     "sourceMetadataRecoveryPlanPrepared": true,
     "publicationRetried": false,
-    "latestCommit": "fb780fb91",
+    "latestCommit": "4a4bf71c0",
     "coreTestEvidence": {
       "commit": "c34640847b147e0d949dd9b321429e6578148eeb",
       "passed": 21,
@@ -1578,6 +1578,14 @@
       "failed": 0,
       "skipped": 0,
       "trx": "publication-fb5827c20-tests/publication-fb5827c20-postgres.trx"
+    },
+    "architectureCorrection": {
+      "combinedRunId": 34858971542,
+      "combinedCommit": "43be77ff8",
+      "finding": "LayerPublishingOptions exposed a public implementation type",
+      "fixedBy": "4a4bf71c0",
+      "fixCiRunId": 34861675808,
+      "composedLocally": false
     }
   },
   "editingMetadataCheckpoint": {
@@ -1793,8 +1801,15 @@
     ],
     "compiled": false,
     "liveQualified": false,
-    "verification": "Local runner34714/PID5836 started Core test build at 2026-09-14T15:05:56Z on43be77ff8; combined CI34858971542 Format passed, build/tests in progress.",
-    "branch": "integration/esri-cohort-runtime-20260914"
+    "verification": "Compiled; CI43be fast server4459 pass; architecture304pass/1fail corrected on publication branch; direct Core118pass/1skip, remaining PG/API/protocol running or queued.",
+    "branch": "integration/esri-cohort-runtime-20260914",
+    "readbackRuntime": {
+      "sourceCommit": "43be77ff897c578037ce43b720335a33bd78113e",
+      "baseUrl": "http://127.0.0.1:18631",
+      "redisDatabase": 2,
+      "ready": true,
+      "fullyQualified": false
+    }
   },
   "attachmentBindingFixCheckpoint": {
     "at": "2026-09-14T14:47:54.843811+00:00",
@@ -1883,6 +1898,42 @@
       "Apply/reuse same-service publications after candidate qualification",
       "Map reciprocal relationships, revalidate catalog and read all related records",
       "Verify converted Helicopter census-summary interaction"
+    ]
+  },
+  "editorAttachmentReadbackCheckpoint": {
+    "at": "2026-09-14T15:29:50.973518+00:00",
+    "serverCommit": "43be77ff897c578037ce43b720335a33bd78113e",
+    "baseUrl": "http://127.0.0.1:18631",
+    "filesVerified": 8,
+    "parentsVerified": 7,
+    "bytesVerified": 8491719,
+    "allHashesNamesTypesAndSizesMatchCachedBaseline": true,
+    "filesRemainingUnverified": 0,
+    "reuploadedFiles": 0,
+    "writesQualified": false,
+    "metadataRepairQualified": false,
+    "evidence": "editor-target-attachment-parity-43be77ff8.json"
+  },
+  "readonlyCompositeImplementationCheckpoint": {
+    "commit": "eb5760236",
+    "issue": 4868,
+    "ciRunId": 34861920680,
+    "newTestMethods": 7,
+    "testsExecuted": false,
+    "deployed": false,
+    "implemented": [
+      "canonical composite metadata with omission of default false",
+      "shared resource and data-editor write constraints before grant bypasses",
+      "reciprocal graph validation and rejection of write enablement",
+      "GeoServices composite metadata and edit-capability projection"
+    ],
+    "remaining": [
+      "assisted mapping",
+      "same-service publications",
+      "real endpoint write denials",
+      "complete related-record readback",
+      "post-apply fidelity reconciliation",
+      "browser and repeated-run qualification"
     ]
   }
 }
