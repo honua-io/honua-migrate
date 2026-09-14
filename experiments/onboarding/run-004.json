@@ -158,14 +158,15 @@
       "jobId": "f623fecfc1ff",
       "serviceName": "onboarding-heli-flights-full-004",
       "sourceLayerId": 0,
-      "status": 4,
-      "terminal": false,
-      "featuresProcessed": 482000,
+      "status": 8,
+      "terminal": true,
+      "featuresProcessed": 698843,
       "estimatedTotalFeatures": 698843,
       "failedRows": 0,
-      "serverDuration": "00:37:38.7577473",
+      "serverDuration": "00:52:49.3659536",
       "fidelityVerified": false,
-      "observation": "in-progress server status; processed rows are not yet terminal import or reconciliation proof"
+      "observation": "Product reports full-fidelity despite missing requested publication; independent SQL confirms retained rows only",
+      "normalizedStatus": "transfer-completed-publication-failed"
     }
   ],
   "commandMetrics": [
@@ -1048,7 +1049,7 @@
   "calendarStatisticsFollowup": {
     "serverPr": 4839,
     "baseCommit": "b8735bfd7f144c6da69bc923d83d4904fcf00086",
-    "status": "thirteen-tests-and-format-passed-committed-pr-ready",
+    "status": "additional-review-fixes-pushed-verification-pending",
     "sourceCommitted": true,
     "affectedReaders": [
       "FeatureDataAccess",
@@ -1070,7 +1071,7 @@
       "elapsedSeconds": 1500.181,
       "result": "build failed before tests; DLLs locked by preserved original demo process 7524"
     },
-    "serverPrDraft": false,
+    "serverPrDraft": true,
     "isolatedAttempt": {
       "elapsedSeconds": 1550.672,
       "passed": 6,
@@ -1092,13 +1093,20 @@
       "format": "passed; follow-up committed and pushed"
     },
     "followupCommit": "ef7b55bd3da7a3625c2adadbe73b9bdf27b3bcdb",
-    "formatSeconds": 202.367
+    "formatSeconds": 202.367,
+    "reviewFollowupCommit": "85b7e9e2b",
+    "reviewFollowup": [
+      "DateOnly catalog reconciliation",
+      "normalized temporal defaults",
+      "qualified joined identify dates"
+    ],
+    "reviewTests": "Core and protocol suites plus scoped format queued"
   },
   "largeQueryTransportCheckpoint": {
     "sdkIssue": 1724,
     "serverIssue": 4850,
-    "sdkCommit": "f5ab5c468",
-    "status": "prior-head-ci-passed-review-followups-required",
+    "sdkCommit": "39ab91b8efb39e72fb11b24d156695b92377305e",
+    "status": "review-fixes-pushed-new-head-verification-pending",
     "getRequestTargetBytes": 40245,
     "postBodyBytes": 40177,
     "baselineGetError": 431,
@@ -1129,7 +1137,10 @@
       "301/302/303 redirects must not discard query body constraints"
     ],
     "localAdditionalCommit": "b40c1b58fcc889d7d3b95fdbb55a6a62e7a951a1",
-    "localAdditionalCommitQualification": "base-prefix change found committed locally; unpushed, no new regression or qualification inspected"
+    "localAdditionalCommitQualification": "b40 prefix commit preserved in ancestry of pushed 39ab; 39ab adds retry/auth/redirect/prefix regressions, CI pending",
+    "newReviewRegressionCases": 34,
+    "scopedBiome": "passed",
+    "priorHeadEvidenceCommit": "f5ab5c468"
   },
   "geometryInputBudgetCheckpoint": {
     "serverIssue": 4850,
@@ -1146,12 +1157,29 @@
   "fullFlightImportCheckpoint": {
     "planId": "arcgis-plan-691d82af49da70262f7500d2d0602edf07a6de7918e20525a21a285aa844e079",
     "jobId": "f623fecfc1ff",
-    "status": "running-on-server",
+    "status": "transfer-completed-publication-failed",
     "backendPort": 18617,
     "batchSize": 1000,
     "pollingWindow": "first resume returned nonterminal after 600 seconds; subsequent product status calls confirm progress on the same job",
-    "next": "resume/status the same job; never reapply to restart polling",
-    "observedAt": "2026-09-14T10:30:25.776Z"
+    "next": "Recover publication of the retained table under server #4854; do not reapply source import",
+    "observedAt": "2026-09-14T11:21:11.678270+00:00",
+    "warning": "AutoPublish was requested, but publishing did not complete.",
+    "publicationFailure": "Npgsql read timeout in MaterializeLayerFeaturesAsync",
+    "retainedTableReadback": {
+      "rows": 698843,
+      "minDate": "2026-01-11",
+      "maxDate": "2026-02-16",
+      "nullGeometries": 0,
+      "jan11Rows": 1963,
+      "sampleGeometry": {
+        "srid": 4326,
+        "dimensions": 3,
+        "type": "ST_MultiLineString"
+      },
+      "serviceRows": 0,
+      "fullGeometryParity": false
+    },
+    "serverIssue": 4854
   },
   "appRuntimeMaintenanceCheckpoint": {
     "observedAt": "2026-09-14T10:30:25.776Z",
