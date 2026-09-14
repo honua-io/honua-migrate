@@ -1985,8 +1985,55 @@
     "allQueryOnly": true,
     "allHasAttachmentsFalse": true,
     "allGlobalIdFieldAbsent": true,
-    "repairImplemented": false,
+    "repairImplemented": true,
     "issue": 4825,
-    "evidence": "cohort-metadata-inspection-20260914T154323Z.json"
+    "evidence": "cohort-metadata-inspection-20260914T154323Z.json",
+    "repairImplementationCommit": "e418b631ed085fcf532ec4b0dd0ceb4e286763fa",
+    "repairDeployed": false,
+    "repairQualified": false,
+    "actualImportedFeatureCrudVerified": false,
+    "repairPr": 4869,
+    "qualificationRunId": 34869284673
+  },
+  "helicopterLargeSelectionCheckpoint": {
+    "appCommit": "dc0bb51144c4427f62e4469cb1f025cb80fa7044",
+    "priorWorkerOnlyCommit": "f75765eb37613cc2569f04536da8d352354ce1aa",
+    "sdkCommit": "39ab91b8efb39e72fb11b24d156695b92377305e",
+    "serverCommit": "43be77ff897c578037ce43b720335a33bd78113e",
+    "browser": "Chrome",
+    "candidateUrl": "http://127.0.0.1:18634",
+    "flightPopulation": 698843,
+    "calendarDates": 33,
+    "largestDay": "2026-02-14",
+    "largestDayRows": 44910,
+    "selectedAircraft": "N945RF",
+    "selectedAircraftRows": 6974,
+    "originalFinding": "Whole-aircraft selection left the browser unresponsive during synchronous corridor buffering and eager collapsed-record rendering.",
+    "changes": [
+      "Disposable cancellable buffer worker",
+      "Deadline covers computation and query",
+      "Selection avoids whole-day GeoJSON resubmission",
+      "Deferred record list with all records accessible in 200-row pages",
+      "Reused date formatters"
+    ],
+    "browserObservations": {
+      "selectionToolElapsedMs": 1527,
+      "cancelToolElapsedMs": 5012,
+      "firstRecordPage": "1-200 of 6974",
+      "secondRecordPage": "201-400 of 6974",
+      "largeCorridorTimedOut": true,
+      "pageUsableAfterTimeout": true,
+      "jan11WorkerSearchCompletedWithoutVisibleError": true,
+      "exactCorridorResultParityVerified": false
+    },
+    "timingQualification": "Browser tool wall times include automation overhead; not application performance marks.",
+    "formatAndLint": "passed",
+    "unitTestsAndProductionBuild": "queued under shared heavy-work throttle",
+    "workflowQualified": false,
+    "remaining": [
+      "Large full-aircraft corridor must finish and match reference results",
+      "Clear obsolete corridor timeout message on a new successful search or deselection",
+      "Complete UI parity and repeated-run qualification"
+    ]
   }
 }
