@@ -1793,7 +1793,7 @@
     ],
     "compiled": false,
     "liveQualified": false,
-    "verification": "Consolidated runner verify-cohort-binding-43be77ff8.py includes GeoservicesRelationshipApplyTests; queued behind shared heavy work.",
+    "verification": "Local runner34714/PID5836 started Core test build at 2026-09-14T15:05:56Z on43be77ff8; combined CI34858971542 Format passed, build/tests in progress.",
     "branch": "integration/esri-cohort-runtime-20260914"
   },
   "attachmentBindingFixCheckpoint": {
@@ -1857,6 +1857,32 @@
       "status": "queued"
     },
     "runtimeRelationshipQualified": false,
-    "verification": "Consolidated runner verify-cohort-binding-43be77ff8.py includes GeoservicesRelationshipApplyTests; queued behind shared heavy work."
+    "verification": "Consolidated runner verify-cohort-binding-43be77ff8.py includes GeoservicesRelationshipApplyTests; queued behind shared heavy work.",
+    "pr": 4867,
+    "formatPassed": true
+  },
+  "summaryServicePublicationCheckpoint": {
+    "at": "2026-09-14T15:12:03.872390+00:00",
+    "parentRowsVerifiedInRetainedDatabase": 579,
+    "childRowsVerifiedInRetainedDatabase": 877,
+    "orphanChildren": 0,
+    "objectIdsUniqueAndNonNull": true,
+    "finding": "Isolated imports published parent and child in separate services, while related-record resolution requires both resources published in the queried service.",
+    "plan": "heli-summary-service-publication-plan.json",
+    "targetServiceName": "onboarding-heli-summary-cohort-004",
+    "planExecuted": false,
+    "sourceCapabilities": [
+      "Query",
+      "Query"
+    ],
+    "sourceComposite": true,
+    "assistedReadonlyFeatureIssue": 4868,
+    "relationshipScopePr": 4867,
+    "remaining": [
+      "Preserve composite metadata and enforce read-only behavior",
+      "Apply/reuse same-service publications after candidate qualification",
+      "Map reciprocal relationships, revalidate catalog and read all related records",
+      "Verify converted Helicopter census-summary interaction"
+    ]
   }
 }
