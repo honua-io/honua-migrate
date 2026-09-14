@@ -1915,9 +1915,9 @@
     "evidence": "editor-target-attachment-parity-43be77ff8.json"
   },
   "readonlyCompositeImplementationCheckpoint": {
-    "commit": "eb5760236",
+    "commit": "9acdb062e",
     "issue": 4868,
-    "ciRunId": 34861920680,
+    "ciRunId": 34863862771,
     "newTestMethods": 7,
     "testsExecuted": false,
     "deployed": false,
@@ -1934,6 +1934,52 @@
       "complete related-record readback",
       "post-apply fidelity reconciliation",
       "browser and repeated-run qualification"
-    ]
+    ],
+    "priorCiRunId": 34861920680,
+    "priorCiConclusion": "failure",
+    "localShardCoveragePassed": true,
+    "coveredTestClasses": 1463
+  },
+  "fullFlightPublicationRecoveryCheckpoint": {
+    "at": "2026-09-14T15:44:23.687538+00:00",
+    "serverCommit": "43be77ff897c578037ce43b720335a33bd78113e",
+    "status": 201,
+    "elapsedSeconds": 305.2,
+    "layerId": 12,
+    "serviceName": "onboarding-heli-flights-full-004",
+    "reusesCachedSourceRows": true,
+    "checks": {
+      "dimensions": true,
+      "crs": true,
+      "fullCount": true,
+      "jan11Count": true,
+      "sampleHasZCoordinates": true,
+      "drawingInfoPreserved": true
+    },
+    "sourceRendererRestoredThroughAdmin": true,
+    "fullFidelityQualified": false,
+    "fullPopulationBrowserQualified": false,
+    "evidence": [
+      "heli-flight-publication-recovery-43be77ff8.json",
+      "heli-flight-publication-readback-43be77ff8.json",
+      "heli-flight-publication-readback-43be77ff8-v2.json",
+      "heli-flight-renderer-recovery-43be77ff8.json"
+    ],
+    "initialVerifierFinding": "hasM=false is deliberately omitted by LayerResponse WhenWritingDefault; initial assertion was too strict and is retained."
+  },
+  "editorMetadataInspectionCheckpoint": {
+    "at": "2026-09-14T15:43:23Z",
+    "serverCommit": "43be77ff897c578037ce43b720335a33bd78113e",
+    "layers": [
+      2,
+      3,
+      4
+    ],
+    "allQueryOnly": true,
+    "allHasAttachmentsFalse": true,
+    "allGlobalIdFieldAbsent": true,
+    "repairImplemented": false,
+    "issue": 4825,
+    "evidence": "cohort-metadata-inspection-20260914T154323Z.json"
   }
 }
