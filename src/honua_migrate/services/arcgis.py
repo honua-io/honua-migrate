@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import re
 import tempfile
@@ -28,7 +29,28 @@ from honua_esri_assess.redaction import sanitize_handoff_url
 ARTIFACT_VERSION = "honua.arcgis-service-migration/v1"
 API_PREFIX = "/api/v1/admin/import/geoservices"
 RETRYABLE_STATUS_CODES = {429, 502, 503, 504}
-TERMINAL_JOB_STATUSES = {"completed", "failed", "cancelled", "canceled"}
+# GeoServices import enum, not the unrelated file-import status enum.
+# Honua.Core/Features/Migration/Abstractions/GeoservicesImportProgress.cs, 2026.1.
+STATUS_CONTRACT = "honua.geoservices-import-status/2026.1"
+JOB_STATUSES = (
+    "queued", "discovering", "retrieving-features", "creating-table",
+    "inserting-features", "publishing", "copying-attachments", "validating",
+    "completed", "needs-review", "failed", "cancelled",
+)
+TERMINAL_JOB_STATUSES = {"completed", "needs-review", "failed", "cancelled"}
+STATUS_NAMES = {name.replace("-", ""): name for name in JOB_STATUSES}
+STATUS_NAMES.update({"canceled": "cancelled", "processing": "processing"})
+RESUME_INCOMPLETE_EXIT = 10
+
+
+def normalize_job_status(value: object) -> str:
+    """Accept current numeric and named wire forms, never guess unknown states."""
+    if type(value) is int:
+        return JOB_STATUSES[value] if 0 <= value < len(JOB_STATUSES) else "unknown"
+    if isinstance(value, str):
+        return STATUS_NAMES.get(value.strip().lower().replace("-", "").replace("_", ""), "unknown")
+    return "unknown"
+
 
 arcgis_app = typer.Typer(
     help="Discover, plan, and import ArcGIS FeatureServer or MapServer services.",
@@ -38,6 +60,10 @@ arcgis_app = typer.Typer(
 
 class ArcGisMigrationError(MigrationError):
     """An actionable, secret-safe error returned by the migration client."""
+
+
+class _PollingDeadlineExpired(ArcGisMigrationError):
+    """Internal control flow: emit the last safe status as a timeout receipt."""
 
 
 def _safe_url(value: str, *, allow_relative: bool = False) -> str:
@@ -221,6 +247,7 @@ class ArcGisClient:
     retries: int = 2
     session: requests.Session | Any = field(default_factory=requests.Session)
     sleeper: Callable[[float], None] = time.sleep
+    clock: Callable[[], float] = time.monotonic
 
     @classmethod
     def from_options(
@@ -244,28 +271,39 @@ class ArcGisClient:
         *,
         payload: Mapping[str, Any] | None = None,
         retry: bool = False,
+        deadline: float | None = None,
     ) -> dict[str, Any]:
         safe_path = _safe_url(path, allow_relative=True)
         # Retrying a POST could duplicate an import or repeat a cancellation.
         attempts = self.retries + 1 if retry and method.upper() == "GET" else 1
         response: Any = None
         for attempt in range(attempts):
+            remaining = None if deadline is None else deadline - self.clock()
+            if remaining is not None and remaining <= 0:
+                raise _PollingDeadlineExpired("Import polling deadline expired.")
+            timeout = self.timeout_seconds if remaining is None else requests.adapters.TimeoutSauce(
+                total=min(self.timeout_seconds, remaining)
+            )
             try:
                 response = self.session.request(
                     method,
                     f"{self.base_url}{safe_path}",
                     headers={"X-API-Key": self.api_key, "Accept": "application/json"},
                     json=payload,
-                    timeout=self.timeout_seconds,
+                    # HTTPAdapter explicitly accepts TimeoutSauce; requests'
+                    # Session annotation omits this runtime-supported form.
+                    timeout=timeout,  # type: ignore[arg-type]
                 )
             except requests.RequestException as exc:
+                if deadline is not None and self.clock() >= deadline:
+                    raise _PollingDeadlineExpired("Import polling deadline expired.") from exc
                 if attempt + 1 == attempts:
                     raise ArcGisMigrationError("Honua request failed; check HONUA_URL and network access.") from exc
-                self.sleeper(0.25 * (2**attempt))
+                self._sleep_with_deadline(0.25 * (2**attempt), deadline)
                 continue
             if response.status_code not in RETRYABLE_STATUS_CODES or attempt + 1 == attempts:
                 break
-            self.sleeper(0.25 * (2**attempt))
+            self._sleep_with_deadline(0.25 * (2**attempt), deadline)
         if response is None:
             raise ArcGisMigrationError("Honua request failed.")
         try:
@@ -277,6 +315,12 @@ class ArcGisClient:
             raise ArcGisMigrationError(f"Honua request failed (HTTP {response.status_code}).")
         return body if isinstance(body, dict) else {"result": body}
 
+    def _sleep_with_deadline(self, seconds: float, deadline: float | None) -> None:
+        if deadline is not None:
+            seconds = min(seconds, max(0, deadline - self.clock()))
+        if seconds > 0:
+            self.sleeper(seconds)
+
     def discover(self, request: Mapping[str, Any]) -> dict[str, Any]:
         return self.request("POST", f"{API_PREFIX}/discover", payload=request)
 
@@ -284,8 +328,8 @@ class ArcGisClient:
         # Deliberately not retried: replaying a start could enqueue a duplicate import.
         return self.request("POST", f"{API_PREFIX}/start", payload=request)
 
-    def status(self, job_id: str) -> dict[str, Any]:
-        return self.request("GET", f"{API_PREFIX}/jobs/{_job_id(job_id)}", retry=True)
+    def status(self, job_id: str, *, deadline: float | None = None) -> dict[str, Any]:
+        return self.request("GET", f"{API_PREFIX}/jobs/{_job_id(job_id)}", retry=True, deadline=deadline)
 
     def list(self) -> dict[str, Any]:
         return self.request("GET", f"{API_PREFIX}/jobs", retry=True)
@@ -302,30 +346,55 @@ class ArcGisClient:
     ) -> dict[str, Any]:
         """GET-poll an existing job without creating or mutating server state."""
         validated_job_id = _job_id(job_id)
-        if poll_interval_seconds <= 0 or max_wait_seconds < 0:
-            raise ArcGisMigrationError("Poll interval must be positive and max wait non-negative.")
-        max_polls = max(1, int(max_wait_seconds // poll_interval_seconds) + 1)
+        if (not math.isfinite(poll_interval_seconds) or not math.isfinite(max_wait_seconds)
+                or poll_interval_seconds <= 0 or max_wait_seconds < 0):
+            raise ArcGisMigrationError("Poll interval must be finite and positive; max wait finite and non-negative.")
+        started = self.clock()
+        # Zero preserves the documented one-status-request mode, bounded by --timeout-seconds.
+        deadline = started + max_wait_seconds if max_wait_seconds > 0 else None
         latest: dict[str, Any] = {}
-        for poll_count in range(1, max_polls + 1):
-            latest = self.status(validated_job_id)
-            status = str(latest.get("status", "")).lower()
-            if status in TERMINAL_JOB_STATUSES:
-                return {
-                    "jobId": validated_job_id,
-                    "terminal": True,
-                    "timedOut": False,
-                    "pollCount": poll_count,
-                    "status": latest,
-                }
-            if poll_count < max_polls:
-                self.sleeper(poll_interval_seconds)
+        poll_count = 0
+        normalized = "unknown"
+        outcome = "timed-out"
+        terminal = False
+        while True:
+            if deadline is not None and self.clock() >= deadline:
+                break
+            poll_count += 1
+            try:
+                latest = self.status(validated_job_id, deadline=deadline)
+            except _PollingDeadlineExpired:
+                break
+            normalized = normalize_job_status(latest.get("status"))
+            terminal = normalized in TERMINAL_JOB_STATUSES
+            if deadline is not None and self.clock() > deadline:
+                break
+            if terminal:
+                outcome = normalized
+                # A contradictory/incomplete fidelity verdict must not become success.
+                if normalized == "completed" and latest.get("fidelityVerdict") not in (None, "full-fidelity"):
+                    outcome = "needs-review"
+                break
+            if normalized == "unknown":
+                outcome = "unknown-status"
+                break
+            if max_wait_seconds == 0:
+                break
+            self._sleep_with_deadline(poll_interval_seconds, deadline)
         return {
             "jobId": validated_job_id,
-            "terminal": False,
-            "timedOut": True,
-            "pollCount": max_polls,
+            "statusContract": STATUS_CONTRACT,
+            "normalizedStatus": normalized,
+            "outcome": outcome,
+            "terminal": terminal,
+            "timedOut": outcome == "timed-out",
+            "successful": outcome == "completed",
+            "fidelityVerified": outcome == "completed" and latest.get("fidelityVerdict") == "full-fidelity",
+            "elapsedSeconds": max(0, self.clock() - started),
+            "pollCount": poll_count,
             "status": latest,
         }
+
 
 
 def _job_id(job_id: str) -> str:
@@ -564,6 +633,8 @@ def resume_command(
             output,
             force=force,
         )
+        if not response["successful"]:
+            raise typer.Exit(RESUME_INCOMPLETE_EXIT)
     except ArcGisMigrationError as exc:
         raise typer.BadParameter(str(exc)) from exc
 

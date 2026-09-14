@@ -255,6 +255,29 @@ Artifact `diagnostics[].code` is a locked enum (`rate-limited`,
 a diagnostic may say; see the
 [diagnostic code catalog](docs/schemas/esri-footprint.v0.1.md#diagnostic-code-catalog).
 
+## Resuming service imports
+
+`honua-migrate services arcgis resume JOB_ID --output result.json` polls an
+existing job with GET requests; it never requeues an import. Both numeric and
+named GeoServices import statuses are supported using the 2026.1 status contract
+(recorded in `response.statusContract`). This is distinct from file-import enums:
+GeoServices `8` means Completed and `9` means NeedsReview.
+
+The saved response includes `outcome`, `normalizedStatus`, `terminal`, `timedOut`,
+`successful`, `fidelityVerified`, elapsed time and the sanitized server status with
+its fidelity findings. Exit 10 means review required, failed/cancelled, unknown
+status, or timeout; the receipt is written before exiting. A legacy Completed
+response without fidelity metadata may exit zero but has `fidelityVerified=false`.
+Do not treat process success alone as proof of full migration fidelity.
+
+Positive `--max-wait` values set a monotonic polling deadline shared by network
+timeouts, retries and sleeps. Requests' connect/read timeouts are capped by the
+remaining budget; scheduling delays and response-body delivery can still cause
+wall time to exceed that budget, and a late observation does not count as success.
+`--max-wait 0` takes one status snapshot, bounded by `--timeout-seconds`, without
+waiting for a future terminal state. Unknown statuses stop with an explicit
+`unknown-status` outcome instead of being guessed or polled indefinitely.
+
 ## Exit codes and failure surface
 
 The CLI never prints Python tracebacks; failures surface as typed,
@@ -268,7 +291,7 @@ prospect-safe diagnostics on stderr with deterministic exit codes:
 | `3` | `report --strict` / `verdict --strict` / `caps --strict` rejected an invalid footprint (`report.schema.invalid`). |
 | `4` | Report rendering failed after input parsing succeeded (`report.render.internal`). |
 | `5` | `caps --crosswalk` document failed structural or key validation, e.g. an unknown assess-registry key (`report.crosswalk.invalid`). |
-| `10`+ | Expected scanner failure before output could be produced (`scanner-error`, `portal.*`, `server.*`). |
+| `10`+ | Expected scanner failure (`scanner-error`, `portal.*`, `server.*`); `services arcgis resume` uses `10` for an unsuccessful or unverified terminal observation, with its receipt retained. |
 | `20`+ | Could not save the requested output artifact (`output-write-failed`, or output exists without `--force`). |
 | `30` | Schema validation failed for `scan --validate` or `schema validate`. |
 

@@ -337,7 +337,7 @@ def test_resume_is_bounded_and_reports_nonterminal_timeout(tmp_path):
         ],
         env=HONUA_ENV,
     )
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == 10, result.output
     assert len(responses.calls) == 1
     assert responses.calls[0].request.method == "GET"
     response = json.loads(output.read_text(encoding="utf-8"))["response"]
@@ -390,3 +390,108 @@ def test_refuses_unsafe_job_ids_before_environment_resolution(monkeypatch, job_i
     assert result.exit_code != 0
     assert "Job ID" in _plain(result) or "Missing argument" in _plain(result)
     assert "HONUA_URL" not in _plain(result)
+
+
+@pytest.mark.parametrize("status,verdict,exit_code,outcome", [
+    (8, "full-fidelity", 0, "completed"),
+    (9, "incomplete", 10, "needs-review"),
+    (10, None, 10, "failed"),
+    (11, None, 10, "cancelled"),
+    ("NeedsReview", "incomplete", 10, "needs-review"),
+    ("needs-review", "incomplete", 10, "needs-review"),
+    ("Cancelled", None, 10, "cancelled"),
+    ("Canceled", None, 10, "cancelled"),
+    ("Completed", "incomplete", 10, "needs-review"),
+    ("Completed", None, 0, "completed"),
+    (99, None, 10, "unknown-status"),
+    (True, None, 10, "unknown-status"),
+    ("FutureState", None, 10, "unknown-status"),
+])
+@responses.activate
+def test_resume_preserves_terminal_and_fidelity_outcomes(tmp_path, status, verdict, exit_code, outcome):
+    payload = {"status": status, "fidelityFindings": [{"code": "catalog.spatial.srid-mismatch"}],
+               "apiKey": "must-not-be-exported"}
+    if verdict is not None:
+        payload["fidelityVerdict"] = verdict
+    responses.add(responses.GET, f"https://honua.test{API_PREFIX}/jobs/a1", json=payload)
+    output = tmp_path / "outcome.json"
+    result = _invoke(["resume", "a1", "--max-wait", "30", "--output", str(output)], env=HONUA_ENV)
+    assert result.exit_code == exit_code, result.output
+    assert len(responses.calls) == 1
+    receipt = json.loads(output.read_text())["response"]
+    assert receipt["outcome"] == outcome
+    assert receipt["successful"] is (exit_code == 0)
+    assert receipt["fidelityVerified"] is (exit_code == 0 and verdict == "full-fidelity")
+    assert receipt["timedOut"] is False
+    assert receipt["status"]["status"] == status
+    assert receipt["status"]["fidelityFindings"] == payload["fidelityFindings"]
+    assert "must-not-be-exported" not in output.read_text() + result.output
+
+
+class _FakeClock:
+    def __init__(self):
+        self.now = 0.0
+        self.sleeps = []
+
+    def __call__(self):
+        return self.now
+
+    def sleep(self, seconds):
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+
+@responses.activate
+def test_resume_deadline_includes_request_latency_and_clamps_poll_sleep():
+    clock = _FakeClock()
+
+    def slow_status(_request):
+        clock.now += 0.8
+        return 200, {}, json.dumps({"status": 2})  # retrieving, not generic file-import Completed
+
+    responses.add_callback(responses.GET, f"https://honua.test{API_PREFIX}/jobs/a1", slow_status)
+    client = ArcGisClient("https://honua.test", "key", clock=clock, sleeper=clock.sleep)
+    result = client.wait_for_terminal("a1", poll_interval_seconds=0.5, max_wait_seconds=1)
+    assert result["outcome"] == "timed-out"
+    assert result["successful"] is False
+    assert result["normalizedStatus"] == "retrieving-features"
+    assert result["pollCount"] == 1
+    assert result["elapsedSeconds"] == pytest.approx(1)
+    assert clock.sleeps == [pytest.approx(0.2)]
+    assert len(responses.calls) == 1
+
+
+@responses.activate
+def test_resume_retry_backoff_cannot_extend_deadline():
+    clock = _FakeClock()
+
+    def unavailable(_request):
+        clock.now += 0.9
+        return 503, {}, "{}"
+
+    responses.add_callback(responses.GET, f"https://honua.test{API_PREFIX}/jobs/a1", unavailable)
+    client = ArcGisClient("https://honua.test", "key", retries=5, clock=clock, sleeper=clock.sleep)
+    result = client.wait_for_terminal("a1", poll_interval_seconds=0.5, max_wait_seconds=1)
+    assert result["outcome"] == "timed-out"
+    assert result["elapsedSeconds"] == pytest.approx(1)
+    assert len(responses.calls) == 1
+    assert clock.sleeps == [pytest.approx(0.1)]
+
+
+def test_resume_passes_remaining_deadline_to_network_timeout():
+    clock = _FakeClock()
+    timeouts = []
+
+    class Session:
+        def request(self, *args, **kwargs):
+            import requests
+            timeouts.append(kwargs["timeout"].total)
+            clock.now += 2
+            raise requests.Timeout()
+
+    client = ArcGisClient("https://honua.test", "key", timeout_seconds=30,
+                         clock=clock, sleeper=clock.sleep, session=Session())
+    result = client.wait_for_terminal("a1", poll_interval_seconds=0.5, max_wait_seconds=2)
+    assert timeouts == [2]
+    assert result["outcome"] == "timed-out"
+    assert result["pollCount"] == 1
