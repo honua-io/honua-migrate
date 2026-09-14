@@ -567,7 +567,7 @@
   "sdkDateOnlyFix": {
     "issue": "honua-sdk-js#1718",
     "pullRequest": "https://github.com/honua-io/honua-sdk-js/pull/1720",
-    "candidateVerified": false,
+    "candidateVerified": true,
     "baseline": {
       "buildPassed": true,
       "testsPassed": 180,
@@ -602,8 +602,8 @@
       }
     ],
     "publishedOriginalSourceDiscovery": "failed-unknown-instead-of-date",
-    "candidateReadback": "pending",
-    "postFixGates": "pending",
+    "candidateReadback": "passed-original-and-fresh-Honua-JSON-PBF-in-three-timezones",
+    "postFixGates": "passed-check-typecheck-build-and-195-targeted-tests",
     "queueWaitSeconds": null,
     "firstCandidateCommit": "6832c8c21",
     "candidateCommit": "e77171323",
@@ -689,6 +689,264 @@
       ],
       "elapsedSeconds": 2.133
     },
-    "secondCandidateVerification": "pending"
+    "secondCandidateVerification": "passed",
+    "secondCandidateArtifact": {
+      "name": "@honua/sdk-js",
+      "version": "0.1.9-beta.0",
+      "size": 10325463,
+      "unpackedSize": 29545679,
+      "shasum": "2eaf2d0ae6c75fa0622e3f4f66fb417f0279d096",
+      "integrity": "sha512-9gxSufByk7zqCx4yg1tyHlhrlfaYEObJ6+Wn4eoA2QWOPQCHug3yEoLBCcUo7sHEt8tKxI5D88CpKkQAAxGF6Q==",
+      "entryCount": 2117,
+      "sha256": "7d98b2b02d3ecd31dcde6a6af44e23b15ce59fee6f19124e15ee266199bc7686",
+      "sourceCommit": "e77171323a2724f3ae1857ae8840a56da3fe85bb",
+      "registryPublished": false
+    },
+    "secondCandidateVerificationCommands": [
+      {
+        "command": [
+          "npm.cmd",
+          "run",
+          "check"
+        ],
+        "exitCode": 0,
+        "elapsedSeconds": 3.756,
+        "log": "sdk-dateonly-positional-fixed-step-0.log"
+      },
+      {
+        "command": [
+          "npm.cmd",
+          "run",
+          "typecheck"
+        ],
+        "exitCode": 0,
+        "elapsedSeconds": 44.459,
+        "log": "sdk-dateonly-positional-fixed-step-1.log"
+      },
+      {
+        "command": [
+          "npm.cmd",
+          "test",
+          "--",
+          "test/connect-schema-v2.test.ts",
+          "test/pbf-decoder.test.ts",
+          "test/query-planner-semantic-geoservices-odata.test.ts"
+        ],
+        "exitCode": 0,
+        "elapsedSeconds": 111.15,
+        "log": "sdk-dateonly-positional-fixed-step-2.log"
+      }
+    ],
+    "secondCandidatePackCommands": [
+      {
+        "command": [
+          "npm.cmd",
+          "pack",
+          "--json",
+          "--pack-destination",
+          "C:/Users/mike/.honua/onboarding-cache/run-004/sdk-candidate-artifact-positional"
+        ],
+        "exitCode": 0,
+        "elapsedSeconds": 5.907,
+        "log": "sdk-dateonly-positional-pack-step-0.log"
+      }
+    ],
+    "secondCandidateInstallCommands": [
+      {
+        "command": [
+          "npm.cmd",
+          "install"
+        ],
+        "exitCode": 0,
+        "elapsedSeconds": 28.945,
+        "log": "sdk-dateonly-positional-candidate-install-step-0.log"
+      }
+    ],
+    "secondCandidateLiveReadback": [
+      {
+        "timezone": "Pacific/Honolulu",
+        "elapsedSeconds": 2.843,
+        "observedAt": "2026-09-14T07:35:28.279528+00:00",
+        "typedSemanticQueryQualified": true,
+        "sourceAndTargetJsonPbfParity": true,
+        "comparisons": [
+          {
+            "target": "esri-original",
+            "format": "json",
+            "rows": 1963,
+            "allSelectedRowHash": "5462ad03a1bd175ad84cd881b67e72c6abd0dda810dd839010db7b087c9be8ef",
+            "requests": [
+              {
+                "format": "json",
+                "status": 200,
+                "contentType": "application/json; charset=utf-8"
+              }
+            ]
+          },
+          {
+            "target": "esri-original",
+            "format": "pbf",
+            "rows": 1963,
+            "allSelectedRowHash": "5462ad03a1bd175ad84cd881b67e72c6abd0dda810dd839010db7b087c9be8ef",
+            "requests": [
+              {
+                "format": "pbf",
+                "status": 200,
+                "contentType": "application/x-protobuf"
+              }
+            ]
+          },
+          {
+            "target": "honua-fresh-import",
+            "format": "json",
+            "rows": 1963,
+            "allSelectedRowHash": "5462ad03a1bd175ad84cd881b67e72c6abd0dda810dd839010db7b087c9be8ef",
+            "requests": [
+              {
+                "format": "json",
+                "status": 200,
+                "contentType": "application/json"
+              }
+            ]
+          },
+          {
+            "target": "honua-fresh-import",
+            "format": "pbf",
+            "rows": 1963,
+            "allSelectedRowHash": "5462ad03a1bd175ad84cd881b67e72c6abd0dda810dd839010db7b087c9be8ef",
+            "requests": [
+              {
+                "format": "pbf",
+                "status": 200,
+                "contentType": "application/x-protobuf"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "timezone": "UTC",
+        "elapsedSeconds": 2.813,
+        "observedAt": "2026-09-14T07:35:51.372561+00:00",
+        "typedSemanticQueryQualified": true,
+        "sourceAndTargetJsonPbfParity": true,
+        "comparisons": [
+          {
+            "target": "esri-original",
+            "format": "json",
+            "rows": 1963,
+            "allSelectedRowHash": "5462ad03a1bd175ad84cd881b67e72c6abd0dda810dd839010db7b087c9be8ef",
+            "requests": [
+              {
+                "format": "json",
+                "status": 200,
+                "contentType": "application/json; charset=utf-8"
+              }
+            ]
+          },
+          {
+            "target": "esri-original",
+            "format": "pbf",
+            "rows": 1963,
+            "allSelectedRowHash": "5462ad03a1bd175ad84cd881b67e72c6abd0dda810dd839010db7b087c9be8ef",
+            "requests": [
+              {
+                "format": "pbf",
+                "status": 200,
+                "contentType": "application/x-protobuf"
+              }
+            ]
+          },
+          {
+            "target": "honua-fresh-import",
+            "format": "json",
+            "rows": 1963,
+            "allSelectedRowHash": "5462ad03a1bd175ad84cd881b67e72c6abd0dda810dd839010db7b087c9be8ef",
+            "requests": [
+              {
+                "format": "json",
+                "status": 200,
+                "contentType": "application/json"
+              }
+            ]
+          },
+          {
+            "target": "honua-fresh-import",
+            "format": "pbf",
+            "rows": 1963,
+            "allSelectedRowHash": "5462ad03a1bd175ad84cd881b67e72c6abd0dda810dd839010db7b087c9be8ef",
+            "requests": [
+              {
+                "format": "pbf",
+                "status": 200,
+                "contentType": "application/x-protobuf"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "timezone": "Pacific/Kiritimati",
+        "elapsedSeconds": 2.834,
+        "observedAt": "2026-09-14T07:35:51.400404+00:00",
+        "typedSemanticQueryQualified": true,
+        "sourceAndTargetJsonPbfParity": true,
+        "comparisons": [
+          {
+            "target": "esri-original",
+            "format": "json",
+            "rows": 1963,
+            "allSelectedRowHash": "5462ad03a1bd175ad84cd881b67e72c6abd0dda810dd839010db7b087c9be8ef",
+            "requests": [
+              {
+                "format": "json",
+                "status": 200,
+                "contentType": "application/json; charset=utf-8"
+              }
+            ]
+          },
+          {
+            "target": "esri-original",
+            "format": "pbf",
+            "rows": 1963,
+            "allSelectedRowHash": "5462ad03a1bd175ad84cd881b67e72c6abd0dda810dd839010db7b087c9be8ef",
+            "requests": [
+              {
+                "format": "pbf",
+                "status": 200,
+                "contentType": "application/x-protobuf"
+              }
+            ]
+          },
+          {
+            "target": "honua-fresh-import",
+            "format": "json",
+            "rows": 1963,
+            "allSelectedRowHash": "5462ad03a1bd175ad84cd881b67e72c6abd0dda810dd839010db7b087c9be8ef",
+            "requests": [
+              {
+                "format": "json",
+                "status": 200,
+                "contentType": "application/json"
+              }
+            ]
+          },
+          {
+            "target": "honua-fresh-import",
+            "format": "pbf",
+            "rows": 1963,
+            "allSelectedRowHash": "5462ad03a1bd175ad84cd881b67e72c6abd0dda810dd839010db7b087c9be8ef",
+            "requests": [
+              {
+                "format": "pbf",
+                "status": 200,
+                "contentType": "application/x-protobuf"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "qualificationScope": "Installed candidate only; Jan 11 selected date/timestamp/natural-key attributes, geometry omitted. Not a registry release or complete app/browser qualification."
   }
 }
