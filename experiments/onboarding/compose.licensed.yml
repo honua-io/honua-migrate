@@ -1,8 +1,0 @@
-# Optional local publisher test license. Never mount the private signing key.
-services:
-  honua:
-    environment:
-      Licensing__LicensePath: /run/honua/onboarding-license.json
-      Licensing__TrustedKeys__onboarding-local-20260913: ${ONBOARDING_LICENSE_PUBLIC_KEY:?set the local public verification key}
-    volumes:
-      - ./.local/onboarding-license.json:/run/honua/onboarding-license.json:ro
