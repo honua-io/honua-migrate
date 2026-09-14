@@ -535,11 +535,33 @@
     "dateWireFormat": "yyyy-MM-dd",
     "timestampWireFormat": "epoch-milliseconds",
     "hasZ": true,
-    "installedSdkReadback": "pending-dependency-restore",
+    "installedSdkReadback": "passed-native-DATE-filter-1963-rows-zero-temporal-errors",
     "installedSdkDateDiscovery": "unknown-in-0.1.9-beta.0",
     "remainingIssues": [
       "honua-server#4826",
       "honua-sdk-js#1718"
-    ]
+    ],
+    "installedSdkTypedSemanticQueryQualified": false
+  },
+  "installedSdkDateOnlyReadback": {
+    "package": "@honua/sdk-js@0.1.9-beta.0",
+    "rows": 1963,
+    "invalidTemporalRows": 0,
+    "nativeDateFilterPassed": true,
+    "discoveredTypes": [
+      {
+        "name": "dateofflight",
+        "type": "unknown"
+      },
+      {
+        "name": "dateonlyutc",
+        "type": "unknown"
+      },
+      {
+        "name": "start_t",
+        "type": "timestamp"
+      }
+    ],
+    "typedSemanticQueryQualified": false
   }
 }
