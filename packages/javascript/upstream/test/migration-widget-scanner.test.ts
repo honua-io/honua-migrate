@@ -330,16 +330,18 @@ describe("buildWidgetReadinessReport", () => {
   });
 
   it("treats widget modules outside the disposition data as manual and says so", () => {
+    // Spinner ships as a top-level widgets/ module but is untyped, so the pinned
+    // deprecated-widget inventory leaves it out and it has no disposition row.
     const root = makeTempProject();
     fs.writeFileSync(
       path.join(root, "app.ts"),
-      "import FloorFilter from '@arcgis/core/widgets/FloorFilter';\nvoid FloorFilter;\n",
+      "import Spinner from '@arcgis/core/widgets/Spinner';\nvoid Spinner;\n",
       "utf8",
     );
 
     const report = buildWidgetReadinessReport(scanWidgetUsage(root));
-    expect(WIDGET_DISPOSITIONS.some((entry) => entry.widget === "FloorFilter")).toBe(false);
-    const row = report.widgets.find((item) => item.widget === "FloorFilter");
+    expect(WIDGET_DISPOSITIONS.some((entry) => entry.widget === "Spinner")).toBe(false);
+    const row = report.widgets.find((item) => item.widget === "Spinner");
     expect(row?.disposition).toBe("unknown");
     expect(row?.bucket).toBe("manual");
     expect(row?.target).toContain("Not in widget-disposition data");

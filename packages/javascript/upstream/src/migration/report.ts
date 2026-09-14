@@ -75,7 +75,8 @@ export type MigrationReadiness = "ready" | "assisted" | "blocked" | "no-arcgis-u
 /**
  * Runtime a widget usage site needs after the codemod: `honua` when the site is
  * in codemod scope for the target and rewrites onto a Honua compat widget,
- * otherwise the classic ArcGIS JS widget runtime that Esri removes at 6.0.
+ * otherwise the classic ArcGIS JS widget runtime, deprecated at 5.0, whose
+ * widgets Esri plans to begin removing at 6.0.
  */
 export type WidgetRuntime = "honua" | "arcgis-js";
 

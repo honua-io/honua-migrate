@@ -3,7 +3,7 @@
 exports[`widget readiness report on the esri-widget-cliff-app fixture > matches the JSON report snapshot 1`] = `
 {
   "deprecationRelease": "5.0",
-  "dispositionDataVersion": "1.0.0",
+  "dispositionDataVersion": "1.1.0",
   "filesScanned": 4,
   "filesWithWidgetUsage": 4,
   "removalRelease": "6.0",
@@ -19,7 +19,7 @@ exports[`widget readiness report on the esri-widget-cliff-app fixture > matches 
     "manualWidgets": 3,
     "totalSites": 13,
   },
-  "summaryLine": "4 automated / 6 assisted / 3 manual of 13 widget usage sites (30.8% automated). Every classic ArcGIS JS widget is deprecated at 5.0 and is removed at 6.0 ? as early as Q1 2027.",
+  "summaryLine": "4 automated / 6 assisted / 3 manual of 13 widget usage sites (30.8% automated). Every classic ArcGIS JS widget is deprecated as of 5.0 (some since 4.32), and existing widget-based apps keep working on 5.x. Esri plans to begin removing widgets at 6.0 (as early as Q1 2027), each once its component no longer wraps widget code.",
   "widgets": [
     {
       "bucket": "automated",
@@ -227,7 +227,7 @@ exports[`widget readiness report on the esri-widget-cliff-app fixture > matches 
         },
       ],
       "supportModule": true,
-      "target": "Support-module import ? honua-migrate only rewrites the root Search widget module; migrate these by hand (root Search disposition: automated).",
+      "target": "Support-module import — honua-migrate only rewrites the root Search widget module; migrate these by hand (root Search disposition: automated).",
       "widget": "Search",
     },
     {
@@ -275,13 +275,13 @@ exports[`widget readiness report on the esri-widget-cliff-app fixture > matches 
 exports[`widget readiness report on the esri-widget-cliff-app fixture > matches the markdown report snapshot 1`] = `
 "# ArcGIS widget readiness report
 
-Classic ArcGIS JS widgets are deprecated at 5.0 and are removed at 6.0 (as early as Q1 2027). Disposition data v1.0.0.
+Every classic ArcGIS JS widget is deprecated as of 5.0 (some since 4.32), and existing widget-based apps keep working on 5.x. Esri plans to begin removing widgets at 6.0 (as early as Q1 2027), each once its component no longer wraps widget code. Disposition data v1.1.0.
 
 - Files scanned: 4
 - Files with widget usage: 4
 - Widget usage sites: 13
 
-4 automated / 6 assisted / 3 manual of 13 widget usage sites (30.8% automated). Every classic ArcGIS JS widget is deprecated at 5.0 and is removed at 6.0 ? as early as Q1 2027.
+4 automated / 6 assisted / 3 manual of 13 widget usage sites (30.8% automated). Every classic ArcGIS JS widget is deprecated as of 5.0 (some since 4.32), and existing widget-based apps keep working on 5.x. Esri plans to begin removing widgets at 6.0 (as early as Q1 2027), each once its component no longer wraps widget code.
 
 | Widget | Sites | Disposition | Target |
 | --- | --- | --- | --- |
@@ -295,7 +295,7 @@ Classic ArcGIS JS widgets are deprecated at 5.0 and are removed at 6.0 (as early
 | [LayerList](docs/widget-survival-guide.md#layerlist) | 1 | \`automated\` | LayerListCompat from @honua/sdk-esri-compat |
 | [Legend](docs/widget-survival-guide.md#legend) | 1 | \`automated\` | LegendCompat from @honua/sdk-esri-compat |
 | [Print](docs/widget-survival-guide.md#print) | 1 | \`compat-shim\` | PrintCompat from @honua/sdk-esri-compat |
-| [Search (support modules)](docs/widget-survival-guide.md#search) | 1 | \`support-module\` | Support-module import ? honua-migrate only rewrites the root Search widget module; migrate these by hand (root Search disposition: automated). |
+| [Search (support modules)](docs/widget-survival-guide.md#search) | 1 | \`support-module\` | Support-module import — honua-migrate only rewrites the root Search widget module; migrate these by hand (root Search disposition: automated). |
 | [Sketch](docs/widget-survival-guide.md#sketch) | 1 | \`compat-shim\` | SketchCompat from @honua/sdk-esri-compat |
 | [TimeSlider](docs/widget-survival-guide.md#timeslider) | 1 | \`compat-shim\` | TimeSliderCompat from @honua/sdk-esri-compat |
 
@@ -303,54 +303,54 @@ Classic ArcGIS JS widgets are deprecated at 5.0 and are removed at 6.0 (as early
 
 ### BasemapGallery
 
-- \`src/legacy-amd.js:6\` ? \`esri/widgets/BasemapGallery\` (amd-require)
+- \`src/legacy-amd.js:6\` — \`esri/widgets/BasemapGallery\` (amd-require)
 
 ### Daylight
 
-- \`src/cdn-map-components.js:3\` ? \`@arcgis/core/widgets/Daylight.js\` (arcgis-import)
+- \`src/cdn-map-components.js:3\` — \`@arcgis/core/widgets/Daylight.js\` (arcgis-import)
 
 ### Directions
 
-- \`src/legacy-amd.js:5\` ? \`esri/widgets/Directions\` (amd-require)
+- \`src/legacy-amd.js:5\` — \`esri/widgets/Directions\` (amd-require)
 
 ### Editor
 
-- \`src/editing.ts:1\` ? \`@arcgis/core/widgets/Editor\` (esm-import)
+- \`src/editing.ts:1\` — \`@arcgis/core/widgets/Editor\` (esm-import)
 
 ### ElevationProfile
 
-- \`src/cdn-map-components.js:4\` ? \`esri/widgets/ElevationProfile\` (arcgis-import)
+- \`src/cdn-map-components.js:4\` — \`esri/widgets/ElevationProfile\` (arcgis-import)
 
 ### Expand
 
-- \`src/main.ts:5\` ? \`@arcgis/core/widgets/Expand\` (esm-import)
+- \`src/main.ts:5\` — \`@arcgis/core/widgets/Expand\` (esm-import)
 
 ### FeatureTable
 
-- \`src/editing.ts:2\` ? \`@arcgis/core/widgets/FeatureTable\` (esm-import)
+- \`src/editing.ts:2\` — \`@arcgis/core/widgets/FeatureTable\` (esm-import)
 
 ### LayerList
 
-- \`src/main.ts:4\` ? \`@arcgis/core/widgets/LayerList.js\` (esm-import)
+- \`src/main.ts:4\` — \`@arcgis/core/widgets/LayerList.js\` (esm-import)
 
 ### Legend
 
-- \`src/main.ts:3\` ? \`@arcgis/core/widgets/Legend\` (esm-import)
+- \`src/main.ts:3\` — \`@arcgis/core/widgets/Legend\` (esm-import)
 
 ### Print
 
-- \`src/editing.ts:11\` ? \`@arcgis/core/widgets/Print\` (esm-dynamic-import)
+- \`src/editing.ts:11\` — \`@arcgis/core/widgets/Print\` (esm-dynamic-import)
 
 ### Search (support modules)
 
-- \`src/main.ts:6\` ? \`@arcgis/core/widgets/Search/SearchViewModel\` (esm-import)
+- \`src/main.ts:6\` — \`@arcgis/core/widgets/Search/SearchViewModel\` (esm-import)
 
 ### Sketch
 
-- \`src/cdn-map-components.js:10\` ? \`esri/widgets/Sketch\` (arcgis-import)
+- \`src/cdn-map-components.js:10\` — \`esri/widgets/Sketch\` (arcgis-import)
 
 ### TimeSlider
 
-- \`src/legacy-amd.js:14\` ? \`esri/widgets/TimeSlider\` (amd-require)
+- \`src/legacy-amd.js:14\` — \`esri/widgets/TimeSlider\` (amd-require)
 "
 `;
