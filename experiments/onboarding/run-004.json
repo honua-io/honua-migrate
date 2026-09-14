@@ -1174,8 +1174,9 @@
     "defaultGeometryBytes": 5242880,
     "defaultGeometryVertices": 50000,
     "genericTextLimitUnchanged": 8192,
-    "validation": "unit boundaries and routed inside/outside feature identity/count comparisons for FeatureServer and MapServer; not yet executed",
-    "liveCandidateQualified": false,
+    "validation": "30 unit/boundary and routed FeatureServer/MapServer cases passed; scoped format passed; live 734-track corridor source/target read-only query parity passed",
+    "liveCandidateQualified": true,
+    "liveCandidateQualificationScope": "read-only SDK query parity on imported corridor only; browser and fresh conversion replay remain unqualified",
     "pr": 4856,
     "privateEvidence": [
       "geometry-input-tests/geometry-input-budgets.trx",
