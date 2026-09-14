@@ -1520,6 +1520,13 @@
         "heli-summary-relationship-baseline.json",
         "heli-summary-related-endpoint-baseline.json"
       ]
+    },
+    "latestCiObservation": {
+      "observedAt": "2026-09-14T14:23:27.577208+00:00",
+      "runId": 34852658246,
+      "conclusion": "",
+      "headSha": "45f3e9ee7fa6e89f25bdc5544da3b0e1d4bda277",
+      "status": "in_progress"
     }
   },
   "publicationRecoveryCheckpoint": {
@@ -1547,7 +1554,24 @@
     "adminMetadataFollowup": "Public request now forwards HasZ/HasM, domains, subtypes and rules; four dimension API regressions written, verification queued",
     "recoveryConnectionHealthy": true,
     "sourceMetadataRecoveryPlanPrepared": true,
-    "publicationRetried": false
+    "publicationRetried": false,
+    "latestCommit": "fb5827c2076eb2cff7d70273e0cfe5e4392900d5",
+    "coreTestEvidence": {
+      "commit": "c34640847b147e0d949dd9b321429e6578148eeb",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "log": "large-publication-step-0.log"
+    },
+    "databaseCompilationFailure": {
+      "commit": "c34640847b147e0d949dd9b321429e6578148eeb",
+      "code": "CS8122",
+      "file": "LayerPublicationBudgetTests.cs",
+      "log": "large-publication-step-1.log",
+      "fixedBy": "fb5827c20",
+      "fixedScope": "expression-tree-compatible assertion; no production change"
+    },
+    "verificationRetry": "remaining database/API tests and full changed-C# formatting at fb5827c20; original receipts preserved"
   },
   "editingMetadataCheckpoint": {
     "serverIssue": 4825,
@@ -1638,7 +1662,14 @@
       "reviewed relationship binding",
       "post-apply child reconciliation",
       "installed-client related-record parity"
-    ]
+    ],
+    "latestCiObservation": {
+      "observedAt": "2026-09-14T14:23:27.577208+00:00",
+      "runId": 34851079050,
+      "conclusion": "success",
+      "headSha": "962787130f85293c736c89a1ecf7766680fa09e3",
+      "status": "completed"
+    }
   },
   "sourceTableDiscoveryCheckpoint": {
     "serverIssue": 4834,
@@ -1688,6 +1719,74 @@
         }
       ]
     },
-    "liveQualified": false
+    "liveQualified": false,
+    "pr": 4865,
+    "prState": "draft",
+    "latestCiObservation": {
+      "observedAt": "2026-09-14T14:23:27.577208+00:00",
+      "runId": 34852223654,
+      "conclusion": "",
+      "headSha": "0a233ecb0b0bfcbd95d0d52cfcf06da5be9117a0",
+      "status": "queued"
+    }
+  },
+  "editorAttachmentByteCheckpoint": {
+    "at": "2026-09-14T14:23:27.577208+00:00",
+    "serverCommit": "66a3217a2",
+    "serverIssue": 4825,
+    "sourceFilesCached": 8,
+    "sourceBytesCached": 8491719,
+    "sourceParentsUniquelyMapped": 7,
+    "targetFilesVerifiedByteForByte": 3,
+    "targetFilesRemaining": 5,
+    "targetCopyFullyQualified": false,
+    "writesQualified": false,
+    "finding": "Attachment listing returns feature-not-found for four parents returned by normal feature queries; five files remain inaccessible/unverified. All eight were reported copied by import.",
+    "suspectedCause": "Attachment parent checks use the default IFeatureReader rather than the published provider binding; requires a binding/visibility regression and fix.",
+    "sourceProbeDiscrepancy": "Paged count requests returned empty groups. Unpaged count queries and known-parent count queries both matched the complete observed metadata/file set. Earlier responses retained.",
+    "privateEvidence": [
+      "editor-source-attachment-inventory.json",
+      "editor-source-attachment-cache.json",
+      "editor-attachment-parent-map.json",
+      "editor-target-attachment-parity.json"
+    ]
+  },
+  "cohortRuntimeComposition": {
+    "baseCommit": "11fb85d987ffc32d6b246ad57e89fe3c97d23e4f",
+    "head": "ee90ba51ea63c2010e94f080e35cc07de2c2903d",
+    "components": [
+      {
+        "name": "calendar",
+        "commit": "94ab0094fa8349157be7347612c462addba5e16f"
+      },
+      {
+        "name": "large-publication",
+        "commit": "fb5827c2076eb2cff7d70273e0cfe5e4392900d5"
+      },
+      {
+        "name": "nonspatial-publication",
+        "commit": "45f3e9ee7fa6e89f25bdc5544da3b0e1d4bda277"
+      },
+      {
+        "name": "editing-metadata",
+        "commit": "a21a290da1c64986e0e720ee2ae00bfd8761ae0a"
+      },
+      {
+        "name": "geometry-input",
+        "commit": "8e1ef33b98b597a7ec2c2082151e9e3de7aa1d1c"
+      },
+      {
+        "name": "relationship-fidelity",
+        "commit": "962787130f85293c736c89a1ecf7766680fa09e3"
+      },
+      {
+        "name": "source-table-discovery",
+        "commit": "0a233ecb0b0bfcbd95d0d52cfcf06da5be9117a0"
+      }
+    ],
+    "compiled": false,
+    "liveQualified": false,
+    "verification": "combined Core/PostgreSQL/API/format run queued; not compiled or deployed yet",
+    "branch": "integration/esri-cohort-runtime-20260914"
   }
 }
