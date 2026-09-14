@@ -6,7 +6,8 @@
   "serverHostBaseCommit": "93d75f2eb11f81c2152bbcaf5b29e1773d2479d0",
   "serverComponentCommits": [
     "04f7e4c783efa78f49f64b7b60e6b96d3f0c2762",
-    "eb754214b82039b526adb5a29cf676b5d2dad142"
+    "eb754214b82039b526adb5a29cf676b5d2dad142",
+    "b39148d9d1c01cdc281190c61733b78cc7629f78"
   ],
   "sdkPackage": "@honua/sdk-js@0.1.9-beta.0",
   "cliCommit": "f822262dfef0ec4329f34b60bd55f6333f8d1703",
@@ -136,20 +137,29 @@
       "serverDuration": "00:00:03.1465587",
       "terminal": true,
       "fidelityVerified": false
+    },
+    {
+      "resource": "heli-flights-date",
+      "jobId": "abccf487f1c5",
+      "serviceName": "onboarding-heli-flights-date-004",
+      "sourceLayerId": 0,
+      "publishedLayerId": 9,
+      "status": 9,
+      "normalizedStatus": "needs-review",
+      "rowsCommitted": 1963,
+      "failedRows": 0,
+      "serverDuration": "00:00:05.5868411",
+      "terminal": true,
+      "fidelityVerified": false,
+      "boundedRowAndDateQueryParityVerified": true
     }
   ],
   "commandMetrics": [
     {
-      "stage": "editor-roads-terminal",
-      "status": "failed",
-      "elapsedSeconds": 2.253,
-      "exitCode": 10
-    },
-    {
-      "stage": "heli-summary-plan",
-      "status": "failed",
-      "elapsedSeconds": 1.916,
-      "exitCode": 2
+      "stage": "editor-hazards-plan",
+      "status": "passed",
+      "elapsedSeconds": 2.205,
+      "exitCode": 0
     },
     {
       "stage": "editor-roads-plan",
@@ -158,33 +168,33 @@
       "exitCode": 0
     },
     {
-      "stage": "editor-roads-apply",
+      "stage": "editor-areas-plan",
       "status": "passed",
-      "elapsedSeconds": 2.208,
+      "elapsedSeconds": 2.391,
       "exitCode": 0
     },
     {
-      "stage": "editor-areas-apply",
+      "stage": "heli-flights-plan",
       "status": "passed",
-      "elapsedSeconds": 2.227,
+      "elapsedSeconds": 1.84,
       "exitCode": 0
     },
     {
-      "stage": "heli-summary-resume",
+      "stage": "heli-flights-apply",
+      "status": "passed",
+      "elapsedSeconds": 3.521,
+      "exitCode": 0
+    },
+    {
+      "stage": "heli-flights-terminal",
       "status": "failed",
-      "elapsedSeconds": 4.246,
+      "elapsedSeconds": 11.178,
       "exitCode": 10
     },
     {
-      "stage": "heli-census-resume",
+      "stage": "editor-hazards-apply",
       "status": "passed",
-      "elapsedSeconds": 4.257,
-      "exitCode": 0
-    },
-    {
-      "stage": "heli-census-apply",
-      "status": "passed",
-      "elapsedSeconds": 2.95,
+      "elapsedSeconds": 2.091,
       "exitCode": 0
     },
     {
@@ -194,16 +204,52 @@
       "exitCode": 10
     },
     {
-      "stage": "heli-flights-z-resume",
+      "stage": "editor-roads-apply",
+      "status": "passed",
+      "elapsedSeconds": 2.208,
+      "exitCode": 0
+    },
+    {
+      "stage": "editor-roads-terminal",
       "status": "failed",
-      "elapsedSeconds": 11.98,
+      "elapsedSeconds": 2.253,
       "exitCode": 10
     },
     {
-      "stage": "heli-flights-terminal",
+      "stage": "editor-areas-apply",
+      "status": "passed",
+      "elapsedSeconds": 2.227,
+      "exitCode": 0
+    },
+    {
+      "stage": "editor-areas-terminal",
       "status": "failed",
-      "elapsedSeconds": 11.178,
+      "elapsedSeconds": 3.847,
       "exitCode": 10
+    },
+    {
+      "stage": "heli-census-plan",
+      "status": "passed",
+      "elapsedSeconds": 1.98,
+      "exitCode": 0
+    },
+    {
+      "stage": "heli-complaints-plan",
+      "status": "passed",
+      "elapsedSeconds": 1.87,
+      "exitCode": 0
+    },
+    {
+      "stage": "heli-summary-plan",
+      "status": "failed",
+      "elapsedSeconds": 1.916,
+      "exitCode": 2
+    },
+    {
+      "stage": "heli-summary-encoded-plan",
+      "status": "passed",
+      "elapsedSeconds": 1.759,
+      "exitCode": 0
     },
     {
       "stage": "heli-summary-parent-encoded-plan",
@@ -212,9 +258,21 @@
       "exitCode": 0
     },
     {
-      "stage": "heli-flights-z-plan",
+      "stage": "heli-census-apply",
       "status": "passed",
-      "elapsedSeconds": 1.932,
+      "elapsedSeconds": 2.95,
+      "exitCode": 0
+    },
+    {
+      "stage": "heli-census-resume",
+      "status": "passed",
+      "elapsedSeconds": 4.257,
+      "exitCode": 0
+    },
+    {
+      "stage": "heli-complaints-apply",
+      "status": "passed",
+      "elapsedSeconds": 2.092,
       "exitCode": 0
     },
     {
@@ -230,27 +288,15 @@
       "exitCode": 0
     },
     {
-      "stage": "heli-flights-apply",
-      "status": "passed",
-      "elapsedSeconds": 3.521,
-      "exitCode": 0
+      "stage": "heli-summary-resume",
+      "status": "failed",
+      "elapsedSeconds": 4.246,
+      "exitCode": 10
     },
     {
-      "stage": "editor-readonly-build",
+      "stage": "heli-summary-parent-apply",
       "status": "passed",
-      "elapsedSeconds": 5.376,
-      "exitCode": 0
-    },
-    {
-      "stage": "heli-complaints-apply",
-      "status": "passed",
-      "elapsedSeconds": 2.092,
-      "exitCode": 0
-    },
-    {
-      "stage": "editor-areas-plan",
-      "status": "passed",
-      "elapsedSeconds": 2.391,
+      "elapsedSeconds": 2.234,
       "exitCode": 0
     },
     {
@@ -260,51 +306,21 @@
       "exitCode": 0
     },
     {
+      "stage": "editor-readonly-build",
+      "status": "passed",
+      "elapsedSeconds": 5.376,
+      "exitCode": 0
+    },
+    {
       "stage": "dimension-publication-format",
       "status": "passed",
       "elapsedSeconds": 199.302,
       "exitCode": 0
     },
     {
-      "stage": "heli-summary-encoded-plan",
+      "stage": "heli-flights-z-plan",
       "status": "passed",
-      "elapsedSeconds": 1.759,
-      "exitCode": 0
-    },
-    {
-      "stage": "heli-flights-plan",
-      "status": "passed",
-      "elapsedSeconds": 1.84,
-      "exitCode": 0
-    },
-    {
-      "stage": "editor-hazards-plan",
-      "status": "passed",
-      "elapsedSeconds": 2.205,
-      "exitCode": 0
-    },
-    {
-      "stage": "editor-hazards-apply",
-      "status": "passed",
-      "elapsedSeconds": 2.091,
-      "exitCode": 0
-    },
-    {
-      "stage": "editor-areas-terminal",
-      "status": "failed",
-      "elapsedSeconds": 3.847,
-      "exitCode": 10
-    },
-    {
-      "stage": "heli-complaints-plan",
-      "status": "passed",
-      "elapsedSeconds": 1.87,
-      "exitCode": 0
-    },
-    {
-      "stage": "heli-summary-parent-apply",
-      "status": "passed",
-      "elapsedSeconds": 2.234,
+      "elapsedSeconds": 1.932,
       "exitCode": 0
     },
     {
@@ -314,10 +330,28 @@
       "exitCode": 0
     },
     {
-      "stage": "heli-census-plan",
+      "stage": "heli-flights-z-resume",
+      "status": "failed",
+      "elapsedSeconds": 11.98,
+      "exitCode": 10
+    },
+    {
+      "stage": "heli-flights-date-plan",
       "status": "passed",
-      "elapsedSeconds": 1.98,
+      "elapsedSeconds": 1.922,
       "exitCode": 0
+    },
+    {
+      "stage": "heli-flights-date-apply",
+      "status": "passed",
+      "elapsedSeconds": 1.327,
+      "exitCode": 0
+    },
+    {
+      "stage": "heli-flights-date-resume",
+      "status": "failed",
+      "elapsedSeconds": 37.33,
+      "exitCode": 10
     }
   ],
   "dimensionalVerification": [
@@ -379,5 +413,133 @@
     "Mutable live source, one-day flight profile",
     "Component overlay; not full fresh host build",
     "No full four-app or snapshot-restore qualification"
-  ]
+  ],
+  "dateOnlyVerification": [
+    {
+      "attempt": "dateonly-before",
+      "operation": "build",
+      "project": "tests/dotnet/Honua.Db.Postgres.Tests/Honua.Postgres.Tests.csproj",
+      "exitCode": 0,
+      "elapsedSeconds": 23.948
+    },
+    {
+      "attempt": "dateonly-before",
+      "operation": "test",
+      "project": "tests/dotnet/Honua.Db.Postgres.Tests/Honua.Postgres.Tests.csproj",
+      "exitCode": 1,
+      "elapsedSeconds": 4.302
+    },
+    {
+      "attempt": "dateonly-build",
+      "operation": "build",
+      "project": "src/Honua.Core.Abstractions/Honua.Core.Abstractions.csproj",
+      "exitCode": 0,
+      "elapsedSeconds": 9.515
+    },
+    {
+      "attempt": "dateonly-build",
+      "operation": "build",
+      "project": "src/Honua.Core/Honua.Core.csproj",
+      "exitCode": 0,
+      "elapsedSeconds": 32.927
+    },
+    {
+      "attempt": "dateonly-build",
+      "operation": "build",
+      "project": "src/Honua.Db/Postgres/Honua.Postgres.csproj",
+      "exitCode": 0,
+      "elapsedSeconds": 13.706
+    },
+    {
+      "attempt": "dateonly-build",
+      "operation": "build",
+      "project": "src/Honua.Protocols.GeoServices/Honua.Protocols.GeoServices.csproj",
+      "exitCode": 1,
+      "elapsedSeconds": 21.908
+    },
+    {
+      "attempt": "dateonly-verify",
+      "operation": "build",
+      "project": "src/Honua.Hosting/Honua.Hosting.csproj",
+      "exitCode": 0,
+      "elapsedSeconds": 26.459
+    },
+    {
+      "attempt": "dateonly-verify",
+      "operation": "build",
+      "project": "src/Honua.Protocols.GeoServices/Honua.Protocols.GeoServices.csproj",
+      "exitCode": 0,
+      "elapsedSeconds": 28.246
+    },
+    {
+      "attempt": "dateonly-verify",
+      "operation": "build",
+      "project": "tests/dotnet/Honua.Db.Postgres.Tests/Honua.Postgres.Tests.csproj",
+      "exitCode": 0,
+      "elapsedSeconds": 22.583
+    },
+    {
+      "attempt": "dateonly-verify",
+      "operation": "build",
+      "project": "tests/dotnet/Honua.Protocols.GeoServices.Tests/Honua.Protocols.GeoServices.Tests.csproj",
+      "exitCode": 1,
+      "elapsedSeconds": 38.268
+    },
+    {
+      "attempt": "dateonly-tests-retry",
+      "operation": "build",
+      "project": "tests/dotnet/Honua.Protocols.GeoServices.Tests/Honua.Protocols.GeoServices.Tests.csproj",
+      "exitCode": 0,
+      "elapsedSeconds": 44.002
+    },
+    {
+      "attempt": "dateonly-tests-retry",
+      "operation": "test",
+      "project": "tests/dotnet/Honua.Db.Postgres.Tests/Honua.Postgres.Tests.csproj",
+      "exitCode": 0,
+      "elapsedSeconds": 10.521
+    },
+    {
+      "attempt": "dateonly-tests-retry",
+      "operation": "test",
+      "project": "tests/dotnet/Honua.Protocols.GeoServices.Tests/Honua.Protocols.GeoServices.Tests.csproj",
+      "exitCode": 0,
+      "elapsedSeconds": 17.334
+    },
+    {
+      "attempt": "dateonly-format",
+      "operation": "format",
+      "project": "Honua.sln",
+      "exitCode": 0,
+      "elapsedSeconds": 191.035
+    }
+  ],
+  "dateOnlyReadback": {
+    "job": "abccf487f1c5",
+    "observedAt": "2026-09-14T06:29:44.009271+00:00",
+    "sourceRows": 1963,
+    "targetRows": 1963,
+    "missingKeys": 0,
+    "extraKeys": 0,
+    "attributeDifferences": 0,
+    "topologyDifferences": 0,
+    "dimensionDifferences": 0,
+    "verticesCompared": 3926,
+    "maxXYDelta": 4.490061655815225e-10,
+    "maxZDelta": 7.297273896256229e-12,
+    "sourceDateFilterCount": 1963,
+    "targetDateFilterCount": 1963,
+    "elapsedSeconds": 2.916,
+    "scope": "Fresh mutable source and target captures; Jan 11 one-day cohort. Full-volume, UI and frozen-source qualification remain open.",
+    "metadataType": "esriFieldTypeDateOnly",
+    "dateWireFormat": "yyyy-MM-dd",
+    "timestampWireFormat": "epoch-milliseconds",
+    "hasZ": true,
+    "installedSdkReadback": "pending-dependency-restore",
+    "installedSdkDateDiscovery": "unknown-in-0.1.9-beta.0",
+    "remainingIssues": [
+      "honua-server#4826",
+      "honua-sdk-js#1718"
+    ]
+  }
 }

@@ -7,7 +7,7 @@ See [the first-run report](run-001.md), [pinned inputs and outcomes](run-001.jso
 and [measured command stages](run-001-metrics.json).
 
 The latest [run-004 report](run-004.md) records fresh Editor/helicopter imports,
-dimensional and feature-type fixes, browser observations and remaining service gaps.
+dimensional, calendar-date and feature-type fixes, browser observations and remaining service gaps.
 The first-run sections below describe their historical environment and limitations.
 
 ## Backend reuse
