@@ -1760,7 +1760,7 @@
   },
   "cohortRuntimeComposition": {
     "baseCommit": "11fb85d987ffc32d6b246ad57e89fe3c97d23e4f",
-    "head": "589b65c342ed0437d7e2dd888f7c3c704ff9706e",
+    "head": "43be77ff897c578037ce43b720335a33bd78113e",
     "components": [
       {
         "name": "calendar",
@@ -1793,7 +1793,7 @@
     ],
     "compiled": false,
     "liveQualified": false,
-    "verification": "verify-cohort-binding-589b65c34.py; consolidated Core/PostgreSQL/GeoServices/API plus formatting; queued behind shared heavy work",
+    "verification": "Consolidated runner verify-cohort-binding-43be77ff8.py includes GeoservicesRelationshipApplyTests; queued behind shared heavy work.",
     "branch": "integration/esri-cohort-runtime-20260914"
   },
   "attachmentBindingFixCheckpoint": {
@@ -1826,6 +1826,37 @@
         "editing test initializer whitespace"
       ]
     },
-    "priorQueues": "Owned idle branch queues stopped after process/child checks; original receipts retained. Consolidated results apply to composed source."
+    "priorQueues": "Owned idle branch queues stopped after process/child checks; original receipts retained. Consolidated results apply to composed source.",
+    "attachmentPr": 4866,
+    "latestAttachmentCommit": "0c5d46565",
+    "testCompileFailure": {
+      "ciRunId": 34857662079,
+      "code": "CS1061",
+      "file": "LayerPublicationAttachmentBindingTests.cs",
+      "fixedBy": "0c5d46565",
+      "note": "Unsupported fluent assertion accessor; explicit nullable-value assertion substituted."
+    },
+    "latestCombinedCommit": "43be77ff897c578037ce43b720335a33bd78113e",
+    "latestCombinedCiRunId": 34858971542,
+    "latestLocalVerification": "Consolidated runner verify-cohort-binding-43be77ff8.py includes GeoservicesRelationshipApplyTests; queued behind shared heavy work."
+  },
+  "relationshipServiceScopeCheckpoint": {
+    "at": "2026-09-14T14:59:31.470320+00:00",
+    "commit": "42d4b1acd",
+    "issue": 4834,
+    "regressionCasesAdded": 10,
+    "finding": "Batch relationship apply selected first matching local layer-ID suffix across all manifest services; table-kind IDs could also remain unresolved.",
+    "change": "Resolve related layer/table IDs only within the originating source service; require a unique match and emit deferred outcomes for missing or ambiguous resources.",
+    "ciRunId": 34858684383,
+    "dedicatedTestsExecuted": false,
+    "combinedCommit": "43be77ff897c578037ce43b720335a33bd78113e",
+    "combinedCiRunId": 34858971542,
+    "combinedCiObservation": {
+      "conclusion": "",
+      "headSha": "43be77ff897c578037ce43b720335a33bd78113e",
+      "status": "queued"
+    },
+    "runtimeRelationshipQualified": false,
+    "verification": "Consolidated runner verify-cohort-binding-43be77ff8.py includes GeoservicesRelationshipApplyTests; queued behind shared heavy work."
   }
 }
