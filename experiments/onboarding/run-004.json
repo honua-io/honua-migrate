@@ -2034,6 +2034,34 @@
       "Large full-aircraft corridor must finish and match reference results",
       "Clear obsolete corridor timeout message on a new successful search or deselection",
       "Complete UI parity and repeated-run qualification"
-    ]
+    ],
+    "errorRecoveryFollowup": {
+      "appCommit": "3efe538cc",
+      "formatAndLint": "passed",
+      "browserVerified": false,
+      "searchStageMetrics": true,
+      "largeCorridorResolved": false
+    }
+  },
+  "editorManagedPublicationCheckpoint": {
+    "serverCommit": "0e076ff0ddc68f7b5cbe261664403667e6b1784e",
+    "issue": 4859,
+    "requestField": "createEditableCopy",
+    "identityMode": "new target object IDs with __honua_source_id mapping",
+    "sourceRefreshExcludesManagedCopies": true,
+    "metadataRepairGate": {
+      "runId": 34869284673,
+      "conclusion": "success"
+    },
+    "initialGate": {
+      "runId": 34873151374,
+      "conclusion": "failure",
+      "reason": "CS8602 nullable Host dereference; format passed, build failed"
+    },
+    "qualificationRunId": 34874085765,
+    "integrationTests": "pending",
+    "deployed": false,
+    "attachmentRelationshipMappingVerified": false,
+    "importedFeatureCrudVerified": false
   }
 }
