@@ -2028,7 +2028,7 @@
     },
     "timingQualification": "Browser tool wall times include automation overhead; not application performance marks.",
     "formatAndLint": "passed",
-    "unitTestsAndProductionBuild": "queued under shared heavy-work throttle",
+    "unitTestsAndProductionBuild": "Nine worker/chart tests pass at dc0bb5114; production build remains queued.",
     "workflowQualified": false,
     "remaining": [
       "Large full-aircraft corridor must finish and match reference results",
@@ -2063,5 +2063,31 @@
     "deployed": false,
     "attachmentRelationshipMappingVerified": false,
     "importedFeatureCrudVerified": false
+  },
+  "helicopterDistanceQueryCheckpoint": {
+    "sdkFixCommit": "91475200d",
+    "sdkPr": 1731,
+    "sdkFormatLint": "passed",
+    "sdkRegressionCasesAdded": 8,
+    "sdkTests": "CI pending",
+    "flightRecords": 6974,
+    "pathsCoveredByReference": 6974,
+    "referenceRequestCount": 4,
+    "complaintBusinessIds": 50,
+    "referenceKeysMatch": true,
+    "targetElapsedMs": 313,
+    "originalCombinedReferenceError": "Esri 24144 invalid geometry",
+    "sourcePartitionOmitsOrSimplifiesPaths": false,
+    "usesExtraParamsUntilPatchedPackageQualification": true,
+    "appIntegrated": false,
+    "browserQualified": false,
+    "evidence": [
+      "heli-distance-query-jan11-exploration.json",
+      "heli-distance-query-jan11-explicit-params.json",
+      "heli-full-distance-exploration.json",
+      "heli-full-distance-deduplicated-reference.json",
+      "heli-full-distance-explicit-sr.json",
+      "heli-full-distance-partitioned-reference.json"
+    ]
   }
 }
