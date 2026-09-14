@@ -1100,7 +1100,10 @@
       "normalized temporal defaults",
       "qualified joined identify dates"
     ],
-    "reviewTests": "Core and protocol suites plus scoped format queued"
+    "reviewTests": "Core and protocol suites plus scoped format queued",
+    "currentHead": "94ab0094f",
+    "mergedTrunk": "05041f193",
+    "documentationCheck": "117 capability concepts current after merging trunk; CI pending"
   },
   "largeQueryTransportCheckpoint": {
     "sdkIssue": 1724,
