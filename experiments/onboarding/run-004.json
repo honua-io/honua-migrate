@@ -1158,19 +1158,82 @@
       "files": 4314,
       "verified": true,
       "scope": "Downloaded CI dist bytes match producer evidence; not local-build, installed-package or app qualification."
-    }
+    },
+    "legacySdkCi": {
+      "runId": 34836607346,
+      "conclusion": "SUCCESS"
+    },
+    "corridorReadback": "All four automatic POST forms passed against geometry candidate; nine source/target complaints reconciled by unique business keys"
   },
   "geometryInputBudgetCheckpoint": {
     "serverIssue": 4850,
-    "commit": "3ab624621",
+    "commit": "737a0007e",
     "branch": "fix/spatial-query-input-budgets-20260914",
-    "status": "source-and-regressions-written-verification-queued",
+    "status": "30-regressions-and-scoped-format-passed-live-corridor-reconciled",
     "queryRoutes": 8,
     "defaultGeometryBytes": 5242880,
     "defaultGeometryVertices": 50000,
     "genericTextLimitUnchanged": 8192,
     "validation": "unit boundaries and routed inside/outside feature identity/count comparisons for FeatureServer and MapServer; not yet executed",
-    "liveCandidateQualified": false
+    "liveCandidateQualified": false,
+    "pr": 4856,
+    "privateEvidence": [
+      "geometry-input-tests/geometry-input-budgets.trx",
+      "geometry-input-verification.json",
+      "geometry-candidate-runtime.json",
+      "heli-corridor-candidate-parity-reconciled.json"
+    ],
+    "liveCandidate": {
+      "sdkCommit": "39ab91b8efb39e72fb11b24d156695b92377305e",
+      "serverCommit": "737a0007e3bae622483bb1355f5c153c5738579b",
+      "flightRecords": 734,
+      "geometryBytes": 33113,
+      "geometrySha256": "349419a82af3fe6c812d26d3a8169cac323dfcd60885ee13e5612e30df206042",
+      "queryForms": [
+        "features",
+        "ids",
+        "count",
+        "extent"
+      ],
+      "requests": [
+        {
+          "method": "POST",
+          "targetBytes": 67,
+          "bodyBytes": 40198,
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "targetBytes": 67,
+          "bodyBytes": 40200,
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "targetBytes": 67,
+          "bodyBytes": 40201,
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "targetBytes": 67,
+          "bodyBytes": 40202,
+          "status": 200
+        }
+      ],
+      "sourceCount": 9,
+      "targetCount": 9,
+      "businessIdentitiesAndAttributesMatch": true,
+      "extentMatches": true,
+      "objectIdsRemapped": true,
+      "identityMappingRows": 9,
+      "initialHarnessAssumption": "Direct object-ID equality failed; original evidence retained, same captures rechecked through unique complaint keys and each service ID-to-feature membership"
+    },
+    "remaining": [
+      "browser interaction replay",
+      "fresh conversion replay",
+      "normal PR landing"
+    ]
   },
   "fullFlightImportCheckpoint": {
     "planId": "arcgis-plan-691d82af49da70262f7500d2d0602edf07a6de7918e20525a21a285aa844e079",
@@ -1203,16 +1266,47 @@
     "observedAt": "2026-09-14T10:30:25.776Z",
     "issue": "helicopter node_modules dependencies are missing while its Vite process remains alive; cause not independently established",
     "privateSnapshotCommit": "06b8e748a",
-    "status": "tracked source and private environment copied outside source control; npm ci/check/build queued after calendar and geometry runners",
+    "status": "private pinned app npm ci/check/build all passed",
     "existingRuntimeReplaced": false,
-    "browserQualification": "must restore dependencies before further checks"
+    "browserQualification": "private app not yet started; original Vite preserved",
+    "steps": [
+      {
+        "command": [
+          "npm.cmd",
+          "ci"
+        ],
+        "exitCode": 0,
+        "elapsedSeconds": 22.842,
+        "log": "heli-private-runtime-step-0.log"
+      },
+      {
+        "command": [
+          "npm.cmd",
+          "run",
+          "check"
+        ],
+        "exitCode": 0,
+        "elapsedSeconds": 2.18,
+        "log": "heli-private-runtime-step-1.log"
+      },
+      {
+        "command": [
+          "npm.cmd",
+          "run",
+          "build"
+        ],
+        "exitCode": 0,
+        "elapsedSeconds": 7.293,
+        "log": "heli-private-runtime-step-2.log"
+      }
+    ]
   },
   "nonspatialPublicationCheckpoint": {
     "serverIssue": 4834,
     "commit": "104055e1e",
     "branch": "fix/nonspatial-import-publication-20260914",
     "base": "b52bd1dd8",
-    "status": "implemented-tests-and-format-queued",
+    "status": "real PostGIS regressions running; scoped formatting follows",
     "filesChanged": 10,
     "testScope": "real PostGIS table import/publication, canonical Table metadata, no spatial storage or STAC publication, Join_ID values, nulls, paging, and no geometry column/index",
     "remaining": [
@@ -1226,7 +1320,7 @@
   },
   "publicationRecoveryCheckpoint": {
     "serverIssue": 4854,
-    "commit": "ddc658771",
+    "commit": "c34640847",
     "baseCommit": "05041f193",
     "status": "implementation-pushed-verification-queued",
     "materializationTimeoutSeconds": 300,
@@ -1240,10 +1334,15 @@
     "qualified": false,
     "deployed": false,
     "remaining": [
-      "preserve rich import metadata through recovery; current admin request lacks Z/M, domains, subtypes and rules",
-      "recover retained full flight table without reimport",
-      "public count/date/Z parity and app binding",
+      "qualify budget/fidelity and public metadata API regressions",
+      "compose candidate with calendar corrections",
+      "recover retained full flight table without reimport and preserve style",
+      "public all-row count/date/Z/key parity and app binding",
       "restart and repeated recovery idempotence"
-    ]
+    ],
+    "adminMetadataFollowup": "Public request now forwards HasZ/HasM, domains, subtypes and rules; four dimension API regressions written, verification queued",
+    "recoveryConnectionHealthy": true,
+    "sourceMetadataRecoveryPlanPrepared": true,
+    "publicationRetried": false
   }
 }
