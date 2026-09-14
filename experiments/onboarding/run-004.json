@@ -948,5 +948,47 @@
       }
     ],
     "qualificationScope": "Installed candidate only; Jan 11 selected date/timestamp/natural-key attributes, geometry omitted. Not a registry release or complete app/browser qualification."
+  },
+  "helicopterUiCheckpoint": {
+    "sdkCommit": "5551fa415",
+    "sourceCommit": "c162bc12b34a6ef3f91dcc7e4d54790a504a9c27",
+    "status": "source-written-not-built",
+    "appPath": "experiments/esri-cohort/helicopter",
+    "intendedPort": 18626,
+    "runtimeQualified": false,
+    "dependencyLockfileGenerated": false,
+    "validation": {
+      "rootBiomeFiles": 1450,
+      "appBiomeFiles": 6,
+      "rootBiomePassed": true,
+      "appBiomePassed": true,
+      "liveImportMetadataReadback": true,
+      "typecheck": "pending",
+      "build": "pending",
+      "browser": "pending"
+    },
+    "bindings": {
+      "flights": 9,
+      "complaints": 6,
+      "census": 5,
+      "summary": 7
+    },
+    "flightCoverage": [
+      "2025-01-11"
+    ],
+    "findings": [
+      "Imported complaint detail uses problem_detail__formerly_descriptor_, not Descriptor; UI binding updated.",
+      "GeoServices carries one spatial operand; the SDK geometry intersection combines viewport and corridor for point complaints.",
+      "Calendar availability must come from imported dates; absent source days are not evidence of zero activity."
+    ],
+    "remaining": [
+      "full flight date range import",
+      "nonspatial related table import and relationship",
+      "pointer-following neighborhood lens",
+      "proportional timeline and selection-time complaint effect",
+      "thematic summary renderer and webmap/chart metadata adoption",
+      "installed package build and browser qualification",
+      "fresh conversion replay and qualified cache restore"
+    ]
   }
 }
