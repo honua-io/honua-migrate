@@ -1169,12 +1169,12 @@
     "serverIssue": 4850,
     "commit": "8e1ef33b98b597a7ec2c2082151e9e3de7aa1d1c",
     "branch": "fix/spatial-query-input-budgets-20260914",
-    "status": "review fixes pushed; new tests and format queued",
+    "status": "PR Gate passed at 8e1ef33b9; direct Core/converter suites queued; draft PR",
     "queryRoutes": 8,
     "defaultGeometryBytes": 5242880,
     "defaultGeometryVertices": 50000,
     "genericTextLimitUnchanged": 8192,
-    "validation": "Earlier 30-case and live form-POST proof applies to 737a0007e; new core/protocol/security checks at 8e1ef33b9 queued. CI cancellation analyzer failures at 95daad37b corrected.",
+    "validation": "CI passed 4458 server Tier=Fast tests; downloaded security TRX identifies 15 InputValidationIntegrationTests passes. Direct Core/converter regression execution remains queued.",
     "liveCandidateQualified": true,
     "liveCandidateQualificationScope": "read-only SDK query parity on imported corridor only; browser and fresh conversion replay remain unqualified",
     "pr": 4856,
@@ -1182,7 +1182,9 @@
       "geometry-input-tests/geometry-input-budgets.trx",
       "geometry-input-verification.json",
       "geometry-candidate-runtime.json",
-      "heli-corridor-candidate-parity-reconciled.json"
+      "heli-corridor-candidate-parity-reconciled.json",
+      "geometry8e-combined-ci-evidence.json",
+      "geometry8e-security-ci-evidence.json"
     ],
     "liveCandidate": {
       "sdkCommit": "39ab91b8efb39e72fb11b24d156695b92377305e",
@@ -1231,8 +1233,7 @@
       "initialHarnessAssumption": "Direct object-ID equality failed; original evidence retained, same captures rechecked through unique complaint keys and each service ID-to-feature membership"
     },
     "remaining": [
-      "qualify new encoding/curve regressions and scoped formatting",
-      "resolve reviews with evidence",
+      "execute dedicated Core/converter regressions",
       "browser interaction replay",
       "fresh conversion replay",
       "normal PR landing"
@@ -1241,7 +1242,77 @@
     "reviewGaps": [
       "JSON/multipart byte and vertex budget bypass: implementation fixed, verification pending",
       "true-curve rejection: bounded densification implemented, verification pending"
-    ]
+    ],
+    "ci": {
+      "runId": 34846604543,
+      "observedAt": "2026-09-14T13:58:25.857871+00:00",
+      "headSha": "8e1ef33b98b597a7ec2c2082151e9e3de7aa1d1c",
+      "status": "completed",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "PR Gate / Format",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "PR Gate / CI Router Validation",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "PR Gate / Affected shards (select)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "PR Gate / Build and tests",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "PR Gate / Affected shard (Caching File Storage Styling and Infrastructure)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "PR Gate / Affected shard (Security and Authorization)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "PR Gate / Affected shard (GeoServices MapServer Identify)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "PR Gate / Affected shard (Admin & Infrastructure)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "PR Gate / Affected shard (GeoServices MapServer Export)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "PR Gate / Affected shard (GeoServices MapServer)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "PR Gate / Affected shards",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "PR Gate",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "reviewFindings": "Both encoding and true-curve review threads resolved with code and CI evidence."
   },
   "fullFlightImportCheckpoint": {
     "planId": "arcgis-plan-691d82af49da70262f7500d2d0602edf07a6de7918e20525a21a285aa844e079",
@@ -1311,10 +1382,10 @@
   },
   "nonspatialPublicationCheckpoint": {
     "serverIssue": 4834,
-    "commit": "4862d500bcead3fa5ed7cb34876a777de70a2c60",
+    "commit": "45f3e9ee7fa6e89f25bdc5544da3b0e1d4bda277",
     "branch": "fix/nonspatial-import-publication-20260914",
     "base": "b52bd1dd8",
-    "status": "fresh 877-row public parity passed on 66a3217a2; reconciliation and metadata followups pushed; tests and format queued",
+    "status": "877-row public and installed-SDK readback passed on 66a; latest metadata/reconciliation corrections await direct verification",
     "filesChanged": 22,
     "testScope": "real PostGIS table import/publication, canonical Table metadata, no spatial storage or STAC publication, Join_ID values, nulls, paging, and no geometry column/index",
     "remaining": [
@@ -1375,6 +1446,80 @@
       "jobId": "248297d653a5",
       "cause": "older worker consumed shared Redis job queue",
       "resolution": "candidate restarted with reserved empty Redis logical database 1"
+    },
+    "priorHeadCi": {
+      "runId": 34851083658,
+      "observedAt": "2026-09-14T13:58:25.857871+00:00",
+      "headSha": "4862d500bcead3fa5ed7cb34876a777de70a2c60",
+      "status": "in_progress",
+      "conclusion": "",
+      "jobs": [
+        {
+          "name": "PR Gate / CI Router Validation",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "PR Gate / Format",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "name": "PR Gate / Build and tests",
+          "status": "in_progress",
+          "conclusion": ""
+        },
+        {
+          "name": "PR Gate / Affected shards (select)",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "PR Gate / Affected shard (${{ matrix.shard_name }})",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "PR Gate / Affected shards",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    "formatCorrection": {
+      "commit": "45f3e9ee7fa6e89f25bdc5544da3b0e1d4bda277",
+      "reason": "four CI whitespace errors in two test fixtures at 4862d500b",
+      "verified": false
+    },
+    "installedSdkReadback": {
+      "sdkCommit": "39ab91b8efb39e72fb11b24d156695b92377305e",
+      "serverCommit": "66a3217a2",
+      "source": "http://127.0.0.1:18630/rest/services/onboarding-heli-summary-isolated-004/FeatureServer/11",
+      "packageKind": "installed CI-compiled candidate",
+      "tableMetadataFollowupQualified": false,
+      "passed": true,
+      "rows": 877,
+      "pages": 4,
+      "allNonOidAttributesMatch": true,
+      "uniqueTargetObjectIds": true,
+      "joinKeyFilterRows": 1,
+      "elapsedMilliseconds": 1922
+    },
+    "relationshipBaseline": {
+      "parents": 579,
+      "children": 877,
+      "parentJoinKeysUniqueAndMatch": true,
+      "childJoinKeysMatch": true,
+      "orphanChildren": 0,
+      "sourceRelatedRecordGroups": 579,
+      "sourceRelatedRows": 877,
+      "sourceRelatedRowsMatchWholeTableCapture": true,
+      "targetRelatedRecordsQualified": false,
+      "targetError": "Relationship 0 not found for layer 7",
+      "privateEvidence": [
+        "heli-summary-relationship-baseline.json",
+        "heli-summary-related-endpoint-baseline.json"
+      ]
     }
   },
   "publicationRecoveryCheckpoint": {
@@ -1439,5 +1584,110 @@
     "retryConfiguration": "Release",
     "retryReceipt": "calendar-release-verification.json",
     "existingDemoPreserved": true
+  },
+  "relationshipFidelityCheckpoint": {
+    "serverIssue": 4834,
+    "pr": 4864,
+    "prState": "draft",
+    "commit": "962787130f85293c736c89a1ecf7766680fa09e3",
+    "branch": "fix/imported-relationship-fidelity-20260914",
+    "change": "Capture source relationship evidence and classify single-layer omissions through the existing blocking fidelity evaluator.",
+    "ci": {
+      "runId": 34851079050,
+      "observedAt": "2026-09-14T13:58:25.857871+00:00",
+      "headSha": "962787130f85293c736c89a1ecf7766680fa09e3",
+      "status": "in_progress",
+      "conclusion": "",
+      "jobs": [
+        {
+          "name": "PR Gate / CI Router Validation",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "PR Gate / Build and tests",
+          "status": "in_progress",
+          "conclusion": ""
+        },
+        {
+          "name": "PR Gate / Format",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "PR Gate / Affected shard (${{ matrix.shard_name }})",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "PR Gate / Affected shards (select)",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "PR Gate / Affected shards",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    "targetedTests": "queued; six metadata cases and three new PostGIS import cases plus existing fidelity/apply regressions",
+    "liveQualified": false,
+    "remaining": [
+      "execute targeted suites",
+      "reviewed relationship binding",
+      "post-apply child reconciliation",
+      "installed-client related-record parity"
+    ]
+  },
+  "sourceTableDiscoveryCheckpoint": {
+    "serverIssue": 4834,
+    "commit": "0a233ecb0b0bfcbd95d0d52cfcf06da5be9117a0",
+    "branch": "fix/source-table-discovery-20260914",
+    "sourceEvidence": "source-table-discovery-baseline.json",
+    "finding": "Helicopter groupbySummary is present only in source tables; server discovery previously read only layers.",
+    "change": "Discover both collections through the existing metadata/count path, preserving nonspatial type and deduplicating IDs.",
+    "regressionCasesWritten": 11,
+    "targetedTests": "queued with existing discovery security regressions",
+    "ci": {
+      "runId": 34852223654,
+      "observedAt": "2026-09-14T13:58:25.857871+00:00",
+      "headSha": "0a233ecb0b0bfcbd95d0d52cfcf06da5be9117a0",
+      "status": "in_progress",
+      "conclusion": "",
+      "jobs": [
+        {
+          "name": "PR Gate / Format",
+          "status": "in_progress",
+          "conclusion": ""
+        },
+        {
+          "name": "PR Gate / Build and tests",
+          "status": "in_progress",
+          "conclusion": ""
+        },
+        {
+          "name": "PR Gate / CI Router Validation",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "PR Gate / Affected shards (select)",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "PR Gate / Affected shard (${{ matrix.shard_name }})",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "PR Gate / Affected shards",
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
+    },
+    "liveQualified": false
   }
 }
