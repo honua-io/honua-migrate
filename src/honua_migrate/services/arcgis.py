@@ -290,7 +290,9 @@ class ArcGisClient:
                     f"{self.base_url}{safe_path}",
                     headers={"X-API-Key": self.api_key, "Accept": "application/json"},
                     json=payload,
-                    timeout=timeout,
+                    # HTTPAdapter explicitly accepts TimeoutSauce; requests'
+                    # Session annotation omits this runtime-supported form.
+                    timeout=timeout,  # type: ignore[arg-type]
                 )
             except requests.RequestException as exc:
                 if deadline is not None and self.clock() >= deadline:
