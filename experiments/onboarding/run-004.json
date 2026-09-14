@@ -1106,7 +1106,7 @@
     "sdkIssue": 1724,
     "serverIssue": 4850,
     "sdkCommit": "39ab91b8efb39e72fb11b24d156695b92377305e",
-    "status": "review-fixes-pushed-new-head-verification-pending",
+    "status": "new-head-verification-passed-pr-ready",
     "getRequestTargetBytes": 40245,
     "postBodyBytes": 40177,
     "baselineGetError": 431,
@@ -1115,10 +1115,10 @@
     "sourceRows": 734,
     "sdkInstallSeconds": 38.753,
     "sdkPr": 1725,
-    "sdkCiRunId": 34830168287,
-    "sdkNewRegressionTestsPassed": 8,
+    "sdkCiRunId": 34836607450,
+    "sdkNewRegressionTestsPassed": 42,
     "sdkDistSha256": "a2747df0e5d8d4139cfdc19b242756d47b866ca53fe53c73f1fa32653d11b550",
-    "sdkPrDraft": true,
+    "sdkPrDraft": false,
     "localRunner": "stopped while waiting after exact-head CI evidence superseded redundant SDK checks",
     "compiledDiagnostic": {
       "qualification": "CI-built JavaScript with synthetic detailed polygon; not an installed-package, aircraft-corridor, or local-build reuse qualification",
@@ -1128,7 +1128,8 @@
       "method": "POST",
       "httpStatus": 200,
       "geoServicesErrorCode": 400,
-      "error": "geometry exceeds maximum length of 8192"
+      "error": "geometry exceeds maximum length of 8192",
+      "commit": "f5ab5c468"
     },
     "installedCandidateQualified": false,
     "reviewFindings": [
@@ -1140,7 +1141,21 @@
     "localAdditionalCommitQualification": "b40 prefix commit preserved in ancestry of pushed 39ab; 39ab adds retry/auth/redirect/prefix regressions, CI pending",
     "newReviewRegressionCases": 34,
     "scopedBiome": "passed",
-    "priorHeadEvidenceCommit": "f5ab5c468"
+    "priorHeadEvidenceCommit": "f5ab5c468",
+    "reviewRegressionTestsPassed": 34,
+    "originalTransportTestsPassed": 8,
+    "reviewThreadsResolved": true,
+    "verificationScope": "Complete SDK Verification graph and individually inspected Vitest blobs; installed app qualification still pending",
+    "downloadedCandidate": {
+      "root": "C:/Users/mike/.honua/onboarding-cache/run-004/sdk39ab-build",
+      "headSha": "39ab91b8efb39e72fb11b24d156695b92377305e",
+      "runId": "34836607450",
+      "artifactFingerprint": "33005559aeddef93aec19235896c13e03842ade7e911f063f5cddce0e249e103",
+      "distSha256": "d5b31651c72687074f25fcd04e52958f1b01190ffa624e067d943668246f9470",
+      "files": 4314,
+      "verified": true,
+      "scope": "Downloaded CI dist bytes match producer evidence; not local-build, installed-package or app qualification."
+    }
   },
   "geometryInputBudgetCheckpoint": {
     "serverIssue": 4850,
@@ -1205,5 +1220,27 @@
       "fresh 877-row summary and 579-row parent readback"
     ],
     "prCreated": false
+  },
+  "publicationRecoveryCheckpoint": {
+    "serverIssue": 4854,
+    "commit": "ddc658771",
+    "baseCommit": "05041f193",
+    "status": "implementation-pushed-verification-queued",
+    "materializationTimeoutSeconds": 300,
+    "configurationRangeSeconds": [
+      1,
+      3600
+    ],
+    "timeoutScope": "canonical snapshot copy only; caller cancellation and transaction rollback retained",
+    "publicationMissingVerdict": "incomplete, NeedsReview when publication requested but absent",
+    "tests": "Core fidelity evaluator; PostgreSQL workload budget/rollback/cancellation; actual import with publisher timeout and retained rows",
+    "qualified": false,
+    "deployed": false,
+    "remaining": [
+      "preserve rich import metadata through recovery; current admin request lacks Z/M, domains, subtypes and rules",
+      "recover retained full flight table without reimport",
+      "public count/date/Z parity and app binding",
+      "restart and repeated recovery idempotence"
+    ]
   }
 }
