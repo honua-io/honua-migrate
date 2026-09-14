@@ -1048,7 +1048,7 @@
   "calendarStatisticsFollowup": {
     "serverPr": 4839,
     "baseCommit": "b8735bfd7f144c6da69bc923d83d4904fcf00086",
-    "status": "six-culture-tests-passed-import-tests-await-fixture-replay",
+    "status": "all-thirteen-calendar-import-tests-passed-scoped-format-running",
     "sourceCommitted": false,
     "affectedReaders": [
       "FeatureDataAccess",
@@ -1080,6 +1080,16 @@
       "fixtureBytes": 954320,
       "fixtureHashesRecorded": true,
       "next": "replay compiled tests without rebuilding, then scoped format"
+    },
+    "fixtureReplay": {
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "elapsedSeconds": 16.677,
+      "trx": "calendar-statistics-replayed.trx",
+      "compiledTestsReused": true,
+      "cases": "six culture cases across both readers, DATE import/grouped statistics, two subtype cases, four Z/M cases",
+      "format": "running; source follow-up remains uncommitted pending completion"
     }
   },
   "largeQueryTransportCheckpoint": {
