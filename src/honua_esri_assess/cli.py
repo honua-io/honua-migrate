@@ -5,10 +5,8 @@ from __future__ import annotations
 from typing import cast
 
 import click
-
 from honua_migrate._click_compat import CLICK_EXCEPTIONS as _CLICK_EXCEPTIONS
 from honua_migrate._click_compat import EXIT_EXCEPTIONS as _EXIT_EXCEPTIONS
-
 from .app import cli_app
 from ._deprecation import warn_legacy_surface
 
