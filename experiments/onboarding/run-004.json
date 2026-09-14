@@ -1586,6 +1586,11 @@
       "fixedBy": "4a4bf71c0",
       "fixCiRunId": 34861675808,
       "composedLocally": false
+    },
+    "visibilityCorrectionCi": {
+      "commit": "4a4bf71c0",
+      "runId": 34861675808,
+      "conclusion": "success"
     }
   },
   "editingMetadataCheckpoint": {
@@ -1915,9 +1920,9 @@
     "evidence": "editor-target-attachment-parity-43be77ff8.json"
   },
   "readonlyCompositeImplementationCheckpoint": {
-    "commit": "9acdb062e",
+    "commit": "1c6b712f1",
     "issue": 4868,
-    "ciRunId": 34863862771,
+    "ciRunId": null,
     "newTestMethods": 7,
     "testsExecuted": false,
     "deployed": false,
@@ -1938,7 +1943,9 @@
     "priorCiRunId": 34861920680,
     "priorCiConclusion": "failure",
     "localShardCoveragePassed": true,
-    "coveredTestClasses": 1463
+    "coveredTestClasses": 1463,
+    "normalizationFailureRunId": 34863862771,
+    "qualification": "Pending; missing AccessScope import corrected after normalization build failure"
   },
   "fullFlightPublicationRecoveryCheckpoint": {
     "at": "2026-09-14T15:44:23.687538+00:00",
