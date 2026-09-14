@@ -950,22 +950,26 @@
     "qualificationScope": "Installed candidate only; Jan 11 selected date/timestamp/natural-key attributes, geometry omitted. Not a registry release or complete app/browser qualification."
   },
   "helicopterUiCheckpoint": {
-    "sdkCommit": "5551fa415",
+    "sdkCommit": "6ce0bf3f2",
     "sourceCommit": "c162bc12b34a6ef3f91dcc7e4d54790a504a9c27",
-    "status": "source-written-not-built",
+    "status": "built-browser-calendar-blocked",
     "appPath": "experiments/esri-cohort/helicopter",
     "intendedPort": 18626,
     "runtimeQualified": false,
-    "dependencyLockfileGenerated": false,
+    "dependencyLockfileGenerated": true,
     "validation": {
       "rootBiomeFiles": 1450,
-      "appBiomeFiles": 6,
+      "appBiomeFiles": 10,
       "rootBiomePassed": true,
       "appBiomePassed": true,
       "liveImportMetadataReadback": true,
-      "typecheck": "pending",
-      "build": "pending",
-      "browser": "pending"
+      "typecheck": "passed",
+      "build": "passed",
+      "browser": "free basemap and service discovery reached; calendar blocked by server grouped DateOnly serialization",
+      "chartTests": 4,
+      "chartTestsPassed": true,
+      "buildElapsedSeconds": 12.029,
+      "mainChunkGzipKb": 632.6
     },
     "bindings": {
       "flights": 9,
@@ -974,21 +978,68 @@
       "summary": 7
     },
     "flightCoverage": [
-      "2025-01-11"
+      "2026-01-11"
     ],
     "findings": [
-      "Imported complaint detail uses problem_detail__formerly_descriptor_, not Descriptor; UI binding updated.",
-      "GeoServices carries one spatial operand; the SDK geometry intersection combines viewport and corridor for point complaints.",
-      "Calendar availability must come from imported dates; absent source days are not evidence of zero activity."
+      "Imported complaint detail uses problem_detail__formerly_descriptor_, not Descriptor.",
+      "Source browser and source/target readbacks prove flight coverage is 2026-01-11; the prior 2025 checkpoint annotation was incorrect.",
+      "Source selection highlights map complaints independently of the day/viewport table filters; the earlier viewport/corridor intersection implementation was removed.",
+      "The source N945RF count chart displays zero for empty intervals despite saved nullPolicy=null; complete six-minute counts match 177,160,13,0,0,0,125,211, with 48 of 734 records in the trimmed tail.",
+      "Grouped source-backed DATE values stringify as 1/11/2026 in the current backend. Ordinary feature queries correctly return 2026-01-11. Fix and regressions added to the server branch; verification and deployment pending."
     ],
     "remaining": [
       "full flight date range import",
       "nonspatial related table import and relationship",
-      "pointer-following neighborhood lens",
-      "proportional timeline and selection-time complaint effect",
-      "thematic summary renderer and webmap/chart metadata adoption",
-      "installed package build and browser qualification",
+      "calendar statistics backend fix and deployment",
+      "browser verification of pointer-following lens, chart and selection-time effects",
+      "thematic summary renderer and remaining webmap metadata/navigation fidelity",
       "fresh conversion replay and qualified cache restore"
-    ]
+    ],
+    "sourceChart": {
+      "itemId": "1b496d1b79fd4344ab548a1f2399c5fa",
+      "chartId": "Chart 1771976572578",
+      "captureSha256": "c9baf813cdd54a9aa5c3b4f887c120806cfacbb1f7e4bde681eb265ee3331ec3",
+      "baselineAircraft": "N945RF",
+      "counts": [
+        177,
+        160,
+        13,
+        0,
+        0,
+        0,
+        125,
+        211
+      ],
+      "rows": 734,
+      "trimmed": 48,
+      "sourceBrowserObserved": true,
+      "convertedBrowserQualified": false
+    }
+  },
+  "reconciliationCountCheckpoint": {
+    "status": "core-passed-postgres-pending",
+    "corePassed": 33,
+    "coreSkipped": 1,
+    "coreFailed": 0,
+    "coreBuildAndTestSeconds": 1777.204,
+    "postgres": "runner wait limit expired before this step started; no database-test result",
+    "sourceCommitted": false,
+    "remaining": "source-aware geometry and queried extents plus fresh imports"
+  },
+  "calendarStatisticsFollowup": {
+    "serverPr": 4839,
+    "baseCommit": "b8735bfd7f144c6da69bc923d83d4904fcf00086",
+    "status": "source-written-tests-running",
+    "sourceCommitted": false,
+    "affectedReaders": [
+      "FeatureDataAccess",
+      "PostgresStorageMappedFeatureReader"
+    ],
+    "regressions": "six culture cases plus grouped query over imported DATE fields",
+    "liveBaseline": {
+      "dateofflight": "1/11/2026",
+      "record_count": 1963
+    },
+    "ordinaryFeatureDate": "2026-01-11"
   }
 }
