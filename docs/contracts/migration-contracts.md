@@ -1,8 +1,16 @@
+---
+type: reference
+title: "Migration artifact contracts"
+description: "The packaged JSON Schemas covering diagnostics, engine reports, plans, runs, results and reconciliation, and which contract version applies."
+resource: "https://github.com/honua-io/honua-migrate/tree/trunk/schemas"
+tags: [contracts, json-schema, artifacts]
+---
 # Migration contract versioning
 
 Honua migration artifacts use the packaged JSON Schemas in
 `honua_migrate.contract_schemas`. The current contract version is `v1` and
-covers diagnostics, engine reports, plans, runs, results, and reconciliation.
+covers diagnostics, engine reports, plans, runs, results, reconciliation, and
+existing-app handoffs.
 
 Within `v1`, producers may add new enum-independent evidence objects only when
 older consumers can ignore them. Renaming or removing a required field,
