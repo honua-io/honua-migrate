@@ -29,13 +29,21 @@ export function evaluateMigrationGates(
     failures.push(`${report.unhandledArcGisModules.length} ArcGIS modules remain outside codemod scope`);
   }
 
-  if (options.maxManualRatio !== undefined && report.manualRewriteMetric.ratio > options.maxManualRatio) {
+  // A ratio over an empty denominator is 0 by construction; holding it to a
+  // maximum would pass an app whose usage the scan never discovered.
+  if (options.maxManualRatio !== undefined && report.manualRewriteMetric.denominator === 0) {
+    failures.push("manual rewrite ratio has no denominator (0 codemod-scoped call sites discovered)");
+  } else if (options.maxManualRatio !== undefined && report.manualRewriteMetric.ratio > options.maxManualRatio) {
     failures.push(
       `manual rewrite ratio ${report.manualRewriteMetric.ratio.toFixed(3)} exceeds max ${options.maxManualRatio.toFixed(3)}`,
     );
   }
 
-  if (
+  if (options.maxManualInterventionRatio !== undefined && report.manualInterventionMetric.denominator === 0) {
+    failures.push(
+      "manual intervention ratio has no denominator (0 codemod-scoped call sites and 0 unhandled module sites discovered)",
+    );
+  } else if (
     options.maxManualInterventionRatio !== undefined &&
     report.manualInterventionMetric.ratio > options.maxManualInterventionRatio
   ) {

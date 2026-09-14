@@ -7,7 +7,16 @@ import {
   isSupportedArcGisBarrelModulePath,
   resolveArcGisBarrelImportKind,
 } from "./codemod.js";
-import { type ArcGisScanReport, scanArcGisUsage, summarizeArcGisScan } from "./scanner.js";
+import {
+  AMD_REQUIRE_IMPORT_CLAUSE,
+  ARCGIS_IMPORT_CLAUSE,
+  type ArcGisDependencyHit,
+  type ArcGisDependencyManifest,
+  type ArcGisScanReport,
+  scanArcGisUsage,
+  summarizeArcGisScan,
+} from "./scanner.js";
+import { type WidgetDispositionKind, getWidgetDisposition, widgetModulePathInfo } from "./widget-dispositions.js";
 
 export interface ManualRewriteMetric {
   numerator: number;
@@ -34,6 +43,7 @@ export interface JsMigrationReport {
   manualRewriteMetric: ManualRewriteMetric;
   manualInterventionMetric: ManualInterventionMetric;
   readiness: MigrationReadiness;
+  usageInventory: ArcGisUsageInventory;
   gates: MigrationGateResult[];
   manualTodosByKind: Record<CodemodConstructorKind, number>;
   manualTodoReasons: MigrationReasonSummary[];
@@ -53,9 +63,52 @@ export interface ArcGisModuleSummary {
   count: number;
 }
 
-export type ArcGisUsageStyle = "static-import" | "dynamic-import" | "require";
+export type ArcGisUsageStyle = "static-import" | "dynamic-import" | "require" | "amd-require" | "arcgis-import";
 
-export type MigrationReadiness = "ready" | "assisted" | "blocked";
+/**
+ * `no-arcgis-usage` means the scan discovered zero ArcGIS module sites and zero
+ * codemod-scoped call sites. No gate has a denominator then, so the report
+ * never calls that state `ready`.
+ */
+export type MigrationReadiness = "ready" | "assisted" | "blocked" | "no-arcgis-usage";
+
+/**
+ * Runtime a widget usage site needs after the codemod: `honua` when the site is
+ * in codemod scope for the target and rewrites onto a Honua compat widget,
+ * otherwise the classic ArcGIS JS widget runtime that Esri removes at 6.0.
+ */
+export type WidgetRuntime = "honua" | "arcgis-js";
+
+export interface WidgetRuntimeRequirement {
+  widget: string;
+  supportModule: boolean;
+  disposition: WidgetDispositionKind | "unknown" | "support-module";
+  runtime: WidgetRuntime;
+  sites: number;
+}
+
+/** Denominator-complete accounting of everything the scan discovered. */
+export interface ArcGisUsageInventory {
+  filesScanned: number;
+  filesWithArcGisUsage: number;
+  /** Every discovered ArcGIS module reference, whatever its loading style. */
+  moduleSites: number;
+  moduleSitesByStyle: Record<ArcGisUsageStyle, number>;
+  /** Module sites inside codemod scope for the target. */
+  handledModuleSites: number;
+  /** Module sites the codemod leaves as written (`moduleSites - handledModuleSites`). */
+  unsupportedModuleSites: number;
+  codemodScopedCallSites: number;
+  automaticCallSites: number;
+  manualCallSites: number;
+  widgetSites: number;
+  honuaWidgetSites: number;
+  arcgisRuntimeWidgetSites: number;
+  widgetRuntimeRequirements: WidgetRuntimeRequirement[];
+  dependencyManifests: ArcGisDependencyManifest[];
+  /** ArcGIS JS runtime packages still declared; a full Honua conversion removes them. */
+  residualArcGisDependencies: ArcGisDependencyHit[];
+}
 
 export interface MigrationGateResult {
   gate: "no-manual-todos" | "no-unhandled-modules" | "no-blocking-flags";
@@ -83,8 +136,9 @@ export function buildJsMigrationReport(
   const interventionNumerator = numerator + unhandledUsageHits;
   const interventionDenominator = denominator + unhandledUsageHits;
   const interventionRatio = interventionDenominator === 0 ? 0 : interventionNumerator / interventionDenominator;
+  const usageInventory = buildUsageInventory(resolvedScan, codemodResult);
   const gates = buildMigrationGates(codemodResult, resolvedScan, unhandledArcGisModules);
-  const readiness = determineReadiness(gates);
+  const readiness = determineReadiness(gates, usageInventory);
 
   return {
     rootDir: codemodResult.rootDir,
@@ -108,6 +162,7 @@ export function buildJsMigrationReport(
       unhandledUsageHits,
     },
     readiness,
+    usageInventory,
     gates,
     manualTodosByKind,
     manualTodoReasons,
@@ -232,28 +287,11 @@ function summarizeUnhandledModules(
   const moduleCounts = new Map<string, number>();
 
   for (const hit of scanReport.imports) {
-    const usageStyle = classifyUsageStyle(hit.importClause);
-    const isReExport = hit.importClause.startsWith("export ");
-    const isSideEffectImport = hit.importClause === "side-effect-import";
-    const supportedKinds = resolveSupportedKindsForImportHit(hit);
-    const hasSupportedKind = supportedKinds.length > 0;
-    const moduleSupportedForTarget =
-      !isSideEffectImport &&
-      !isReExport &&
-      hasSupportedKind &&
-      supportedKinds.every((kind) => isKindSupportedForTarget(kind, codemodResult.target));
-    const directSupportedKind = SUPPORTED_ARCGIS_MODULE_KIND_BY_PATH[hit.modulePath];
-    const requireCoveredByCodemod =
-      usageStyle === "require" &&
-      moduleSupportedForTarget &&
-      directSupportedKind !== undefined &&
-      codemodResult.metrics.byKind[directSupportedKind].total > 0;
-    const isHandledByCodemodScope = moduleSupportedForTarget && (usageStyle !== "require" || requireCoveredByCodemod);
-    if (isHandledByCodemodScope) {
+    if (isImportHitHandledByCodemod(hit, codemodResult)) {
       continue;
     }
 
-    const key = `${hit.modulePath}|${usageStyle}`;
+    const key = `${hit.modulePath}|${classifyUsageStyle(hit.importClause)}`;
     moduleCounts.set(key, (moduleCounts.get(key) ?? 0) + 1);
   }
 
@@ -275,6 +313,112 @@ function summarizeUnhandledModules(
       }
       return a.usageStyle.localeCompare(b.usageStyle);
     });
+}
+
+function isImportHitHandledByCodemod(
+  hit: ArcGisScanReport["imports"][number],
+  codemodResult: EsriCompatCodemodResult,
+): boolean {
+  const usageStyle = classifyUsageStyle(hit.importClause);
+  if (usageStyle === "amd-require" || usageStyle === "arcgis-import") {
+    // The codemod rewrites ESM and CommonJS sources; module-loader arrays and
+    // `$arcgis.import(...)` calls stay as written, whatever module they name.
+    return false;
+  }
+
+  const isReExport = hit.importClause.startsWith("export ");
+  const isSideEffectImport = hit.importClause === "side-effect-import";
+  const supportedKinds = resolveSupportedKindsForImportHit(hit);
+  const hasSupportedKind = supportedKinds.length > 0;
+  const moduleSupportedForTarget =
+    !isSideEffectImport &&
+    !isReExport &&
+    hasSupportedKind &&
+    supportedKinds.every((kind) => isKindSupportedForTarget(kind, codemodResult.target));
+  const directSupportedKind = SUPPORTED_ARCGIS_MODULE_KIND_BY_PATH[hit.modulePath];
+  const requireCoveredByCodemod =
+    usageStyle === "require" &&
+    moduleSupportedForTarget &&
+    directSupportedKind !== undefined &&
+    codemodResult.metrics.byKind[directSupportedKind].total > 0;
+  return moduleSupportedForTarget && (usageStyle !== "require" || requireCoveredByCodemod);
+}
+
+const HONUA_WIDGET_DISPOSITIONS: ReadonlySet<WidgetDispositionKind> = new Set(["automated", "compat-shim"]);
+
+function buildUsageInventory(
+  scanReport: ArcGisScanReport,
+  codemodResult: EsriCompatCodemodResult,
+): ArcGisUsageInventory {
+  const moduleSitesByStyle: Record<ArcGisUsageStyle, number> = {
+    "static-import": 0,
+    "dynamic-import": 0,
+    require: 0,
+    "amd-require": 0,
+    "arcgis-import": 0,
+  };
+  const widgetRows = new Map<string, WidgetRuntimeRequirement>();
+  let handledModuleSites = 0;
+
+  for (const hit of scanReport.imports) {
+    moduleSitesByStyle[classifyUsageStyle(hit.importClause)] += 1;
+    const handled = isImportHitHandledByCodemod(hit, codemodResult);
+    if (handled) {
+      handledModuleSites += 1;
+    }
+
+    const widgetInfo = widgetModulePathInfo(hit.modulePath);
+    if (!widgetInfo) {
+      continue;
+    }
+    const disposition = getWidgetDisposition(widgetInfo.widget)?.disposition;
+    const runtime: WidgetRuntime =
+      handled && !widgetInfo.supportModule && disposition !== undefined && HONUA_WIDGET_DISPOSITIONS.has(disposition)
+        ? "honua"
+        : "arcgis-js";
+    const key = `${widgetInfo.widget}|${widgetInfo.supportModule}|${runtime}`;
+    const row = widgetRows.get(key);
+    if (row) {
+      row.sites += 1;
+    } else {
+      widgetRows.set(key, {
+        widget: widgetInfo.widget,
+        supportModule: widgetInfo.supportModule,
+        disposition: widgetInfo.supportModule ? "support-module" : (disposition ?? "unknown"),
+        runtime,
+        sites: 1,
+      });
+    }
+  }
+
+  const widgetRuntimeRequirements = Array.from(widgetRows.values()).sort(
+    (a, b) =>
+      a.widget.localeCompare(b.widget) ||
+      Number(a.supportModule) - Number(b.supportModule) ||
+      a.runtime.localeCompare(b.runtime),
+  );
+  const widgetSites = widgetRuntimeRequirements.reduce((total, row) => total + row.sites, 0);
+  const honuaWidgetSites = widgetRuntimeRequirements
+    .filter((row) => row.runtime === "honua")
+    .reduce((total, row) => total + row.sites, 0);
+
+  return {
+    filesScanned: scanReport.filesScanned,
+    filesWithArcGisUsage: scanReport.filesWithArcGisImports,
+    moduleSites: scanReport.imports.length,
+    moduleSitesByStyle,
+    handledModuleSites,
+    unsupportedModuleSites: scanReport.imports.length - handledModuleSites,
+    codemodScopedCallSites: codemodResult.metrics.totalCodemodScopedCallSites,
+    automaticCallSites: codemodResult.metrics.autoMigratedCallSites,
+    manualCallSites: codemodResult.metrics.manualCallSites,
+    widgetSites,
+    honuaWidgetSites,
+    arcgisRuntimeWidgetSites: widgetSites - honuaWidgetSites,
+    widgetRuntimeRequirements,
+    dependencyManifests: scanReport.dependencyManifests ?? [],
+    residualArcGisDependencies: scanReport.arcgisDependencies ?? [],
+  };
 }
 
 function resolveSupportedKindsForImportHit(hit: ArcGisScanReport["imports"][number]): CodemodConstructorKind[] {
@@ -363,6 +507,12 @@ function classifyUsageStyle(importClause: string): ArcGisUsageStyle {
   if (importClause === "require(...)") {
     return "require";
   }
+  if (importClause === AMD_REQUIRE_IMPORT_CLAUSE) {
+    return "amd-require";
+  }
+  if (importClause === ARCGIS_IMPORT_CLAUSE) {
+    return "arcgis-import";
+  }
   return "static-import";
 }
 
@@ -373,22 +523,29 @@ function buildMigrationGates(
 ): MigrationGateResult[] {
   const hasManualTodos = codemodResult.metrics.manualCallSites > 0;
   const blockingFlags = scanReport.flags.filter((flag) => BLOCKING_FLAGS.has(flag)).sort();
+  let manualTodosDetail = "all codemod-scoped call sites auto-migrated";
+  if (hasManualTodos) {
+    manualTodosDetail = `${codemodResult.metrics.manualCallSites} manual codemod-scoped call sites remain`;
+  } else if (codemodResult.metrics.totalCodemodScopedCallSites === 0) {
+    manualTodosDetail = "no codemod-scoped call sites discovered";
+  }
+  let unhandledModulesDetail = "all discovered ArcGIS modules are in codemod scope";
+  if (unhandledModules.length > 0) {
+    unhandledModulesDetail = `${unhandledModules.length} ArcGIS modules remain outside codemod scope`;
+  } else if (scanReport.imports.length === 0) {
+    unhandledModulesDetail = "no ArcGIS module usage discovered";
+  }
 
   return [
     {
       gate: "no-manual-todos",
       passed: !hasManualTodos,
-      detail: hasManualTodos
-        ? `${codemodResult.metrics.manualCallSites} manual codemod-scoped call sites remain`
-        : "all codemod-scoped call sites auto-migrated",
+      detail: manualTodosDetail,
     },
     {
       gate: "no-unhandled-modules",
       passed: unhandledModules.length === 0,
-      detail:
-        unhandledModules.length === 0
-          ? "all discovered ArcGIS modules are in codemod scope"
-          : `${unhandledModules.length} ArcGIS modules remain outside codemod scope`,
+      detail: unhandledModulesDetail,
     },
     {
       gate: "no-blocking-flags",
@@ -401,7 +558,15 @@ function buildMigrationGates(
   ];
 }
 
-function determineReadiness(gates: readonly MigrationGateResult[]): MigrationReadiness {
+function determineReadiness(
+  gates: readonly MigrationGateResult[],
+  inventory: ArcGisUsageInventory,
+): MigrationReadiness {
+  if (inventory.moduleSites === 0 && inventory.codemodScopedCallSites === 0) {
+    // Every gate passes vacuously on an empty scan; that is not a migration verdict.
+    return "no-arcgis-usage";
+  }
+
   const blockingGate = gates.find((gate) => gate.gate === "no-blocking-flags");
   if (blockingGate && !blockingGate.passed) {
     return "blocked";

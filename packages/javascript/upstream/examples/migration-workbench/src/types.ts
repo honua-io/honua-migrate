@@ -187,7 +187,7 @@ export interface WidgetReadinessArtifact {
       readonly automatedWidgets: number;
       readonly assistedWidgets: number;
       readonly manualWidgets: number;
-      readonly automatedPct: number;
+      readonly automatedPct: number | null;
     };
     readonly summaryLine: string;
   };

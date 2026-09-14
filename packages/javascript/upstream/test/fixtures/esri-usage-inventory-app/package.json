@@ -1,0 +1,15 @@
+{
+  "name": "esri-usage-inventory-app",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Mixed ESM, AMD, and CDN-loader ArcGIS usage for denominator-complete migration reporting.",
+  "type": "module",
+  "dependencies": {
+    "@arcgis/core": "^4.33.0",
+    "esri-loader": "^3.7.0"
+  },
+  "devDependencies": {
+    "@arcgis/map-components": "^4.33.0",
+    "typescript": "^5.4.0"
+  }
+}
