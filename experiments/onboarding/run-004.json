@@ -2059,10 +2059,16 @@
       "reason": "CS8602 nullable Host dereference; format passed, build failed"
     },
     "qualificationRunId": 34874085765,
-    "integrationTests": "pending",
+    "integrationTests": "Two new managed-copy cases still pending; PR affected shards and local queue active",
     "deployed": false,
     "attachmentRelationshipMappingVerified": false,
-    "importedFeatureCrudVerified": false
+    "importedFeatureCrudVerified": false,
+    "pr": 4873,
+    "qualificationConclusion": "success",
+    "qualificationFastTestsPassed": 4421,
+    "qualificationArchitectureTestsPassed": 305,
+    "prGateRunId": 34877828767,
+    "prDocumentationFinding": "Generated process.geoprocessing.md is stale; source remains pinned for active local validation."
   },
   "helicopterDistanceQueryCheckpoint": {
     "sdkFixCommit": "91475200d",
@@ -2079,7 +2085,7 @@
     "originalCombinedReferenceError": "Esri 24144 invalid geometry",
     "sourcePartitionOmitsOrSimplifiesPaths": false,
     "usesExtraParamsUntilPatchedPackageQualification": true,
-    "appIntegrated": false,
+    "appIntegrated": true,
     "browserQualified": false,
     "evidence": [
       "heli-distance-query-jan11-exploration.json",
@@ -2087,7 +2093,76 @@
       "heli-full-distance-exploration.json",
       "heli-full-distance-deduplicated-reference.json",
       "heli-full-distance-explicit-sr.json",
-      "heli-full-distance-partitioned-reference.json"
+      "heli-full-distance-partitioned-reference.json",
+      "heli-integrated-distance-34608e727.json",
+      "heli-distance-34608e727-verification.json",
+      "heli-distance-34608e727-browser.json"
+    ],
+    "appCommit": "34608e727442f452396371a39558426276fbc2cf",
+    "appUnitTests": {
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    },
+    "appProductionBuild": "passed",
+    "appFormatLint": "passed in worktree; cached repeat queued",
+    "browserSmoke": {
+      "at": "2026-09-14T18:06:00Z",
+      "appCommit": "34608e727442f452396371a39558426276fbc2cf",
+      "sdkCommit": "39ab91b8efb39e72fb11b24d156695b92377305e",
+      "serverCommit": "43be77ff897c578037ce43b720335a33bd78113e",
+      "url": "http://127.0.0.1:18636",
+      "browser": "Chrome",
+      "calendarDates": 33,
+      "januaryDayRecords": 1963,
+      "januaryAircraftRecords": 734,
+      "januaryAircraftSearchCompletedWithoutVisibleError": true,
+      "januaryFirstChartBinSelectedRecords": 177,
+      "chartSearchCompletedWithoutVisibleError": true,
+      "recordPagesObserved": [
+        "1-200 of 734",
+        "201-400 of 734"
+      ],
+      "februaryDayRecords": 44910,
+      "februaryAircraftRecords": 6974,
+      "fullAircraftSearchCompletedWithoutVisibleError": true,
+      "deselectClearedTimeline": true,
+      "neighborhoodLens": {
+        "population": 62670,
+        "averageHouseholdIncome": 254392,
+        "dayComplaints": 0
+      },
+      "browserExactHighlightIdsInspected": false,
+      "browserPerformanceMarksAvailable": false,
+      "browserPerformanceNote": "Read-only browser scope did not expose performance; no browser timing claim.",
+      "retryAfterInjectedFailureVerified": false,
+      "completeWorkflowParity": false
+    },
+    "liveIntegratedQueryChecks": [
+      {
+        "case": "January 11 full aircraft",
+        "matches": 9,
+        "elapsedMs": 332,
+        "referenceBusinessIdsMatch": true
+      },
+      {
+        "case": "February 14 full aircraft",
+        "matches": 50,
+        "elapsedMs": 392,
+        "referenceBusinessIdsMatch": true
+      },
+      {
+        "case": "January 11 first chart bin",
+        "matches": 0,
+        "elapsedMs": 146,
+        "referenceBusinessIdsMatch": true
+      },
+      {
+        "case": "January 11 loupe point",
+        "matches": 9,
+        "elapsedMs": 157,
+        "referenceBusinessIdsMatch": true
+      }
     ]
   }
 }
