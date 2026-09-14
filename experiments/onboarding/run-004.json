@@ -1034,7 +1034,7 @@
   "calendarStatisticsFollowup": {
     "serverPr": 4839,
     "baseCommit": "b8735bfd7f144c6da69bc923d83d4904fcf00086",
-    "status": "candidate-browser-observed-isolated-tests-running",
+    "status": "six-culture-tests-passed-import-tests-await-fixture-replay",
     "sourceCommitted": false,
     "affectedReaders": [
       "FeatureDataAccess",
@@ -1056,7 +1056,17 @@
       "elapsedSeconds": 1500.181,
       "result": "build failed before tests; DLLs locked by preserved original demo process 7524"
     },
-    "serverPrDraft": true
+    "serverPrDraft": true,
+    "isolatedAttempt": {
+      "elapsedSeconds": 1550.672,
+      "passed": 6,
+      "failed": 7,
+      "failure": "RepositoryPaths cannot find source seed files above external artifact directory",
+      "fixturesStaged": 154,
+      "fixtureBytes": 954320,
+      "fixtureHashesRecorded": true,
+      "next": "replay compiled tests without rebuilding, then scoped format"
+    }
   },
   "largeQueryTransportCheckpoint": {
     "sdkIssue": 1724,
@@ -1068,6 +1078,20 @@
     "baselineGetError": 431,
     "baselinePostErrorCode": 400,
     "serverRejection": "geometry exceeds generic 8192-character parameter limit",
-    "sourceRows": 734
+    "sourceRows": 734,
+    "sdkInstallSeconds": 38.753,
+    "sdkPr": 1725
+  },
+  "geometryInputBudgetCheckpoint": {
+    "serverIssue": 4850,
+    "commit": "3ab624621",
+    "branch": "fix/spatial-query-input-budgets-20260914",
+    "status": "source-and-regressions-written-verification-queued",
+    "queryRoutes": 8,
+    "defaultGeometryBytes": 5242880,
+    "defaultGeometryVertices": 50000,
+    "genericTextLimitUnchanged": 8192,
+    "validation": "unit boundaries and routed inside/outside feature identity/count comparisons for FeatureServer and MapServer; not yet executed",
+    "liveCandidateQualified": false
   }
 }
