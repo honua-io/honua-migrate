@@ -563,5 +563,48 @@
       }
     ],
     "typedSemanticQueryQualified": false
+  },
+  "sdkDateOnlyFix": {
+    "issue": "honua-sdk-js#1718",
+    "pullRequest": "https://github.com/honua-io/honua-sdk-js/pull/1720",
+    "candidateCommit": "6832c8c21",
+    "candidateVerified": false,
+    "baseline": {
+      "buildPassed": true,
+      "testsPassed": 180,
+      "productRegressionFailures": 4,
+      "testFixtureSetupFailures": 1,
+      "testFixtureCorrected": true
+    },
+    "rootInstall": [
+      {
+        "command": [
+          "npm.cmd",
+          "ci"
+        ],
+        "exitCode": 0,
+        "elapsedSeconds": 36.894,
+        "log": "sdk-dateonly-root-install-step-0.log"
+      }
+    ],
+    "baselineCommands": [
+      {
+        "command": [
+          "npm.cmd",
+          "test",
+          "--",
+          "test/connect-schema-v2.test.ts",
+          "test/pbf-decoder.test.ts",
+          "test/query-planner-semantic-geoservices-odata.test.ts"
+        ],
+        "exitCode": 1,
+        "elapsedSeconds": 279.608,
+        "log": "sdk-dateonly-baseline-step-0.log"
+      }
+    ],
+    "publishedOriginalSourceDiscovery": "failed-unknown-instead-of-date",
+    "candidateReadback": "pending",
+    "postFixGates": "pending",
+    "queueWaitSeconds": null
   }
 }
