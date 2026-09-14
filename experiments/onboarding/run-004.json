@@ -2044,7 +2044,7 @@
     }
   },
   "editorManagedPublicationCheckpoint": {
-    "serverCommit": "0e076ff0ddc68f7b5cbe261664403667e6b1784e",
+    "serverCommit": "bb42b284a",
     "issue": 4859,
     "requestField": "createEditableCopy",
     "identityMode": "new target object IDs with __honua_source_id mapping",
@@ -2059,7 +2059,7 @@
       "reason": "CS8602 nullable Host dereference; format passed, build failed"
     },
     "qualificationRunId": 34874085765,
-    "integrationTests": "Two new managed-copy cases still pending; PR affected shards and local queue active",
+    "integrationTests": "Previous advisory run: 62 passed, 5 failed. Corrected combined candidate queued; not qualified.",
     "deployed": false,
     "attachmentRelationshipMappingVerified": false,
     "importedFeatureCrudVerified": false,
@@ -2068,14 +2068,39 @@
     "qualificationFastTestsPassed": 4421,
     "qualificationArchitectureTestsPassed": 305,
     "prGateRunId": 34877828767,
-    "prDocumentationFinding": "Generated process.geoprocessing.md is stale; source remains pinned for active local validation."
+    "prDocumentationFinding": "Generated process.geoprocessing.md is stale; source remains pinned for active local validation.",
+    "combinedCandidate": "9ec9ff9c518cec91c2a0475f1233268dc24b260c",
+    "sourceIdentityField": "honua_source_id",
+    "advisoryRun": {
+      "runId": 34877828767,
+      "jobId": 104090678176,
+      "jobConclusion": "success",
+      "passed": 62,
+      "failed": 5,
+      "skipped": 0,
+      "note": "continue-on-error advisory mode; inspect actual test outcomes"
+    },
+    "corrections": [
+      "Public identity field cannot use hidden __ prefix",
+      "Refresh guard belongs on honua.layers lookup, not features DELETE",
+      "Metadata tests resolve publication in fixture graph"
+    ],
+    "managedPublicationPlan": {
+      "layers": 3,
+      "domains": 13,
+      "subtypes": 12,
+      "attachmentParents": 7,
+      "attachmentFiles": 8,
+      "executed": false,
+      "receipt": "editor-managed-publication-plan-v2.json"
+    }
   },
   "helicopterDistanceQueryCheckpoint": {
     "sdkFixCommit": "91475200d",
     "sdkPr": 1731,
     "sdkFormatLint": "passed",
     "sdkRegressionCasesAdded": 8,
-    "sdkTests": "CI pending",
+    "sdkTests": "8 wire cases pass in successful CI34875648607; 114 browser smoke cases pass; PR1731 ready for review; package not installed",
     "flightRecords": 6974,
     "pathsCoveredByReference": 6974,
     "referenceRequestCount": 4,
@@ -2164,5 +2189,27 @@
         "referenceBusinessIdsMatch": true
       }
     ]
+  },
+  "helicopterDateFeedbackCheckpoint": {
+    "at": "2026-09-14T18:33:30.810583+00:00",
+    "appCommit": "766e90541807b362e63981b0e0c61e1b7def0a2e",
+    "url": "http://127.0.0.1:18637",
+    "browser": "Chrome",
+    "observedProgress": {
+      "day": "2026-02-14",
+      "loaded": 18000,
+      "total": 44910
+    },
+    "returnToCachedDay": {
+      "day": "2026-01-11",
+      "records": 1963,
+      "flightLoadingVisibleAfterSwitch": false
+    },
+    "refreshButtonClicked": true,
+    "finalDayRecords": 1963,
+    "browserErrorsOrWarningsObserved": [],
+    "automatedTestsAndBuild": "15 tests passed, zero skipped; production build passed. Cached deployment check failed only formatting in generated vite.config.ts; source check previously passed.",
+    "refreshNetworkBypassIndependentlyMeasured": false,
+    "fullWorkflowQualified": false
   }
 }
