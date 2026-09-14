@@ -160,10 +160,10 @@
       "sourceLayerId": 0,
       "status": 4,
       "terminal": false,
-      "featuresProcessed": 189000,
+      "featuresProcessed": 482000,
       "estimatedTotalFeatures": 698843,
       "failedRows": 0,
-      "serverDuration": "00:14:30.6706606",
+      "serverDuration": "00:37:38.7577473",
       "fidelityVerified": false,
       "observation": "in-progress server status; processed rows are not yet terminal import or reconciliation proof"
     }
@@ -1048,8 +1048,8 @@
   "calendarStatisticsFollowup": {
     "serverPr": 4839,
     "baseCommit": "b8735bfd7f144c6da69bc923d83d4904fcf00086",
-    "status": "all-thirteen-calendar-import-tests-passed-scoped-format-running",
-    "sourceCommitted": false,
+    "status": "thirteen-tests-and-format-passed-committed-pr-ready",
+    "sourceCommitted": true,
     "affectedReaders": [
       "FeatureDataAccess",
       "PostgresStorageMappedFeatureReader"
@@ -1070,7 +1070,7 @@
       "elapsedSeconds": 1500.181,
       "result": "build failed before tests; DLLs locked by preserved original demo process 7524"
     },
-    "serverPrDraft": true,
+    "serverPrDraft": false,
     "isolatedAttempt": {
       "elapsedSeconds": 1550.672,
       "passed": 6,
@@ -1089,14 +1089,16 @@
       "trx": "calendar-statistics-replayed.trx",
       "compiledTestsReused": true,
       "cases": "six culture cases across both readers, DATE import/grouped statistics, two subtype cases, four Z/M cases",
-      "format": "running; source follow-up remains uncommitted pending completion"
-    }
+      "format": "passed; follow-up committed and pushed"
+    },
+    "followupCommit": "ef7b55bd3da7a3625c2adadbe73b9bdf27b3bcdb",
+    "formatSeconds": 202.367
   },
   "largeQueryTransportCheckpoint": {
     "sdkIssue": 1724,
     "serverIssue": 4850,
     "sdkCommit": "f5ab5c468",
-    "status": "exact-head-sdk-ci-passed-live-automatic-post-observed-server-budget-remains",
+    "status": "prior-head-ci-passed-review-followups-required",
     "getRequestTargetBytes": 40245,
     "postBodyBytes": 40177,
     "baselineGetError": 431,
@@ -1108,7 +1110,7 @@
     "sdkCiRunId": 34830168287,
     "sdkNewRegressionTestsPassed": 8,
     "sdkDistSha256": "a2747df0e5d8d4139cfdc19b242756d47b866ca53fe53c73f1fa32653d11b550",
-    "sdkPrDraft": false,
+    "sdkPrDraft": true,
     "localRunner": "stopped while waiting after exact-head CI evidence superseded redundant SDK checks",
     "compiledDiagnostic": {
       "qualification": "CI-built JavaScript with synthetic detailed polygon; not an installed-package, aircraft-corridor, or local-build reuse qualification",
@@ -1120,7 +1122,14 @@
       "geoServicesErrorCode": 400,
       "error": "geometry exceeds maximum length of 8192"
     },
-    "installedCandidateQualified": false
+    "installedCandidateQualified": false,
+    "reviewFindings": [
+      "automatic POST must retain read-query retries and authentication refresh",
+      "budget must include deployment prefix",
+      "301/302/303 redirects must not discard query body constraints"
+    ],
+    "localAdditionalCommit": "b40c1b58fcc889d7d3b95fdbb55a6a62e7a951a1",
+    "localAdditionalCommitQualification": "base-prefix change found committed locally; unpushed, no new regression or qualification inspected"
   },
   "geometryInputBudgetCheckpoint": {
     "serverIssue": 4850,
@@ -1151,5 +1160,22 @@
     "status": "tracked source and private environment copied outside source control; npm ci/check/build queued after calendar and geometry runners",
     "existingRuntimeReplaced": false,
     "browserQualification": "must restore dependencies before further checks"
+  },
+  "nonspatialPublicationCheckpoint": {
+    "serverIssue": 4834,
+    "commit": "104055e1e",
+    "branch": "fix/nonspatial-import-publication-20260914",
+    "base": "b52bd1dd8",
+    "status": "implemented-tests-and-format-queued",
+    "filesChanged": 10,
+    "testScope": "real PostGIS table import/publication, canonical Table metadata, no spatial storage or STAC publication, Join_ID values, nulls, paging, and no geometry column/index",
+    "remaining": [
+      "execute regressions and scoped format",
+      "public table endpoint qualification",
+      "relationship identity/key mapping and fidelity findings",
+      "rollback coverage",
+      "fresh 877-row summary and 579-row parent readback"
+    ],
+    "prCreated": false
   }
 }
