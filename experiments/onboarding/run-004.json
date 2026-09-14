@@ -1167,14 +1167,14 @@
   },
   "geometryInputBudgetCheckpoint": {
     "serverIssue": 4850,
-    "commit": "737a0007e",
+    "commit": "8e1ef33b98b597a7ec2c2082151e9e3de7aa1d1c",
     "branch": "fix/spatial-query-input-budgets-20260914",
-    "status": "30-regressions-and-scoped-format-passed-live-corridor-reconciled",
+    "status": "review fixes pushed; new tests and format queued",
     "queryRoutes": 8,
     "defaultGeometryBytes": 5242880,
     "defaultGeometryVertices": 50000,
     "genericTextLimitUnchanged": 8192,
-    "validation": "30 unit/boundary and routed FeatureServer/MapServer cases passed; scoped format passed; live 734-track corridor source/target read-only query parity passed",
+    "validation": "Earlier 30-case and live form-POST proof applies to 737a0007e; new core/protocol/security checks at 8e1ef33b9 queued. CI cancellation analyzer failures at 95daad37b corrected.",
     "liveCandidateQualified": true,
     "liveCandidateQualificationScope": "read-only SDK query parity on imported corridor only; browser and fresh conversion replay remain unqualified",
     "pr": 4856,
@@ -1231,15 +1231,16 @@
       "initialHarnessAssumption": "Direct object-ID equality failed; original evidence retained, same captures rechecked through unique complaint keys and each service ID-to-feature membership"
     },
     "remaining": [
-      "fix both review gaps and add regressions",
+      "qualify new encoding/curve regressions and scoped formatting",
+      "resolve reviews with evidence",
       "browser interaction replay",
       "fresh conversion replay",
       "normal PR landing"
     ],
     "prState": "draft",
     "reviewGaps": [
-      "Supported application/json and multipart/form-data body values bypass middleware geometry size/vertex checks",
-      "Supported curvePaths/curveRings are rejected by current vertex counter; preserve true-curve query filters and budget densification"
+      "JSON/multipart byte and vertex budget bypass: implementation fixed, verification pending",
+      "true-curve rejection: bounded densification implemented, verification pending"
     ]
   },
   "fullFlightImportCheckpoint": {
@@ -1310,26 +1311,70 @@
   },
   "nonspatialPublicationCheckpoint": {
     "serverIssue": 4834,
-    "commit": "104055e1e",
+    "commit": "4862d500bcead3fa5ed7cb34876a777de70a2c60",
     "branch": "fix/nonspatial-import-publication-20260914",
     "base": "b52bd1dd8",
-    "status": "68 real PostGIS regression cases passed; scoped formatting queued",
-    "filesChanged": 10,
+    "status": "fresh 877-row public parity passed on 66a3217a2; reconciliation and metadata followups pushed; tests and format queued",
+    "filesChanged": 22,
     "testScope": "real PostGIS table import/publication, canonical Table metadata, no spatial storage or STAC publication, Join_ID values, nulls, paging, and no geometry column/index",
     "remaining": [
-      "scoped formatting and normal PR review",
-      "public table endpoint qualification",
-      "relationship identity/key mapping and fidelity findings",
+      "execute new reconciliation/public metadata regressions and scoped formatting",
+      "fresh successful retry using the qualified followup build",
+      "relationship identity/key mapping and related-record fidelity",
       "rollback coverage",
-      "fresh 877-row summary and 579-row parent readback"
+      "normal PR review and landing"
     ],
-    "prCreated": false,
+    "prCreated": true,
     "testEvidence": {
       "path": "nonspatial-publication-tests/nonspatial-publication.trx",
       "passed": 68,
       "failed": 0,
       "skipped": 0,
       "nonspatialCase": "Honua.Db.Postgres.Tests.Features.Import.GeoservicesImportSubtypePersistenceTests.ImportLayerAsync_WithNonSpatialTable_PublishesQueryableRowsWithoutGeometry"
+    },
+    "pr": 4860,
+    "prState": "draft",
+    "testedCommit": "104055e1e",
+    "formatPassedCommit": "66a3217a2",
+    "deployedCommit": "66a3217a2",
+    "freshImport": {
+      "jobId": "1b81e37bd4ef",
+      "publishedLayerId": 11,
+      "rows": 877,
+      "failedRows": 0,
+      "status": "NeedsReview",
+      "reason": "nonspatial geometry-validity false failure",
+      "redisDatabase": 1
+    },
+    "publicReadback": {
+      "evidence": "heli-summary-isolated-public-evidence.json",
+      "sourceCount": 877,
+      "targetCount": 877,
+      "sourceRows": 877,
+      "targetRows": 877,
+      "allNonOidAttributesMatch": true,
+      "missingRows": 0,
+      "extraRows": 0,
+      "sourceType": "Table",
+      "targetType": "Feature Layer",
+      "sourceRelationships": [
+        {
+          "id": 0,
+          "name": "groupBySummary",
+          "relatedTableId": 0,
+          "cardinality": "esriRelCardinalityOneToMany",
+          "role": "esriRelRoleDestination",
+          "keyField": "Join_ID",
+          "composite": true
+        }
+      ],
+      "targetRelationships": [],
+      "targetGeometryType": "esriGeometryNull"
+    },
+    "environmentFailure": {
+      "jobId": "248297d653a5",
+      "cause": "older worker consumed shared Redis job queue",
+      "resolution": "candidate restarted with reserved empty Redis logical database 1"
     }
   },
   "publicationRecoveryCheckpoint": {

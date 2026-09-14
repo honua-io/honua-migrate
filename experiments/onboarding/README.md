@@ -19,6 +19,16 @@ Keep two independently labelled backend modes:
 
 Fresh agent conversion starts from original source in either backend mode. Previous converted solutions belong only to deterministic replay. Save failed attempts, not just the best result.
 
+Each candidate server must also have an isolated job queue. A different HTTP port
+does not isolate Redis-backed imports: in run-004 an older local server consumed
+a job submitted to a patched candidate and reproduced the old bug. Use a dedicated
+Redis instance or an explicitly reserved, empty logical database, and record its
+identity with the server build and job receipt. Never flush a shared Redis database
+or stop another run's workers to make a test pass. Verify which worker executed the
+job before assigning the result to a candidate build. Snapshot manifests must also
+describe how queues are isolated on restore; cached data must not resume unrelated
+jobs from an older server.
+
 A local database dump and private configuration/cache checkpoint now support
 recovery and continued exploration. Snapshot restore and attachment completeness
 still require qualification before this becomes an admitted backend baseline.
