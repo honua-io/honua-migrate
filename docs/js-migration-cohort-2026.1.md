@@ -80,10 +80,15 @@ assisted.
   not runtime. Installed-package browser proof against a Honua service lives in
   [honua-sdk-js#1662](https://github.com/honua-io/honua-sdk-js/issues/1662);
   its driver currently runs the `esri-real-sample-*` and
-  `esri-demo-feature-table-*` fixtures, not the two new cohort apps.
-- **Dependency and configuration changes.** The codemod rewrites source only;
-  `package.json` still declares `@arcgis/core` after migration, and the report
-  lists it as a residual dependency.
+  `esri-demo-feature-table-*` fixtures, not the two new cohort apps. The
+  `honua-js-migrate migrate` pipeline builds and browser-validates an app
+  through its own npm scripts, but the tests run that path only on
+  `js-migration-pipeline-app`, not on the cohort members.
+- **Dependency and configuration changes beyond `package.json`.** `codemod`
+  rewrites source only. `migrate` also plans `package.json` changes, but only
+  lists build configuration that names the ArcGIS runtime; it does not rewrite
+  it. See
+  [Running the reviewed migration pipeline](https://github.com/honua-io/honua-migrate/blob/trunk/packages/javascript/README.md#running-the-reviewed-migration-pipeline).
 - **Complete application examples and measured manual effort** across the
   cohort remain open under
   [#142](https://github.com/honua-io/honua-migrate/issues/142).

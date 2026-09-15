@@ -122,6 +122,10 @@ jobs:
         if: steps.package.outputs.present == 'true'
         working-directory: packages/javascript
         run: npm run build
+      - name: Install Chromium for the migration pipeline browser stage
+        if: steps.package.outputs.present == 'true'
+        working-directory: packages/javascript
+        run: npx playwright-core install --with-deps --only-shell chromium
       - name: Test
         if: steps.package.outputs.present == 'true'
         working-directory: packages/javascript

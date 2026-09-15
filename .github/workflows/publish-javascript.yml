@@ -65,6 +65,8 @@ jobs:
       - working-directory: packages/javascript
         run: npm run build
       - working-directory: packages/javascript
+        run: npx playwright-core install --with-deps --only-shell chromium
+      - working-directory: packages/javascript
         run: npm test
       - working-directory: packages/javascript
         run: npm run lint

@@ -323,20 +323,83 @@ function findModuleLoaderHits(source: string, file: string): ArcGisImportHit[] {
   return hits;
 }
 
+const FROM_ARCGIS_MODULE = /\sfrom\s+["'](@arcgis\/core\/[^"']+)["'];?/g;
+
+/**
+ * `<keyword> <clause> from "@arcgis/core/..."` sites, in source order, with the
+ * clause trimmed: the first `from` site after the keyword, with no `;` in the
+ * clause. This replaces
+ * `/<keyword>\s+([^;]+?)\s+from\s+["'](@arcgis\/core\/[^"']+)["'];?/g`, which
+ * rescans the rest of the source for `from` after every keyword. That is
+ * quadratic on text such as `import\t` repeated (CodeQL js/polynomial-redos).
+ * Here the next `from` site and the next `;` are searched forward only and
+ * reused while they stay ahead of the keyword, so the scan is linear.
+ *
+ * On every fixture source and on generated inputs the results equal the
+ * regex's, with one exception, which is not valid JavaScript: a keyword
+ * followed by three or more whitespace characters and then directly `from`.
+ * The regex backtracked to a later site there; this reports the first.
+ */
+function findFromClauses(source: string, keyword: "import" | "export"): Array<{ clause: string; modulePath: string }> {
+  const matches: Array<{ clause: string; modulePath: string }> = [];
+  const keywordPattern = keyword === "import" ? /import\s/g : /export\s/g;
+  const fromPattern = new RegExp(FROM_ARCGIS_MODULE.source, "g");
+  let nextFrom: RegExpExecArray | null = null;
+  let nextFromSearchedAt = -1;
+  let nextSemicolon = -1;
+  let nextSemicolonSearchedAt = -1;
+
+  let cursor = 0;
+  for (;;) {
+    keywordPattern.lastIndex = cursor;
+    const keywordMatch = keywordPattern.exec(source);
+    if (!keywordMatch) {
+      return matches;
+    }
+    const clauseStart = keywordMatch.index + keyword.length;
+
+    // The clause needs at least one character between the whitespace after
+    // the keyword and the whitespace before `from`.
+    const fromSearchStart = clauseStart + 2;
+    if (
+      nextFromSearchedAt < 0 ||
+      fromSearchStart < nextFromSearchedAt ||
+      (nextFrom !== null && fromSearchStart > nextFrom.index)
+    ) {
+      fromPattern.lastIndex = fromSearchStart;
+      nextFrom = fromPattern.exec(source);
+      nextFromSearchedAt = fromSearchStart;
+    }
+    if (
+      nextSemicolonSearchedAt < 0 ||
+      clauseStart < nextSemicolonSearchedAt ||
+      (nextSemicolon >= 0 && clauseStart > nextSemicolon)
+    ) {
+      nextSemicolon = source.indexOf(";", clauseStart);
+      nextSemicolonSearchedAt = clauseStart;
+    }
+
+    if (nextFrom === null) {
+      return matches;
+    }
+    if (nextSemicolon < 0 || nextFrom.index < nextSemicolon) {
+      matches.push({ clause: source.slice(clauseStart, nextFrom.index).trim(), modulePath: nextFrom[1] });
+      cursor = nextFrom.index + nextFrom[0].length;
+    } else {
+      cursor = keywordMatch.index + 1;
+    }
+  }
+}
+
 function findArcGisImports(source: string, file: string): ArcGisImportHit[] {
   const hits: ArcGisImportHit[] = [];
-  const importRegex = /import\s+([^;]+?)\s+from\s+["'](@arcgis\/core\/[^"']+)["'];?/g;
-  let importMatch: RegExpExecArray | null = importRegex.exec(source);
-  while (importMatch !== null) {
-    const importClause = importMatch[1].trim();
-    const modulePath = importMatch[2];
+  for (const match of findFromClauses(source, "import")) {
     hits.push({
       file,
-      modulePath,
-      importClause,
-      symbols: extractImportedSymbols(importClause),
+      modulePath: match.modulePath,
+      importClause: match.clause,
+      symbols: extractImportedSymbols(match.clause),
     });
-    importMatch = importRegex.exec(source);
   }
 
   const sideEffectImportRegex = /import\s+["'](@arcgis\/core\/[^"']+)["'];?/g;
@@ -351,21 +414,19 @@ function findArcGisImports(source: string, file: string): ArcGisImportHit[] {
     sideEffectImportMatch = sideEffectImportRegex.exec(source);
   }
 
-  const exportRegex = /export\s+([^;]+?)\s+from\s+["'](@arcgis\/core\/[^"']+)["'];?/g;
-  let exportMatch: RegExpExecArray | null = exportRegex.exec(source);
-  while (exportMatch !== null) {
-    const exportClause = exportMatch[1].trim();
+  for (const match of findFromClauses(source, "export")) {
     hits.push({
       file,
-      modulePath: exportMatch[2],
-      importClause: `export ${exportClause}`,
-      symbols: extractImportedSymbols(exportClause),
+      modulePath: match.modulePath,
+      importClause: `export ${match.clause}`,
+      symbols: extractImportedSymbols(match.clause),
     });
-    exportMatch = exportRegex.exec(source);
   }
 
+  // After the `default` alias, the rest of the pattern must start with a
+  // non-identifier character, so the alias and `[^}]*` never compete for `$`.
   const requireRegex =
-    /(?:\b(?:const|let|var)\s+(?:([A-Za-z_$][A-Za-z0-9_$]*)|\{\s*default\s*:\s*([A-Za-z_$][A-Za-z0-9_$]*)[^}]*\})\s*=\s*)?require\(["'](@arcgis\/core\/[^"']+)["']\)(?:\.default)?/g;
+    /(?:\b(?:const|let|var)\s+(?:([A-Za-z_$][A-Za-z0-9_$]*)|\{\s*default\s*:\s*([A-Za-z_$][A-Za-z0-9_$]*)(?:[^}A-Za-z0-9_$][^}]*)?\})\s*=\s*)?require\(["'](@arcgis\/core\/[^"']+)["']\)(?:\.default)?/g;
   let requireMatch: RegExpExecArray | null = requireRegex.exec(source);
   while (requireMatch !== null) {
     const localSymbol = requireMatch[1] ?? requireMatch[2];

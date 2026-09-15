@@ -87,6 +87,65 @@ a team can ship converted files first. Each held site carries a `code`, a
 The `codemod` command prints the same plan as `conversion=`,
 `conversionModes:` and `fileDiagnostics:`.
 
+## Running the reviewed migration pipeline
+
+`honua-js-migrate migrate` takes one application through scan, reviewed
+codemod, dependency and configuration changes, build, browser validation and a
+residual-work report. It runs the same scanner, codemod and report as the
+commands above.
+
+```sh
+npx honua-js-migrate migrate ./my-app --plan ./my-app-review
+npx honua-js-migrate migrate ./my-app --apply <planDigest> --install \
+  --build-script build --browser-script test:browser --report ./my-app-pipeline.json
+```
+
+1. **Plan.** The codemod runs on a throwaway copy. `--plan <dir>` writes
+   `migration-plan.json` and `migration.patch`, a `git apply`-compatible diff
+   of every source and `package.json` change, and the command prints a
+   `planDigest`. The app is not changed. Keep the plan and report outside the
+   application root.
+2. **Review and apply.** `--apply` takes the digest you reviewed. It plans
+   again and refuses, writing nothing, when the digests differ, which means the
+   application tree, target, compat import path or engine changed since review.
+3. **Dependency and configuration changes.** Only `assisted-conversion` and
+   `complete-honua-conversion` change files; `keep-esri-client` changes none.
+   For the `honua-compat` target the plan:
+   - adds `@honua/sdk-esri-compat` and its peer `@honua/sdk`, at the ranges
+     this package is tested against;
+   - adds `@bufbuild/protobuf`, `@connectrpc/connect` and
+     `@connectrpc/connect-web` as a temporary workaround. The compat package
+     imports these optional gRPC peers, and bundlers such as Vite fail without
+     them even in a REST-only app
+     ([honua-sdk-js#1715](https://github.com/honua-io/honua-sdk-js/issues/1715)).
+     The report lists them as workarounds to remove;
+   - removes `@arcgis/*`, `arcgis-js-api` and `esri-loader` from `package.json`
+     only for a complete Honua conversion. An assisted conversion keeps them
+     and names the files that still need them.
+
+   It does not rewrite build configuration. A root `vite.config.*`,
+   `webpack.config.*`, `tsconfig*.json` or similar file that names the ArcGIS
+   runtime is listed under `configReferences`. A missing or invalid
+   `package.json`, a target other than `honua-compat`, and ArcGIS packages
+   declared in an ancestor manifest are listed under `holds`.
+4. **Install, build and browser validation** run the app's own npm scripts.
+   `--install` runs `npm install`; `--build-script` and `--browser-script`
+   name scripts in the app's `package.json`. A stage that was not requested is
+   reported as `not-run`, never as passed.
+5. **Residual-work report.** `verdict` is `browser-validated` only when the
+   build and browser scripts both passed, and `unvalidated` when nothing
+   failed but either did not run. `failed` and `refused` exit with code 1.
+   `arcgisRuntime` comes from a scan after apply: the ArcGIS module sites and
+   dependencies left, and widget sites still on the classic runtime.
+   `residualWork` lists per-file diagnostics, kept and workaround
+   dependencies, configuration references, holds and stages that did not
+   pass, each with an action.
+
+The package's tests run this path on `test/fixtures/js-migration-pipeline-app`.
+The migrated app builds with Vite; in headless Chromium it queries a fixture
+FeatureServer, shows the two trails the app's filter selects, and makes no
+request outside the page's origin.
+
 `--max-manual-ratio` and `--max-manual-intervention-ratio` fail when their
 denominator is zero, and `widgets --gate` fails when no widget usage sites
 exist, where `summary.automatedPct` is `null`.
