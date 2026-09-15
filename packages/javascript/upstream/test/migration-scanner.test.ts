@@ -27,6 +27,8 @@ describe("scanArcGisUsage", () => {
     const inputs = [
       `import\t${"\t".repeat(20_000)}`,
       `export\t${"\t".repeat(20_000)}`,
+      "import\t".repeat(20_000),
+      "export\t".repeat(20_000),
       `const { default: ${"$".repeat(20_000)}`,
     ];
     for (const input of inputs) {
@@ -34,6 +36,16 @@ describe("scanArcGisUsage", () => {
       expect(findArcGisModuleSites(input, "pathological.ts")).toEqual([]);
       expect(performance.now() - started).toBeLessThan(1_000);
     }
+  });
+
+  it("reports the first from site when an import has no clause", () => {
+    // Not valid JavaScript. The former regex backtracked past the first site
+    // and reported "@arcgis/core/B" with the clause "from '@arcgis/core/A' xx".
+    const source = "import   from '@arcgis/core/A' xx from '@arcgis/core/B'";
+
+    expect(findArcGisModuleSites(source, "no-clause.ts").map((hit) => [hit.modulePath, hit.importClause])).toEqual([
+      ["@arcgis/core/A", ""],
+    ]);
   });
 
   it("keeps multi-line and extra-whitespace import and export clauses", () => {
