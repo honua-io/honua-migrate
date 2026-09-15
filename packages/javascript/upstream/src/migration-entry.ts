@@ -120,6 +120,33 @@ export type {
   WidgetRuntime,
   WidgetRuntimeRequirement,
 } from "./migration/report.js";
+export {
+  HONUA_COMPAT_BUNDLER_WORKAROUND_DEPENDENCIES,
+  HONUA_COMPAT_RUNTIME_DEPENDENCIES,
+  JS_MIGRATION_PIPELINE_REPORT_SCHEMA_VERSION,
+  JS_MIGRATION_PLAN_SCHEMA_VERSION,
+  SDK_JS_OPTIONAL_GRPC_PEERS_ISSUE,
+  applyJsMigration,
+  createUnifiedDiff,
+  planJsMigration,
+} from "./migration/pipeline.js";
+export type {
+  JsConfigReference,
+  JsDependencyChange,
+  JsDependencyChangeAction,
+  JsMigrationApplyOptions,
+  JsMigrationPipelineReport,
+  JsMigrationPlan,
+  JsMigrationPlanOptions,
+  JsPipelineStage,
+  JsPipelineStageName,
+  JsPipelineStageStatus,
+  JsPipelineVerdict,
+  JsPlanHold,
+  JsResidualWorkItem,
+  JsResidualWorkSource,
+  JsSourceChange,
+} from "./migration/pipeline.js";
 export { evaluateMigrationGates } from "./migration/gating.js";
 export type { MigrationGateEvaluation, MigrationGateOptions } from "./migration/gating.js";
 export { runLayerReconciliation, summarizeLayerReconciliation } from "./migration/reconcile.js";

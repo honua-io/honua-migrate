@@ -1,0 +1,16 @@
+{
+  "name": "js-migration-pipeline-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "test:browser": "node browser-check.mjs"
+  },
+  "dependencies": {
+    "@arcgis/core": "^4.34.8"
+  },
+  "devDependencies": {
+    "playwright-core": "1.58.2",
+    "vite": "8.1.5"
+  }
+}

@@ -24,6 +24,7 @@ import {
   writeOutputFilesAtomically,
 } from "./output-writer.js";
 import { getJsParityMatrix, summarizeJsParityMatrix } from "./parity-matrix.js";
+import { applyJsMigration, planJsMigration } from "./pipeline.js";
 import { runLayerReconciliation, summarizeLayerReconciliation } from "./reconcile.js";
 import { type ArcGisUsageInventory, type MigrationReadiness, buildJsMigrationReport } from "./report.js";
 import { getJsRuntimeParityMatrix, summarizeJsRuntimeParity } from "./runtime-matrix.js";
@@ -49,7 +50,8 @@ interface ParsedArgs {
     | "demo"
     | "content-webmap"
     | "content"
-    | "corpus-evidence";
+    | "corpus-evidence"
+    | "migrate";
   target: string;
   contentAction?: "scan" | "export" | "import" | "reconcile";
   codemodTarget: CodemodTarget;
@@ -100,6 +102,11 @@ interface ParsedArgs {
   corpusOutputDir?: string;
   widgetOutput: "table" | "json" | "markdown";
   gatePct?: number;
+  planDir?: string;
+  applyDigest?: string;
+  install: boolean;
+  buildScript?: string;
+  browserScript?: string;
 }
 
 interface FixtureMetricSnapshot {
@@ -287,8 +294,123 @@ if (!parsed) {
       process.stderr.write(`corpusEvidenceError=${error instanceof Error ? error.message : String(error)}\n`);
       process.exitCode = 1;
     }
+  } else if (parsed.command === "migrate") {
+    try {
+      runMigrate(parsed);
+    } catch (error) {
+      process.stderr.write(`migrateError=${error instanceof Error ? error.message : String(error)}\n`);
+      process.exitCode = 1;
+    }
   } else {
     runCodemod(parsed);
+  }
+}
+
+function runMigrate(args: ParsedArgs): void {
+  const appRoot = path.resolve(args.target);
+  for (const output of [args.planDir, args.reportPath]) {
+    const relative = output === undefined ? undefined : path.relative(appRoot, path.resolve(output));
+    if (relative !== undefined && (relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative)))) {
+      throw new Error(
+        "Write the plan and report outside the application root; files inside it change the reviewed tree.",
+      );
+    }
+  }
+  const options = { appRoot, target: args.codemodTarget, compatImportPath: args.compatImportPath };
+
+  if (args.applyDigest === undefined) {
+    if (args.planDir) {
+      preflightOutputPlan({ directories: [args.planDir], force: args.force });
+    }
+    const plan = planJsMigration(options);
+    const count = (action: string): number =>
+      plan.dependencyChanges.filter((change) => change.action === action).length;
+    process.stdout.write(`planDigest=${plan.planDigest}\n`);
+    process.stdout.write(`mode=${plan.mode ?? "none"}\n`);
+    process.stdout.write(
+      `sourceChanges=${plan.sourceChanges.length} dependencyChanges=add:${count("add")},remove:${count("remove")},keep:${count("keep")} configReferences=${plan.configReferences.length} holds=${plan.holds.length}\n`,
+    );
+    if (plan.sourceChanges.length > 0) {
+      process.stdout.write("sourceChanges:\n");
+      for (const change of plan.sourceChanges) {
+        process.stdout.write(`- ${change.file}\n`);
+      }
+    }
+    if (plan.dependencyChanges.length > 0) {
+      process.stdout.write("dependencyChanges:\n");
+      for (const change of plan.dependencyChanges) {
+        const workaround = change.workaround ? ` Workaround until ${change.workaround}.` : "";
+        process.stdout.write(
+          `- ${change.action} ${change.section} ${change.name}@${change.version}: ${change.reason}${workaround}\n`,
+        );
+      }
+    }
+    if (plan.configReferences.length > 0) {
+      process.stdout.write("configReferences:\n");
+      for (const reference of plan.configReferences) {
+        process.stdout.write(`- ${reference.file}:${reference.line} ${reference.text} Action: ${reference.action}\n`);
+      }
+    }
+    if (plan.holds.length > 0) {
+      process.stdout.write("holds:\n");
+      for (const hold of plan.holds) {
+        process.stdout.write(`- ${hold.stage}: ${hold.message} Action: ${hold.action}\n`);
+      }
+    }
+    if (args.planDir) {
+      const planPath = path.join(args.planDir, "migration-plan.json");
+      const patchPath = path.join(args.planDir, "migration.patch");
+      writeOutputFilesAtomically(
+        [
+          { path: planPath, contents: stringifyArtifact(plan) },
+          { path: patchPath, contents: plan.patch },
+        ],
+        args.force,
+      );
+      process.stdout.write(`plan=${planPath} patch=${patchPath}\n`);
+    } else if (plan.patch) {
+      process.stdout.write(plan.patch);
+    }
+    process.stdout.write(
+      `next=honua-js-migrate migrate ${args.target} --apply ${plan.planDigest} [--install] [--build-script <name>] [--browser-script <name>] [--report <file>]\n`,
+    );
+    return;
+  }
+
+  const outputPlan = preflightOutputPlan({ files: args.reportPath ? [args.reportPath] : [], force: args.force });
+  const report = applyJsMigration({
+    ...options,
+    approvedDigest: args.applyDigest,
+    install: args.install,
+    buildScript: args.buildScript,
+    browserScript: args.browserScript,
+  });
+  process.stdout.write(`verdict=${report.verdict}\n`);
+  process.stdout.write(`planDigest=${report.planDigest} mode=${report.mode ?? "none"}\n`);
+  process.stdout.write("stages:\n");
+  for (const stage of report.stages) {
+    process.stdout.write(`- ${stage.stage} ${stage.status}: ${stage.detail}\n`);
+  }
+  const runtime = report.arcgisRuntime;
+  process.stdout.write(
+    `arcgisRuntime=required:${runtime.required},moduleSites:${runtime.moduleSites},dependencies:${runtime.dependencies.join("|") || "none"},widgetSitesOnArcGisRuntime:${runtime.widgetSitesOnArcGisRuntime}\n`,
+  );
+  if (report.residualWork.length > 0) {
+    process.stdout.write("residualWork:\n");
+    for (const item of report.residualWork) {
+      const subject = [item.file, item.code].filter(Boolean).join(" ");
+      process.stdout.write(
+        `- [${item.source}]${subject ? ` ${subject}` : ""}: ${item.message} Action: ${item.action}\n`,
+      );
+    }
+  }
+  const reportPath = outputPlan.files[0];
+  if (reportPath) {
+    writeOutputFilesAtomically([{ path: reportPath, contents: stringifyArtifact(report) }], args.force);
+    process.stdout.write(`report=${reportPath}\n`);
+  }
+  if (report.verdict === "refused" || report.verdict === "failed") {
+    process.exitCode = 1;
   }
 }
 
@@ -1399,6 +1521,7 @@ function parseArgs(argv: string[]): ParsedArgs | undefined {
       contentIncludeWebMaps: true,
       contentIncludeHostedLayers: true,
       widgetOutput: "table",
+      install: false,
     };
   }
 
@@ -1414,7 +1537,8 @@ function parseArgs(argv: string[]): ParsedArgs | undefined {
     | "demo"
     | "content-webmap"
     | "content"
-    | "corpus-evidence" =
+    | "corpus-evidence"
+    | "migrate" =
     maybeCommand === "scan" ||
     maybeCommand === "widgets" ||
     maybeCommand === "codemod" ||
@@ -1425,7 +1549,8 @@ function parseArgs(argv: string[]): ParsedArgs | undefined {
     maybeCommand === "demo" ||
     maybeCommand === "content-webmap" ||
     maybeCommand === "content" ||
-    maybeCommand === "corpus-evidence"
+    maybeCommand === "corpus-evidence" ||
+    maybeCommand === "migrate"
       ? maybeCommand
       : "scan";
   const positional = command === maybeCommand ? argv.slice(1) : argv.slice(0);
@@ -1481,6 +1606,11 @@ function parseArgs(argv: string[]): ParsedArgs | undefined {
   let corpusOutputDir: string | undefined;
   let widgetOutput: "table" | "json" | "markdown" = "table";
   let gatePct: number | undefined;
+  let planDir: string | undefined;
+  let applyDigest: string | undefined;
+  let install = false;
+  let buildScript: string | undefined;
+  let browserScript: string | undefined;
 
   for (let i = 0; i < positional.length; i += 1) {
     const token = positional[i];
@@ -1563,6 +1693,33 @@ function parseArgs(argv: string[]): ParsedArgs | undefined {
       }
 
       maxManualInterventionRatio = parsedRatio;
+      i += 1;
+      continue;
+    }
+    if (token === "--install" && command === "migrate") {
+      install = true;
+      continue;
+    }
+    if (
+      (token === "--plan" || token === "--apply" || token === "--build-script" || token === "--browser-script") &&
+      command === "migrate"
+    ) {
+      const next = positional[i + 1];
+      if (!next) {
+        return undefined;
+      }
+      if (token === "--plan") {
+        planDir = next;
+      } else if (token === "--apply") {
+        if (!/^[0-9a-f]{64}$/.test(next)) {
+          return undefined;
+        }
+        applyDigest = next;
+      } else if (token === "--build-script") {
+        buildScript = next;
+      } else {
+        browserScript = next;
+      }
       i += 1;
       continue;
     }
@@ -2034,6 +2191,11 @@ function parseArgs(argv: string[]): ParsedArgs | undefined {
     corpusOutputDir,
     widgetOutput,
     gatePct,
+    planDir,
+    applyDigest,
+    install,
+    buildScript,
+    browserScript,
   };
 }
 
@@ -2085,6 +2247,8 @@ function printUsage(): void {
       "  honua-js-migrate content reconcile --source <dir> [--import-report <file>] [--output-dir <file>] [--report <file>]",
       "  honua-js-migrate content-webmap --input <webmap.json> [--output <file>] [--source-url-prefix <url>] [--target-url-prefix <url>] [--exclude-basemap] [--report <file>]",
       "  honua-js-migrate corpus-evidence [--corpus <dir>] --out <dir> [--target <honua|honua-compat|honua-maplibre|esri-leaflet>]",
+      "  honua-js-migrate migrate <app> [--plan <dir>] [--target <honua|honua-compat|honua-maplibre|esri-leaflet>] [--compat-import-path <pkg>]",
+      "  honua-js-migrate migrate <app> --apply <planDigest> [--install] [--build-script <name>] [--browser-script <name>] [--report <file>]",
       "",
       "Examples:",
       "  node dist/src/migration/cli.js scan ./src",
@@ -2107,6 +2271,8 @@ function printUsage(): void {
       "  node dist/src/migration/cli.js content reconcile --source ./export --report ./content/reconcile.json",
       "  node dist/src/migration/cli.js content-webmap --input ./export/map.json --output ./export/map.honua.json --source-url-prefix https://org.maps.arcgis.com --target-url-prefix https://honua.example.com --report ./export/map.report.json",
       "  node dist/src/migration/cli.js corpus-evidence --corpus test/fixtures/esri-sample-corpus --out ./corpus-evidence",
+      "  node dist/src/migration/cli.js migrate ./my-app --plan ./my-app-review",
+      "  node dist/src/migration/cli.js migrate ./my-app --apply <planDigest> --install --build-script build --browser-script test:browser --report ./my-app-pipeline.json",
       "",
       "Target semantics:",
       "  honua: alias of honua-compat.",
