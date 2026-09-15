@@ -789,20 +789,13 @@ function buildConversionPlan(
   }
   const assistedAvailable = assistedBlockers.length === 0;
 
-  let keepDetail =
-    `Leave all ${countOf(inventory.moduleSites, "ArcGIS module site")} as written and repoint the app's service URLs ` +
-    "at Honua; `honua-migrate services arcgis handoff` records the target endpoint and layer ID mapping.";
+  let keepDetail = `Leave the ArcGIS source as written (${countOf(inventory.moduleSites, "module site")}) and repoint the app's service URLs at Honua; \`honua-migrate services arcgis handoff\` records the target endpoint and layer ID mapping.`;
   if (inventory.widgetSites > 0) {
-    keepDetail +=
-      ` ${countOf(inventory.widgetSites, "widget site")} stay on the classic widget runtime, deprecated at ` +
-      `${ARCGIS_WIDGET_DEPRECATION_RELEASE}; Esri plans to begin removing widgets at ${ARCGIS_WIDGET_REMOVAL_RELEASE}.`;
+    keepDetail += ` Widget usage (${countOf(inventory.widgetSites, "site")}) stays on the classic widget runtime, deprecated at ${ARCGIS_WIDGET_DEPRECATION_RELEASE}; Esri plans to begin removing widgets at ${ARCGIS_WIDGET_REMOVAL_RELEASE}.`;
   }
 
   const assistedDetail = assistedAvailable
-    ? `${countOf(rewrittenFiles, "file")} rewritten (${fileBoundaries.converted} converted, ${fileBoundaries.mixed} mixed), ` +
-      `${fileBoundaries.kept} kept, ${fileBoundaries.held} held. ` +
-      `${countOf(inventory.unsupportedModuleSites, "ArcGIS module site")} and ` +
-      `${countOf(inventory.manualCallSites, "manual call site")} stay for review, so the app still depends on @arcgis/core.`
+    ? `Rewrote ${rewrittenFiles} of ${countOf(files.length, "file")} with ArcGIS usage (${fileBoundaries.converted} converted, ${fileBoundaries.mixed} mixed; ${fileBoundaries.kept} kept, ${fileBoundaries.held} held). Held for review: ${completeBlockers.join("; ")}.`
     : `Not available: ${assistedBlockers.join("; ")}.`;
 
   let completeDetail = `Not available: ${completeBlockers.join("; ")}.`;
@@ -824,7 +817,7 @@ function buildConversionPlan(
     rationale = "Every ArcGIS module site was rewritten and every call site migrated automatically.";
   } else if (assistedAvailable) {
     recommendedMode = "assisted-conversion";
-    rationale = `${rewrittenFiles} of ${countOf(files.length, "file")} with ArcGIS usage are rewritten; the rest is held with per-file diagnostics.`;
+    rationale = `Rewrote ${rewrittenFiles} of ${countOf(files.length, "file")} with ArcGIS usage; the rest is held with per-file diagnostics.`;
   } else {
     recommendedMode = "keep-esri-client";
     rationale =
@@ -947,7 +940,7 @@ function describeHeldFile(error: CodemodFileError, moduleSites: number): JsFileD
   return {
     code: "held-file",
     message: `The codemod could not ${verb} this file and left it unchanged: ${error.message}`,
-    action: `Fix the ${error.stage} error and rerun the codemod; until then its ${countOf(moduleSites, "ArcGIS module site")} count as unhandled.`,
+    action: `Fix the ${error.stage} error and rerun the codemod; until then its ArcGIS module sites (${moduleSites}) count as unhandled.`,
   };
 }
 

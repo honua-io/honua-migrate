@@ -34,14 +34,19 @@ hand-counted expectation.
 
 ## Members
 
-| Member | Fixture | API line | Usage pattern | Capabilities | Verdict |
-| --- | --- | --- | --- | --- | --- |
-| `typed-esm-5x` | `esri-cohort-typed-esm-app` | 5.x (`@arcgis/core ^5.0.19`) | TypeScript ESM, `.js` specifiers, two modules | layer list, legend, search, popup, selection, measurement | assisted |
-| `view-model-4x` | `esri-cohort-view-model-app` | 4.x (`@arcgis/core ~4.34.8`) | TypeScript ESM; widget view models drive a custom UI | layer list, legend, search, measurement | assisted |
-| `react-tsx` | `esri-react-map-view-app` | unpinned | React function component (`.tsx`) | layer list, legend, search, popup | ready |
-| `ops-center-esm-js` | `esri-real-sample-ops-center-app` | unpinned | JavaScript ESM, widget-heavy | layer list, legend, search, popup | ready |
-| `incident-command-esm-js` | `esri-real-sample-incident-command-app` | unpinned | JavaScript ESM, widget-heavy with editing | layer list, legend, search, popup, selection, measurement | ready |
-| `hit-test-selection` | `esri-hit-test-sample-app` | unpinned | TypeScript ESM | popup, selection | ready |
+| Member | Fixture | API line | Usage pattern | Capabilities | Verdict | Recommended mode |
+| --- | --- | --- | --- | --- | --- | --- |
+| `typed-esm-5x` | `esri-cohort-typed-esm-app` | 5.x (`@arcgis/core ^5.0.19`) | TypeScript ESM, `.js` specifiers, two modules | layer list, legend, search, popup, selection, measurement | assisted | assisted conversion |
+| `view-model-4x` | `esri-cohort-view-model-app` | 4.x (`@arcgis/core ~4.34.8`) | TypeScript ESM; widget view models drive a custom UI | layer list, legend, search, measurement | assisted | assisted conversion |
+| `react-tsx` | `esri-react-map-view-app` | unpinned | React function component (`.tsx`) | layer list, legend, search, popup | ready | complete Honua conversion |
+| `ops-center-esm-js` | `esri-real-sample-ops-center-app` | unpinned | JavaScript ESM, widget-heavy | layer list, legend, search, popup | ready | complete Honua conversion |
+| `incident-command-esm-js` | `esri-real-sample-incident-command-app` | unpinned | JavaScript ESM, widget-heavy with editing | layer list, legend, search, popup, selection, measurement | ready | complete Honua conversion |
+| `hit-test-selection` | `esri-hit-test-sample-app` | unpinned | TypeScript ESM | popup, selection | ready | complete Honua conversion |
+
+Every member can also keep the ArcGIS JS client as written and repoint its
+services at Honua. The report assesses all three modes and names what blocks
+each one; see
+[Choosing a conversion mode](https://github.com/honua-io/honua-migrate/blob/trunk/packages/javascript/README.md#choosing-a-conversion-mode).
 
 "Unpinned" fixtures declare no `@arcgis/core` version; the two pinned members
 carry the 4.x and 5.x claims.
@@ -49,14 +54,16 @@ carry the 4.x and 5.x claims.
 ## What each verdict leaves behind
 
 - **`typed-esm-5x`**: 12 ArcGIS module sites; 8 are rewritten and 8 of 8
-  constructor sites migrate automatically. `src/selection.ts` keeps four
-  type-only imports (`Graphic`, `Point`, `FeatureLayer`, `MapView`) that the
-  codemod does not rewrite, and `@arcgis/core` is still a dependency. Retype
-  that module against the compat classes before removing the package.
-- **`view-model-4x`**: 7 module sites, 3 rewritten. The four widget view models
+  constructor sites migrate automatically. `src/main.ts` converts;
+  `src/selection.ts` is kept as written, with four `import-left-in-place`
+  diagnostics for its type-only imports (`Graphic`, `Point`, `FeatureLayer`,
+  `MapView`), and `@arcgis/core` is still a dependency. Retype that module
+  against the compat classes before removing the package.
+- **`view-model-4x`**: 7 module sites, 3 rewritten, so `src/main.ts` is mixed.
+  Its four `widget-on-arcgis-runtime` diagnostics cover the widget view models
   (`LayerListViewModel`, `LegendViewModel`, `SearchViewModel`,
-  `DistanceMeasurement2DViewModel`) stay on the ArcGIS JS runtime. The custom UI
-  they drive must be ported by hand.
+  `DistanceMeasurement2DViewModel`), which stay on the ArcGIS JS runtime. The
+  custom UI they drive must be ported by hand.
 - **`react-tsx`, `ops-center-esm-js`, `incident-command-esm-js`,
   `hit-test-selection`**: every ArcGIS import is rewritten; the migrated source
   imports nothing from `@arcgis/core`.
