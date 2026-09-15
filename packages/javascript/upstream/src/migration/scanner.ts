@@ -325,7 +325,10 @@ function findModuleLoaderHits(source: string, file: string): ArcGisImportHit[] {
 
 function findArcGisImports(source: string, file: string): ArcGisImportHit[] {
   const hits: ArcGisImportHit[] = [];
-  const importRegex = /import\s+([^;]+?)\s+from\s+["'](@arcgis\/core\/[^"']+)["'];?/g;
+  // One whitespace character on each side of the lazy clause keeps these
+  // patterns linear: `\s+` next to `[^;]+?` lets both match the same run of
+  // whitespace (CodeQL js/polynomial-redos). The clause is trimmed below.
+  const importRegex = /import(\s[^;]*?\s)from\s+["'](@arcgis\/core\/[^"']+)["'];?/g;
   let importMatch: RegExpExecArray | null = importRegex.exec(source);
   while (importMatch !== null) {
     const importClause = importMatch[1].trim();
@@ -351,7 +354,7 @@ function findArcGisImports(source: string, file: string): ArcGisImportHit[] {
     sideEffectImportMatch = sideEffectImportRegex.exec(source);
   }
 
-  const exportRegex = /export\s+([^;]+?)\s+from\s+["'](@arcgis\/core\/[^"']+)["'];?/g;
+  const exportRegex = /export(\s[^;]*?\s)from\s+["'](@arcgis\/core\/[^"']+)["'];?/g;
   let exportMatch: RegExpExecArray | null = exportRegex.exec(source);
   while (exportMatch !== null) {
     const exportClause = exportMatch[1].trim();
@@ -364,8 +367,10 @@ function findArcGisImports(source: string, file: string): ArcGisImportHit[] {
     exportMatch = exportRegex.exec(source);
   }
 
+  // After the `default` alias, the rest of the pattern must start with a
+  // non-identifier character, so the alias and `[^}]*` never compete for `$`.
   const requireRegex =
-    /(?:\b(?:const|let|var)\s+(?:([A-Za-z_$][A-Za-z0-9_$]*)|\{\s*default\s*:\s*([A-Za-z_$][A-Za-z0-9_$]*)[^}]*\})\s*=\s*)?require\(["'](@arcgis\/core\/[^"']+)["']\)(?:\.default)?/g;
+    /(?:\b(?:const|let|var)\s+(?:([A-Za-z_$][A-Za-z0-9_$]*)|\{\s*default\s*:\s*([A-Za-z_$][A-Za-z0-9_$]*)(?:[^}A-Za-z0-9_$][^}]*)?\})\s*=\s*)?require\(["'](@arcgis\/core\/[^"']+)["']\)(?:\.default)?/g;
   let requireMatch: RegExpExecArray | null = requireRegex.exec(source);
   while (requireMatch !== null) {
     const localSymbol = requireMatch[1] ?? requireMatch[2];

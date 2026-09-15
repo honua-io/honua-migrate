@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { scanArcGisUsage, summarizeArcGisScan } from "../src/migration/scanner.js";
+import { findArcGisModuleSites, scanArcGisUsage, summarizeArcGisScan } from "../src/migration/scanner.js";
 
 const tempDirs: string[] = [];
 
@@ -21,6 +21,37 @@ afterEach(() => {
 });
 
 describe("scanArcGisUsage", () => {
+  it("scans whitespace- and identifier-heavy text in linear time", () => {
+    // Before the patterns were made linear, 5,000 tabs after `import` took
+    // about 110 s; these inputs are four times longer.
+    const inputs = [
+      `import\t${"\t".repeat(20_000)}`,
+      `export\t${"\t".repeat(20_000)}`,
+      `const { default: ${"$".repeat(20_000)}`,
+    ];
+    for (const input of inputs) {
+      const started = performance.now();
+      expect(findArcGisModuleSites(input, "pathological.ts")).toEqual([]);
+      expect(performance.now() - started).toBeLessThan(1_000);
+    }
+  });
+
+  it("keeps multi-line and extra-whitespace import and export clauses", () => {
+    const source = [
+      "import  {\n  Graphic,\n  Point as P\n}\n  from '@arcgis/core/geometry/Point';",
+      "export   { default as Legend }   from '@arcgis/core/widgets/Legend';",
+      "const { default: FeatureLayer } = require('@arcgis/core/layers/FeatureLayer');",
+    ].join("\n");
+
+    expect(
+      findArcGisModuleSites(source, "clauses.ts").map((hit) => [hit.modulePath, hit.importClause, hit.symbols]),
+    ).toEqual([
+      ["@arcgis/core/geometry/Point", "{\n  Graphic,\n  Point as P\n}", ["Graphic", "P"]],
+      ["@arcgis/core/widgets/Legend", "export { default as Legend }", ["Legend"]],
+      ["@arcgis/core/layers/FeatureLayer", "require(...)", ["FeatureLayer"]],
+    ]);
+  });
+
   it("detects arcgis imports and symbol usage", () => {
     const root = makeTempProject();
     fs.writeFileSync(

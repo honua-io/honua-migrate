@@ -58,5 +58,8 @@ jobs:
         if: steps.changed.outputs.value == 'true'
       - run: npm run lint
         if: steps.changed.outputs.value == 'true'
+      - name: Install Chromium for the migration pipeline browser stage
+        run: npx playwright-core install --with-deps --only-shell chromium
+        if: steps.changed.outputs.value == 'true'
       - run: npm test
         if: steps.changed.outputs.value == 'true'
