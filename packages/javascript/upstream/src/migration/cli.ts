@@ -1052,6 +1052,34 @@ function runCodemod(args: ParsedArgs): void {
     }
   }
 
+  const conversion = report.conversion;
+  const boundaryCounts = Object.entries(conversion.fileBoundaries)
+    .map(([boundary, count]) => `${boundary}:${count}`)
+    .join(",");
+  process.stdout.write(`conversion=recommended:${conversion.recommendedMode ?? "none"},${boundaryCounts}\n`);
+  process.stdout.write("conversionModes:\n");
+  for (const assessment of conversion.modes) {
+    process.stdout.write(
+      `- ${assessment.mode} ${assessment.available ? "available" : "unavailable"}: ${assessment.detail}\n`,
+    );
+  }
+  const filesWithDiagnostics = conversion.files.filter((file) => file.diagnostics.length > 0);
+  if (filesWithDiagnostics.length > 0) {
+    process.stdout.write("fileDiagnostics:\n");
+    for (const file of filesWithDiagnostics) {
+      process.stdout.write(
+        `- ${file.file} [${file.boundary}] handled ${file.handledModuleSites}/${file.moduleSites} module sites, ${file.manualCallSites} manual call sites\n`,
+      );
+      for (const diagnostic of file.diagnostics) {
+        const location = diagnostic.line === undefined ? "" : ` line ${diagnostic.line}:${diagnostic.column}`;
+        const subject = diagnostic.modulePath === undefined ? "" : ` ${diagnostic.modulePath}`;
+        process.stdout.write(
+          `  - ${diagnostic.code}${location}${subject}: ${diagnostic.message} Action: ${diagnostic.action}\n`,
+        );
+      }
+    }
+  }
+
   if (
     (scanReport.imports.length === 0 || scanReport.filesWithArcGisImports === 0) &&
     (scanReport.esriLeafletImportCount ?? 0) > 0

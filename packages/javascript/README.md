@@ -44,6 +44,49 @@ The `codemod` report's `readiness` is one of:
   including the nearest ancestor manifest when you scan `./src`. A manifest
   with `parsed: false` has unknown dependencies, not zero.
 
+## Choosing a conversion mode
+
+`conversion.modes` assesses three paths, each with `available` and a `detail`
+naming what stands in its way, and `conversion.recommendedMode` picks one:
+
+- `keep-esri-client`: leave the ArcGIS source as written and repoint the app's
+  service URLs at Honua; `honua-migrate services arcgis handoff` records the
+  target endpoint and layer ID mapping. Recommended when the codemod rewrites
+  no file, or when the scan is `blocked`, even if some files would convert.
+- `assisted-conversion`: apply the codemod where it rewrites and work through
+  what it held. The migrated app still needs `@arcgis/core`, a manual port, or
+  the classic widget runtime until the held sites are done.
+- `complete-honua-conversion`: the migrated source imports nothing from ArcGIS,
+  no call site needs a manual port and no widget needs the classic runtime.
+  Remove any `residualArcGisDependencies` to drop the ArcGIS JS runtime.
+
+`recommendedMode` is `null` when the scan found no ArcGIS usage.
+
+`conversion.files` lists every file with ArcGIS usage, a manual call site, or a
+codemod error. Each file gets a `boundary`:
+
+- `converted`: every module site rewritten, no manual call site left.
+- `mixed`: some sites rewritten, the rest held.
+- `kept`: nothing rewritten; `--write` leaves the file's bytes untouched.
+- `held`: the codemod could not read, parse or write the file and left it
+  untouched.
+
+Files are the safe incremental boundary: kept and held files never change, so
+a team can ship converted files first. Each held site carries a `code`, a
+`message`, and an `action`:
+
+| Code | Why the site is held |
+| --- | --- |
+| `manual-call-site` | A codemod-scoped call the codemod will not guess at; carries `line` and `column`. |
+| `import-left-in-place` | The module is in codemod scope, but the import is type-only, used only in type positions, or still needed by a manual call site. |
+| `module-loader-not-rewritten` | An AMD `require`/`define` array or a `$arcgis.import(...)` call. |
+| `widget-on-arcgis-runtime` | A widget or widget support module, such as a view model, outside codemod scope; the action names its Honua disposition. |
+| `unsupported-module` | No mapping for the target, a side-effect import, or a re-export. |
+| `held-file` | A read, parse or write error; the file's module sites count as unhandled. |
+
+The `codemod` command prints the same plan as `conversion=`,
+`conversionModes:` and `fileDiagnostics:`.
+
 `--max-manual-ratio` and `--max-manual-intervention-ratio` fail when their
 denominator is zero, and `widgets --gate` fails when no widget usage sites
 exist, where `summary.automatedPct` is `null`.

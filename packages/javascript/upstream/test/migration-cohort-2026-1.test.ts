@@ -32,6 +32,8 @@ interface CohortMember {
     arcgisRuntimeWidgetSites: number;
     unhandledModules: string[];
     residualArcGisDependencies: string[];
+    conversionMode: string;
+    fileBoundaries: Record<string, string>;
   };
   residualWork: string;
 }
@@ -214,6 +216,10 @@ describe("2026.1 JavaScript migration cohort", () => {
       );
       expect(inventory.residualArcGisDependencies.map((dependency) => dependency.name).sort()).toEqual(
         [...member.expected.residualArcGisDependencies].sort(),
+      );
+      expect(report.conversion.recommendedMode).toBe(member.expected.conversionMode);
+      expect(Object.fromEntries(report.conversion.files.map((file) => [file.file, file.boundary]))).toEqual(
+        member.expected.fileBoundaries,
       );
 
       // The verdict must match the migrated bytes: whatever still imports ArcGIS

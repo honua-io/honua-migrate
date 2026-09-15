@@ -31,7 +31,9 @@
           "@arcgis/core/layers/FeatureLayer.js",
           "@arcgis/core/views/MapView.js"
         ],
-        "residualArcGisDependencies": ["@arcgis/core"]
+        "residualArcGisDependencies": ["@arcgis/core"],
+        "conversionMode": "assisted-conversion",
+        "fileBoundaries": { "src/main.ts": "converted", "src/selection.ts": "kept" }
       },
       "residualWork": "src/selection.ts keeps four type-only @arcgis/core imports the codemod does not rewrite; retype them against the compat classes before removing @arcgis/core."
     },
@@ -54,7 +56,9 @@
           "@arcgis/core/widgets/Legend/LegendViewModel",
           "@arcgis/core/widgets/Search/SearchViewModel"
         ],
-        "residualArcGisDependencies": ["@arcgis/core"]
+        "residualArcGisDependencies": ["@arcgis/core"],
+        "conversionMode": "assisted-conversion",
+        "fileBoundaries": { "src/main.ts": "mixed" }
       },
       "residualWork": "The four widget view models stay on the ArcGIS JS runtime; the custom UI they drive must be ported by hand."
     },
@@ -72,7 +76,9 @@
         "manualCallSites": 0,
         "arcgisRuntimeWidgetSites": 0,
         "unhandledModules": [],
-        "residualArcGisDependencies": []
+        "residualArcGisDependencies": [],
+        "conversionMode": "complete-honua-conversion",
+        "fileBoundaries": { "src/ParcelMap.tsx": "converted" }
       },
       "residualWork": "None in source."
     },
@@ -90,7 +96,9 @@
         "manualCallSites": 0,
         "arcgisRuntimeWidgetSites": 0,
         "unhandledModules": [],
-        "residualArcGisDependencies": []
+        "residualArcGisDependencies": [],
+        "conversionMode": "complete-honua-conversion",
+        "fileBoundaries": { "src/main.js": "converted" }
       },
       "residualWork": "None in source."
     },
@@ -108,7 +116,9 @@
         "manualCallSites": 0,
         "arcgisRuntimeWidgetSites": 0,
         "unhandledModules": [],
-        "residualArcGisDependencies": []
+        "residualArcGisDependencies": [],
+        "conversionMode": "complete-honua-conversion",
+        "fileBoundaries": { "src/main.js": "converted" }
       },
       "residualWork": "None in source."
     },
@@ -126,7 +136,9 @@
         "manualCallSites": 0,
         "arcgisRuntimeWidgetSites": 0,
         "unhandledModules": [],
-        "residualArcGisDependencies": []
+        "residualArcGisDependencies": [],
+        "conversionMode": "complete-honua-conversion",
+        "fileBoundaries": { "src/main.ts": "converted" }
       },
       "residualWork": "None in source."
     }
