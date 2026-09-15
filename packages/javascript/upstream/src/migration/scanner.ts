@@ -462,9 +462,13 @@ function extractImportedSymbols(importClause: string): string[] {
     symbols.push(defaultImportMatch[1]);
   }
 
-  const namedImportMatch = clause.match(/\{([^}]+)\}/);
-  if (namedImportMatch) {
-    for (const part of namedImportMatch[1].split(",")) {
+  // indexOf, not /\{([^}]+)\}/: the unanchored regex is polynomial on clauses
+  // like "{{{{" (CodeQL js/polynomial-redos), and import clauses are scanned input.
+  const openIndex = clause.indexOf("{");
+  const closeIndex = openIndex < 0 ? -1 : clause.indexOf("}", openIndex + 1);
+  const namedImports = closeIndex > openIndex + 1 ? clause.slice(openIndex + 1, closeIndex) : undefined;
+  if (namedImports !== undefined) {
+    for (const part of namedImports.split(",")) {
       const token = part.trim().replace(/^type\s+/, "");
       if (!token) {
         continue;
