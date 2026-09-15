@@ -1,0 +1,134 @@
+{
+  "schemaVersion": "honua.js-migration-cohort.v1",
+  "release": "2026.1",
+  "issue": "https://github.com/honua-io/honua-migrate/issues/142",
+  "scope": {
+    "views": ["@arcgis/core/views/MapView"],
+    "layers": ["@arcgis/core/layers/FeatureLayer"],
+    "excluded": ["SceneView and every other 3D surface: no 3D parity claim in the 2026.1 2D cohort"]
+  },
+  "codemodTarget": "honua-compat",
+  "requiredApiLines": ["4.x", "5.x"],
+  "requiredCapabilities": ["layer-list", "legend", "search", "popup", "selection", "measurement"],
+  "requiredUsagePatterns": ["esm-typescript", "esm-javascript", "framework", "widget-view-model"],
+  "members": [
+    {
+      "id": "typed-esm-5x",
+      "fixture": "esri-cohort-typed-esm-app",
+      "apiLine": "5.x",
+      "usagePatterns": ["esm-typescript"],
+      "capabilities": ["layer-list", "legend", "search", "popup", "selection", "measurement"],
+      "expected": {
+        "readiness": "assisted",
+        "moduleSites": 12,
+        "handledModuleSites": 8,
+        "automaticCallSites": 8,
+        "manualCallSites": 0,
+        "arcgisRuntimeWidgetSites": 0,
+        "unhandledModules": [
+          "@arcgis/core/Graphic.js",
+          "@arcgis/core/geometry/Point.js",
+          "@arcgis/core/layers/FeatureLayer.js",
+          "@arcgis/core/views/MapView.js"
+        ],
+        "residualArcGisDependencies": ["@arcgis/core"]
+      },
+      "residualWork": "src/selection.ts keeps four type-only @arcgis/core imports the codemod does not rewrite; retype them against the compat classes before removing @arcgis/core."
+    },
+    {
+      "id": "view-model-4x",
+      "fixture": "esri-cohort-view-model-app",
+      "apiLine": "4.x",
+      "usagePatterns": ["esm-typescript", "widget-view-model"],
+      "capabilities": ["layer-list", "legend", "search", "measurement"],
+      "expected": {
+        "readiness": "assisted",
+        "moduleSites": 7,
+        "handledModuleSites": 3,
+        "automaticCallSites": 3,
+        "manualCallSites": 0,
+        "arcgisRuntimeWidgetSites": 4,
+        "unhandledModules": [
+          "@arcgis/core/widgets/DistanceMeasurement2D/DistanceMeasurement2DViewModel",
+          "@arcgis/core/widgets/LayerList/LayerListViewModel",
+          "@arcgis/core/widgets/Legend/LegendViewModel",
+          "@arcgis/core/widgets/Search/SearchViewModel"
+        ],
+        "residualArcGisDependencies": ["@arcgis/core"]
+      },
+      "residualWork": "The four widget view models stay on the ArcGIS JS runtime; the custom UI they drive must be ported by hand."
+    },
+    {
+      "id": "react-tsx",
+      "fixture": "esri-react-map-view-app",
+      "apiLine": "unpinned",
+      "usagePatterns": ["esm-typescript", "framework"],
+      "capabilities": ["layer-list", "legend", "search", "popup"],
+      "expected": {
+        "readiness": "ready",
+        "moduleSites": 7,
+        "handledModuleSites": 7,
+        "automaticCallSites": 7,
+        "manualCallSites": 0,
+        "arcgisRuntimeWidgetSites": 0,
+        "unhandledModules": [],
+        "residualArcGisDependencies": []
+      },
+      "residualWork": "None in source."
+    },
+    {
+      "id": "ops-center-esm-js",
+      "fixture": "esri-real-sample-ops-center-app",
+      "apiLine": "unpinned",
+      "usagePatterns": ["esm-javascript"],
+      "capabilities": ["layer-list", "legend", "search", "popup"],
+      "expected": {
+        "readiness": "ready",
+        "moduleSites": 16,
+        "handledModuleSites": 16,
+        "automaticCallSites": 16,
+        "manualCallSites": 0,
+        "arcgisRuntimeWidgetSites": 0,
+        "unhandledModules": [],
+        "residualArcGisDependencies": []
+      },
+      "residualWork": "None in source."
+    },
+    {
+      "id": "incident-command-esm-js",
+      "fixture": "esri-real-sample-incident-command-app",
+      "apiLine": "unpinned",
+      "usagePatterns": ["esm-javascript"],
+      "capabilities": ["layer-list", "legend", "search", "popup", "selection", "measurement"],
+      "expected": {
+        "readiness": "ready",
+        "moduleSites": 27,
+        "handledModuleSites": 27,
+        "automaticCallSites": 28,
+        "manualCallSites": 0,
+        "arcgisRuntimeWidgetSites": 0,
+        "unhandledModules": [],
+        "residualArcGisDependencies": []
+      },
+      "residualWork": "None in source."
+    },
+    {
+      "id": "hit-test-selection",
+      "fixture": "esri-hit-test-sample-app",
+      "apiLine": "unpinned",
+      "usagePatterns": ["esm-typescript"],
+      "capabilities": ["popup", "selection"],
+      "expected": {
+        "readiness": "ready",
+        "moduleSites": 3,
+        "handledModuleSites": 3,
+        "automaticCallSites": 3,
+        "manualCallSites": 0,
+        "arcgisRuntimeWidgetSites": 0,
+        "unhandledModules": [],
+        "residualArcGisDependencies": []
+      },
+      "residualWork": "None in source."
+    }
+  ]
+}

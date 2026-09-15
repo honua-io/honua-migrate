@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import {
   type CodemodConstructorKind,
   type EsriCompatCodemodResult,
@@ -12,6 +14,7 @@ import {
   ARCGIS_IMPORT_CLAUSE,
   type ArcGisDependencyHit,
   type ArcGisDependencyManifest,
+  type ArcGisImportHit,
   type ArcGisScanReport,
   scanArcGisUsage,
   summarizeArcGisScan,
@@ -132,12 +135,13 @@ export function buildJsMigrationReport(
   const ratio = denominator === 0 ? 0 : numerator / denominator;
   const manualTodosByKind = summarizeManualTodosByKind(codemodResult.manualTodos);
   const manualTodoReasons = summarizeManualTodoReasons(codemodResult.manualTodos);
-  const unhandledArcGisModules = summarizeUnhandledModules(resolvedScan, codemodResult);
+  const handledImportHits = resolveHandledImportHits(resolvedScan, codemodResult);
+  const unhandledArcGisModules = summarizeUnhandledModules(resolvedScan, handledImportHits);
   const unhandledUsageHits = unhandledArcGisModules.reduce((total, moduleItem) => total + moduleItem.count, 0);
   const interventionNumerator = numerator + unhandledUsageHits;
   const interventionDenominator = denominator + unhandledUsageHits;
   const interventionRatio = interventionDenominator === 0 ? 0 : interventionNumerator / interventionDenominator;
-  const usageInventory = buildUsageInventory(resolvedScan, codemodResult);
+  const usageInventory = buildUsageInventory(resolvedScan, codemodResult, handledImportHits);
   const gates = buildMigrationGates(codemodResult, resolvedScan, unhandledArcGisModules);
   const readiness = determineReadiness(gates, usageInventory);
 
@@ -283,12 +287,12 @@ function summarizeManualTodoReasons(todos: readonly MigrationTodo[]): MigrationR
 
 function summarizeUnhandledModules(
   scanReport: ArcGisScanReport,
-  codemodResult: EsriCompatCodemodResult,
+  handledImportHits: ReadonlySet<ArcGisImportHit>,
 ): ArcGisModuleSummary[] {
   const moduleCounts = new Map<string, number>();
 
   for (const hit of scanReport.imports) {
-    if (isImportHitHandledByCodemod(hit, codemodResult)) {
+    if (handledImportHits.has(hit)) {
       continue;
     }
 
@@ -314,6 +318,59 @@ function summarizeUnhandledModules(
       }
       return a.usageStyle.localeCompare(b.usageStyle);
     });
+}
+
+/**
+ * Scan hits the codemod actually migrated. A hit must be in codemod scope for
+ * the target and, when the codemod reports what it left behind, must not
+ * survive in its output: scope alone would count `import type MapView from
+ * "@arcgis/core/views/MapView"`, or a value import used only in type
+ * positions, as handled although the migrated source still imports ArcGIS.
+ */
+function resolveHandledImportHits(
+  scanReport: ArcGisScanReport,
+  codemodResult: EsriCompatCodemodResult,
+): ReadonlySet<ArcGisImportHit> {
+  const inScope = scanReport.imports.filter((hit) => isImportHitHandledByCodemod(hit, codemodResult));
+  const residual = codemodResult.residualArcGisModuleSites;
+  if (!residual) {
+    return new Set(inScope);
+  }
+
+  const residualCounts = new Map<string, number>();
+  for (const site of residual) {
+    const key = importSiteKey(site);
+    residualCounts.set(key, (residualCounts.get(key) ?? 0) + 1);
+  }
+  // Out-of-scope hits account for their own surviving sites first, so a
+  // residual site is never charged to an in-scope hit that was rewritten.
+  const inScopeSet = new Set(inScope);
+  for (const hit of scanReport.imports) {
+    if (inScopeSet.has(hit)) {
+      continue;
+    }
+    const key = importSiteKey(hit);
+    const remaining = residualCounts.get(key) ?? 0;
+    if (remaining > 0) {
+      residualCounts.set(key, remaining - 1);
+    }
+  }
+
+  const handled = new Set<ArcGisImportHit>();
+  for (const hit of inScope) {
+    const key = importSiteKey(hit);
+    const remaining = residualCounts.get(key) ?? 0;
+    if (remaining > 0) {
+      residualCounts.set(key, remaining - 1);
+      continue;
+    }
+    handled.add(hit);
+  }
+  return handled;
+}
+
+function importSiteKey(hit: ArcGisImportHit): string {
+  return `${path.resolve(hit.file)} ${hit.modulePath} ${classifyUsageStyle(hit.importClause)}`;
 }
 
 function isImportHitHandledByCodemod(
@@ -350,6 +407,7 @@ const HONUA_WIDGET_DISPOSITIONS: ReadonlySet<WidgetDispositionKind> = new Set(["
 function buildUsageInventory(
   scanReport: ArcGisScanReport,
   codemodResult: EsriCompatCodemodResult,
+  handledImportHits: ReadonlySet<ArcGisImportHit>,
 ): ArcGisUsageInventory {
   const moduleSitesByStyle: Record<ArcGisUsageStyle, number> = {
     "static-import": 0,
@@ -363,7 +421,7 @@ function buildUsageInventory(
 
   for (const hit of scanReport.imports) {
     moduleSitesByStyle[classifyUsageStyle(hit.importClause)] += 1;
-    const handled = isImportHitHandledByCodemod(hit, codemodResult);
+    const handled = handledImportHits.has(hit);
     if (handled) {
       handledModuleSites += 1;
     }

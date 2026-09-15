@@ -1,0 +1,11 @@
+{
+  "name": "esri-cohort-typed-esm-app",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@arcgis/core": "^5.0.19"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}
