@@ -2,6 +2,8 @@ import path from "node:path";
 
 import {
   type CodemodConstructorKind,
+  type CodemodFileError,
+  type CodemodFileResult,
   type EsriCompatCodemodResult,
   type MigrationTodo,
   SUPPORTED_ARCGIS_MODULE_KIND_BY_PATH,
@@ -19,7 +21,13 @@ import {
   scanArcGisUsage,
   summarizeArcGisScan,
 } from "./scanner.js";
-import { type WidgetDispositionKind, getWidgetDisposition, widgetModulePathInfo } from "./widget-dispositions.js";
+import {
+  ARCGIS_WIDGET_DEPRECATION_RELEASE,
+  ARCGIS_WIDGET_REMOVAL_RELEASE,
+  type WidgetDispositionKind,
+  getWidgetDisposition,
+  widgetModulePathInfo,
+} from "./widget-dispositions.js";
 
 export interface ManualRewriteMetric {
   numerator: number;
@@ -52,6 +60,8 @@ export interface JsMigrationReport {
   manualTodoReasons: MigrationReasonSummary[];
   unhandledArcGisModules: ArcGisModuleSummary[];
   manualTodos: MigrationTodo[];
+  /** Per-file boundaries and diagnostics, and which conversion mode the result supports. */
+  conversion: JsConversionPlan;
 }
 
 export interface MigrationReasonSummary {
@@ -120,6 +130,75 @@ export interface MigrationGateResult {
   detail: string;
 }
 
+/**
+ * How a migrated app relates to the ArcGIS JS runtime.
+ *
+ * - `keep-esri-client`: leave ArcGIS source as written and repoint the app's
+ *   service URLs at Honua.
+ * - `assisted-conversion`: apply the codemod where it rewrites safely and hold
+ *   the rest for review; the app still depends on `@arcgis/core`.
+ * - `complete-honua-conversion`: the migrated source has no ArcGIS import,
+ *   manual call site or classic widget runtime requirement left.
+ */
+export type JsConversionMode = "keep-esri-client" | "assisted-conversion" | "complete-honua-conversion";
+
+/**
+ * What the codemod did to one file that uses ArcGIS:
+ *
+ * - `converted`: every module site rewritten, no manual call site left.
+ * - `mixed`: some sites rewritten, others held for review.
+ * - `kept`: nothing rewritten; the file stays on ArcGIS as written.
+ * - `held`: the codemod could not read, parse or write the file and left it untouched.
+ */
+export type JsFileBoundary = "converted" | "mixed" | "kept" | "held";
+
+export type JsFileDiagnosticCode =
+  | "held-file"
+  | "manual-call-site"
+  | "import-left-in-place"
+  | "module-loader-not-rewritten"
+  | "widget-on-arcgis-runtime"
+  | "unsupported-module";
+
+/** One held site or file, with what to do about it. */
+export interface JsFileDiagnostic {
+  code: JsFileDiagnosticCode;
+  /** Present for manual call sites. */
+  line?: number;
+  column?: number;
+  /** Present for module sites the codemod left in place. */
+  modulePath?: string;
+  message: string;
+  action: string;
+}
+
+export interface JsFileMigration {
+  /** Path relative to the report root, POSIX separators. */
+  file: string;
+  boundary: JsFileBoundary;
+  moduleSites: number;
+  handledModuleSites: number;
+  manualCallSites: number;
+  diagnostics: JsFileDiagnostic[];
+}
+
+export interface JsConversionModeAssessment {
+  mode: JsConversionMode;
+  available: boolean;
+  detail: string;
+}
+
+export interface JsConversionPlan {
+  /** `null` when the scan discovered no ArcGIS usage: there is nothing to keep, repoint or convert. */
+  recommendedMode: JsConversionMode | null;
+  rationale: string;
+  /** Every mode, in `keep-esri-client`, `assisted-conversion`, `complete-honua-conversion` order. */
+  modes: JsConversionModeAssessment[];
+  fileBoundaries: Record<JsFileBoundary, number>;
+  /** Every file with ArcGIS module sites, manual call sites or a codemod error, sorted by path. */
+  files: JsFileMigration[];
+}
+
 const BLOCKING_FLAGS = new Set(["scene-3d-detected", "advanced-widget-or-networking-detected"]);
 
 export function buildJsMigrationReport(
@@ -135,7 +214,8 @@ export function buildJsMigrationReport(
   const ratio = denominator === 0 ? 0 : numerator / denominator;
   const manualTodosByKind = summarizeManualTodosByKind(codemodResult.manualTodos);
   const manualTodoReasons = summarizeManualTodoReasons(codemodResult.manualTodos);
-  const handledImportHits = resolveHandledImportHits(resolvedScan, codemodResult);
+  const importHits = resolveImportHitDispositions(resolvedScan, codemodResult);
+  const handledImportHits = importHits.handled;
   const unhandledArcGisModules = summarizeUnhandledModules(resolvedScan, handledImportHits);
   const unhandledUsageHits = unhandledArcGisModules.reduce((total, moduleItem) => total + moduleItem.count, 0);
   const interventionNumerator = numerator + unhandledUsageHits;
@@ -144,6 +224,7 @@ export function buildJsMigrationReport(
   const usageInventory = buildUsageInventory(resolvedScan, codemodResult, handledImportHits);
   const gates = buildMigrationGates(codemodResult, resolvedScan, unhandledArcGisModules);
   const readiness = determineReadiness(gates, usageInventory);
+  const conversion = buildConversionPlan(resolvedScan, codemodResult, importHits, usageInventory, readiness);
 
   return {
     rootDir: codemodResult.rootDir,
@@ -173,6 +254,7 @@ export function buildJsMigrationReport(
     manualTodoReasons,
     unhandledArcGisModules,
     manualTodos: codemodResult.manualTodos,
+    conversion,
   };
 }
 
@@ -327,14 +409,15 @@ function summarizeUnhandledModules(
  * "@arcgis/core/views/MapView"`, or a value import used only in type
  * positions, as handled although the migrated source still imports ArcGIS.
  */
-function resolveHandledImportHits(
+function resolveImportHitDispositions(
   scanReport: ArcGisScanReport,
   codemodResult: EsriCompatCodemodResult,
-): ReadonlySet<ArcGisImportHit> {
+): ImportHitDispositions {
   const inScope = scanReport.imports.filter((hit) => isImportHitHandledByCodemod(hit, codemodResult));
+  const inScopeSet = new Set(inScope);
   const residual = codemodResult.residualArcGisModuleSites;
   if (!residual) {
-    return new Set(inScope);
+    return { inScope: inScopeSet, handled: inScopeSet };
   }
 
   const residualCounts = new Map<string, number>();
@@ -344,7 +427,6 @@ function resolveHandledImportHits(
   }
   // Out-of-scope hits account for their own surviving sites first, so a
   // residual site is never charged to an in-scope hit that was rewritten.
-  const inScopeSet = new Set(inScope);
   for (const hit of scanReport.imports) {
     if (inScopeSet.has(hit)) {
       continue;
@@ -366,7 +448,14 @@ function resolveHandledImportHits(
     }
     handled.add(hit);
   }
-  return handled;
+  return { inScope: inScopeSet, handled };
+}
+
+interface ImportHitDispositions {
+  /** Hits whose module is in codemod scope for the target. */
+  inScope: ReadonlySet<ArcGisImportHit>;
+  /** In-scope hits the codemod removed from its output. */
+  handled: ReadonlySet<ArcGisImportHit>;
 }
 
 function importSiteKey(hit: ArcGisImportHit): string {
@@ -633,4 +722,295 @@ function determineReadiness(
 
   const allPassed = gates.every((gate) => gate.passed);
   return allPassed ? "ready" : "assisted";
+}
+
+const NO_USAGE_MODE_DETAIL = "Not available: the scan discovered no ArcGIS usage.";
+
+function buildConversionPlan(
+  scanReport: ArcGisScanReport,
+  codemodResult: EsriCompatCodemodResult,
+  importHits: ImportHitDispositions,
+  inventory: ArcGisUsageInventory,
+  readiness: MigrationReadiness,
+): JsConversionPlan {
+  const files = buildFileMigrations(scanReport, codemodResult, importHits);
+  const fileBoundaries: Record<JsFileBoundary, number> = { converted: 0, mixed: 0, kept: 0, held: 0 };
+  for (const file of files) {
+    fileBoundaries[file.boundary] += 1;
+  }
+
+  if (readiness === "no-arcgis-usage") {
+    return {
+      recommendedMode: null,
+      rationale:
+        "The scan discovered no ArcGIS module sites or codemod-scoped call sites; there is nothing to keep, repoint or convert.",
+      modes: [
+        { mode: "keep-esri-client", available: false, detail: NO_USAGE_MODE_DETAIL },
+        { mode: "assisted-conversion", available: false, detail: NO_USAGE_MODE_DETAIL },
+        { mode: "complete-honua-conversion", available: false, detail: NO_USAGE_MODE_DETAIL },
+      ],
+      fileBoundaries,
+      files,
+    };
+  }
+
+  const blockingFlags = scanReport.flags.filter((flag) => BLOCKING_FLAGS.has(flag)).sort();
+  const rewrittenFiles = fileBoundaries.converted + fileBoundaries.mixed;
+
+  const completeBlockers: string[] = [];
+  if (inventory.unsupportedModuleSites > 0) {
+    completeBlockers.push(`${countOf(inventory.unsupportedModuleSites, "ArcGIS module site")} left in place`);
+  }
+  if (inventory.manualCallSites > 0) {
+    completeBlockers.push(`${countOf(inventory.manualCallSites, "manual call site")} to port`);
+  }
+  if (inventory.arcgisRuntimeWidgetSites > 0) {
+    completeBlockers.push(
+      `${countOf(inventory.arcgisRuntimeWidgetSites, "widget site")} on the classic ArcGIS widget runtime`,
+    );
+  }
+  if (blockingFlags.length > 0) {
+    completeBlockers.push(`blocking flags: ${blockingFlags.join(", ")}`);
+  }
+  if (fileBoundaries.held > 0) {
+    completeBlockers.push(`${countOf(fileBoundaries.held, "file")} held on codemod errors`);
+  }
+  const completeAvailable = completeBlockers.length === 0;
+
+  const assistedBlockers: string[] = [];
+  if (blockingFlags.length > 0) {
+    assistedBlockers.push(`blocking flags: ${blockingFlags.join(", ")}`);
+  }
+  if (rewrittenFiles === 0) {
+    assistedBlockers.push("the codemod rewrites no file in this app");
+  }
+  if (completeAvailable) {
+    assistedBlockers.push("nothing is held for review; the conversion is complete");
+  }
+  const assistedAvailable = assistedBlockers.length === 0;
+
+  let keepDetail =
+    `Leave all ${countOf(inventory.moduleSites, "ArcGIS module site")} as written and repoint the app's service URLs ` +
+    "at Honua; `honua-migrate services arcgis handoff` records the target endpoint and layer ID mapping.";
+  if (inventory.widgetSites > 0) {
+    keepDetail +=
+      ` ${countOf(inventory.widgetSites, "widget site")} stay on the classic widget runtime, deprecated at ` +
+      `${ARCGIS_WIDGET_DEPRECATION_RELEASE}; Esri plans to begin removing widgets at ${ARCGIS_WIDGET_REMOVAL_RELEASE}.`;
+  }
+
+  const assistedDetail = assistedAvailable
+    ? `${countOf(rewrittenFiles, "file")} rewritten (${fileBoundaries.converted} converted, ${fileBoundaries.mixed} mixed), ` +
+      `${fileBoundaries.kept} kept, ${fileBoundaries.held} held. ` +
+      `${countOf(inventory.unsupportedModuleSites, "ArcGIS module site")} and ` +
+      `${countOf(inventory.manualCallSites, "manual call site")} stay for review, so the app still depends on @arcgis/core.`
+    : `Not available: ${assistedBlockers.join("; ")}.`;
+
+  let completeDetail = `Not available: ${completeBlockers.join("; ")}.`;
+  if (completeAvailable) {
+    completeDetail = "The migrated source imports nothing from ArcGIS and every call site migrated automatically.";
+    const residualNames = [...new Set(inventory.residualArcGisDependencies.map((dependency) => dependency.name))];
+    if (residualNames.length > 0) {
+      completeDetail += ` Remove ${residualNames.sort().join(", ")} from package.json to drop the ArcGIS JS runtime.`;
+    }
+  }
+
+  let recommendedMode: JsConversionMode;
+  let rationale: string;
+  if (blockingFlags.length > 0) {
+    recommendedMode = "keep-esri-client";
+    rationale = `Blocking flags (${blockingFlags.join(", ")}) are outside the 2D conversion path; keep the ArcGIS JS client and repoint its services at Honua.`;
+  } else if (completeAvailable) {
+    recommendedMode = "complete-honua-conversion";
+    rationale = "Every ArcGIS module site was rewritten and every call site migrated automatically.";
+  } else if (assistedAvailable) {
+    recommendedMode = "assisted-conversion";
+    rationale = `${rewrittenFiles} of ${countOf(files.length, "file")} with ArcGIS usage are rewritten; the rest is held with per-file diagnostics.`;
+  } else {
+    recommendedMode = "keep-esri-client";
+    rationale =
+      "The codemod rewrites no file in this app; keep the ArcGIS JS client and repoint its services at Honua.";
+  }
+
+  return {
+    recommendedMode,
+    rationale,
+    modes: [
+      { mode: "keep-esri-client", available: true, detail: keepDetail },
+      { mode: "assisted-conversion", available: assistedAvailable, detail: assistedDetail },
+      { mode: "complete-honua-conversion", available: completeAvailable, detail: completeDetail },
+    ],
+    fileBoundaries,
+    files,
+  };
+}
+
+interface FileMigrationAccumulator {
+  moduleSites: number;
+  handledModuleSites: number;
+  manualCallSites: number;
+  siteDiagnostics: JsFileDiagnostic[];
+  errors: CodemodFileError[];
+}
+
+function buildFileMigrations(
+  scanReport: ArcGisScanReport,
+  codemodResult: EsriCompatCodemodResult,
+  importHits: ImportHitDispositions,
+): JsFileMigration[] {
+  const rootDir = path.resolve(codemodResult.rootDir);
+  const byFile = new Map<string, FileMigrationAccumulator>();
+  const entryFor = (file: string): FileMigrationAccumulator => {
+    const key = path.resolve(file);
+    let entry = byFile.get(key);
+    if (!entry) {
+      entry = { moduleSites: 0, handledModuleSites: 0, manualCallSites: 0, siteDiagnostics: [], errors: [] };
+      byFile.set(key, entry);
+    }
+    return entry;
+  };
+
+  for (const hit of scanReport.imports) {
+    const entry = entryFor(hit.file);
+    entry.moduleSites += 1;
+    if (importHits.handled.has(hit)) {
+      entry.handledModuleSites += 1;
+    } else {
+      entry.siteDiagnostics.push(describeUnhandledModuleSite(hit, importHits.inScope.has(hit), codemodResult.target));
+    }
+  }
+  for (const todo of codemodResult.manualTodos) {
+    const entry = entryFor(todo.file);
+    entry.manualCallSites += 1;
+    entry.siteDiagnostics.push({
+      code: "manual-call-site",
+      line: todo.line,
+      column: todo.column,
+      message: todo.reason,
+      action: `Port this ${todo.kind} call site by hand; --annotate-todos marks it in source.`,
+    });
+  }
+  for (const error of codemodResult.errors ?? []) {
+    entryFor(error.file).errors.push(error);
+  }
+
+  const rewrittenFiles = new Set(
+    codemodResult.fileResults.filter(isRewrittenFile).map((fileResult) => path.resolve(fileResult.file)),
+  );
+
+  return Array.from(byFile.entries())
+    .map(([absolutePath, entry]) => {
+      const boundary = resolveFileBoundary(entry, rewrittenFiles.has(absolutePath));
+      return {
+        file: path.relative(rootDir, absolutePath).split(path.sep).join("/"),
+        boundary,
+        moduleSites: entry.moduleSites,
+        handledModuleSites: entry.handledModuleSites,
+        manualCallSites: entry.manualCallSites,
+        // A held file was left untouched, so per-site verdicts about what the
+        // codemod did would be fiction; the error is the diagnostic.
+        diagnostics:
+          boundary === "held"
+            ? entry.errors.map((error) => describeHeldFile(error, entry.moduleSites))
+            : entry.siteDiagnostics,
+      };
+    })
+    .sort((a, b) => a.file.localeCompare(b.file));
+}
+
+function isRewrittenFile(fileResult: CodemodFileResult): boolean {
+  // TODO annotations alone change comments, not what the file runs on.
+  return (
+    fileResult.rewrittenImports > 0 ||
+    fileResult.rewrittenConstructors > 0 ||
+    fileResult.rewrittenDynamicImports > 0 ||
+    fileResult.rewrittenEventNames > 0 ||
+    fileResult.addedCompatImport ||
+    fileResult.removedArcGisImports > 0
+  );
+}
+
+function resolveFileBoundary(entry: FileMigrationAccumulator, rewritten: boolean): JsFileBoundary {
+  if (entry.errors.length > 0) {
+    return "held";
+  }
+  if (entry.handledModuleSites === entry.moduleSites && entry.manualCallSites === 0) {
+    return "converted";
+  }
+  if (entry.handledModuleSites === 0 && !rewritten) {
+    return "kept";
+  }
+  return "mixed";
+}
+
+function describeHeldFile(error: CodemodFileError, moduleSites: number): JsFileDiagnostic {
+  const verb = error.stage === "transform" ? "parse or transform" : error.stage;
+  return {
+    code: "held-file",
+    message: `The codemod could not ${verb} this file and left it unchanged: ${error.message}`,
+    action: `Fix the ${error.stage} error and rerun the codemod; until then its ${countOf(moduleSites, "ArcGIS module site")} count as unhandled.`,
+  };
+}
+
+function describeUnhandledModuleSite(
+  hit: ArcGisImportHit,
+  inScope: boolean,
+  target: EsriCompatCodemodResult["target"],
+): JsFileDiagnostic {
+  const modulePath = hit.modulePath;
+  const usageStyle = classifyUsageStyle(hit.importClause);
+  if (usageStyle === "amd-require" || usageStyle === "arcgis-import") {
+    const loader = usageStyle === "amd-require" ? "an AMD require/define array" : "$arcgis.import(...)";
+    return {
+      code: "module-loader-not-rewritten",
+      modulePath,
+      message: `${modulePath} is loaded through ${loader}, which the codemod leaves as written.`,
+      action:
+        "Keep this file on the ArcGIS JS client, or rewrite the load as an @arcgis/core ESM import and rerun the codemod.",
+    };
+  }
+
+  if (inScope) {
+    return {
+      code: "import-left-in-place",
+      modulePath,
+      message: `${modulePath} is in codemod scope, but the codemod left this import in place: it is type-only, used only in type positions, or still needed by a manual call site.`,
+      action:
+        "Port or retype the remaining uses against the migrated classes, then remove the import; until then the file still needs @arcgis/core.",
+    };
+  }
+
+  const widgetInfo = widgetModulePathInfo(modulePath);
+  if (widgetInfo) {
+    const disposition = getWidgetDisposition(widgetInfo.widget);
+    const subject = widgetInfo.supportModule
+      ? `a ${widgetInfo.widget} support module`
+      : `the ${widgetInfo.widget} widget`;
+    return {
+      code: "widget-on-arcgis-runtime",
+      modulePath,
+      message:
+        `${modulePath} keeps ${subject} on the classic ArcGIS widget runtime, deprecated at ` +
+        `${ARCGIS_WIDGET_DEPRECATION_RELEASE}; Esri plans to begin removing widgets at ${ARCGIS_WIDGET_REMOVAL_RELEASE}.`,
+      action: disposition
+        ? `Replace what it drives by hand or keep this file on the ArcGIS JS client. Honua disposition for ${widgetInfo.widget}: ${disposition.disposition} (${disposition.target}).`
+        : `No Honua disposition is recorded for ${widgetInfo.widget}; port it by hand or keep this file on the ArcGIS JS client.`,
+    };
+  }
+
+  let message = `${modulePath} has no ${target} mapping in codemod scope.`;
+  if (hit.importClause === "side-effect-import") {
+    message = `${modulePath} is a side-effect import, which the codemod does not rewrite.`;
+  } else if (hit.importClause.startsWith("export ")) {
+    message = `${modulePath} is re-exported, which the codemod does not rewrite.`;
+  }
+  return {
+    code: "unsupported-module",
+    modulePath,
+    message,
+    action: "Port its uses by hand, or keep this file on the ArcGIS JS client and repoint its services at Honua.",
+  };
+}
+
+function countOf(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
