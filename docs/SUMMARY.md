@@ -20,6 +20,7 @@
 
 * [Migration artifact contracts](contracts/migration-contracts.md)
 * [Esri license entitlement enumeration](entitlements.md)
+* [The 2026.1 JavaScript migration cohort](js-migration-cohort-2026.1.md)
 * [The readiness report](readiness-report.md)
 * [esri-access-footprint v0.1 schema](schemas/esri-access-footprint.v0.1.md)
 * [esri-footprint v0.1 schema](schemas/esri-footprint.v0.1.md)

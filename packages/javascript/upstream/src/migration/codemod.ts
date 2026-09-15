@@ -4,6 +4,8 @@ import { type WebMapMapLibreManualGap, webmapJsonToMapLibreStyle } from "@honua/
 import type { WebMapJson } from "@honua/sdk/webmap";
 import ts from "typescript";
 
+import { type ArcGisImportHit, findArcGisModuleSites } from "./scanner.js";
+
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
 const SKIP_DIRS = new Set(["node_modules", "dist", ".git"]);
 const DEFAULT_COMPAT_IMPORT_PATH = "@honua/sdk-esri-compat";
@@ -755,6 +757,13 @@ export interface EsriCompatCodemodResult {
   metrics: CodemodMetrics;
   fileResults: CodemodFileResult[];
   manualTodos: MigrationTodo[];
+  /**
+   * ArcGIS module sites still present in the source the codemod produced (or
+   * left untouched after a transform/write error). An import the codemod did
+   * not rewrite, such as `import type MapView from "@arcgis/core/views/MapView"`,
+   * stays here even when its module is in codemod scope.
+   */
+  residualArcGisModuleSites?: ArcGisImportHit[];
   errors?: CodemodFileError[];
 }
 
@@ -789,6 +798,7 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
   };
   const fileResults: CodemodFileResult[] = [];
   const manualTodos: MigrationTodo[] = [];
+  const residualArcGisModuleSites: ArcGisImportHit[] = [];
   const errors: CodemodFileError[] = [];
 
   for (const file of files) {
@@ -821,6 +831,7 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
         stage: "transform",
         message: error instanceof Error ? error.message : String(error),
       });
+      residualArcGisModuleSites.push(...findArcGisModuleSites(source, file));
       continue;
     }
 
@@ -856,6 +867,7 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
             stage: "write",
             message: error instanceof Error ? error.message : String(error),
           });
+          residualArcGisModuleSites.push(...findArcGisModuleSites(source, file));
           continue;
         }
       }
@@ -883,6 +895,7 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
         manualTodos: fileResult.manualTodos,
       });
     }
+    residualArcGisModuleSites.push(...findArcGisModuleSites(fileResult.nextSource, file));
   }
 
   return {
@@ -902,6 +915,7 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
     metrics,
     fileResults: fileResults.sort((a, b) => a.file.localeCompare(b.file)),
     manualTodos: manualTodos.sort(compareTodos),
+    residualArcGisModuleSites,
     errors: errors.length > 0 ? errors.sort(compareFileErrors) : undefined,
   };
 }

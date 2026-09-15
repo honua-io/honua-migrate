@@ -54,6 +54,16 @@ export interface ArcGisScanReport {
   flags: string[];
 }
 
+/**
+ * Every ArcGIS module site in one source text, whatever its loading style:
+ * ESM import/re-export/side-effect, `import(...)`, `require(...)`, AMD arrays
+ * and `$arcgis.import(...)`. `scanArcGisUsage` counts these per file; the
+ * codemod runs it over its own output to report what it left behind.
+ */
+export function findArcGisModuleSites(source: string, file: string): ArcGisImportHit[] {
+  return [...findArcGisImports(source, file), ...findModuleLoaderHits(source, file)];
+}
+
 export function scanArcGisUsage(rootDir: string): ArcGisScanReport {
   const { sources: files, manifests } = collectScanFiles(rootDir);
   const imports: ArcGisImportHit[] = [];
@@ -445,15 +455,17 @@ function findEsriLeafletImports(source: string, file: string): ArcGisImportHit[]
 function extractImportedSymbols(importClause: string): string[] {
   const symbols: string[] = [];
 
-  const defaultImportMatch = importClause.match(/^([A-Za-z_$][A-Za-z0-9_$]*)/);
+  // `import type X` / `import { type X }`: the modifier is not a binding name.
+  const clause = importClause.replace(/^type\s+/, "");
+  const defaultImportMatch = clause.match(/^([A-Za-z_$][A-Za-z0-9_$]*)/);
   if (defaultImportMatch) {
     symbols.push(defaultImportMatch[1]);
   }
 
-  const namedImportMatch = importClause.match(/\{([^}]+)\}/);
+  const namedImportMatch = clause.match(/\{([^}]+)\}/);
   if (namedImportMatch) {
     for (const part of namedImportMatch[1].split(",")) {
-      const token = part.trim();
+      const token = part.trim().replace(/^type\s+/, "");
       if (!token) {
         continue;
       }
