@@ -70,8 +70,8 @@ See the JSON Schema for per-object field tables (`User`, `Role`, `Group`,
 ## Auth-mapping transform
 
 `honua_esri_assess.footprint.access_mapping.map_to_honua_rbac` is a pure
-function over an access footprint that emits the typed mapping target the
-closed migration product consumes:
+function over an access footprint that emits the typed mapping target
+migration planning consumes:
 
 - `honuaRoles` — one Honua role per Esri role, with the Honua permission
   verbs the role's privileges imply. Unmapped Esri privileges are surfaced in

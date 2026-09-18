@@ -12,7 +12,7 @@ complexity, manual-review flags, suggested sequencing, and diagnostics before
 the footprint is handed to Honua.
 
 It is **not** a second handoff contract. `EsriFootprint.json` remains the sole
-machine-readable contract consumed by the closed Honua migration product. The
+machine-readable contract the migration commands consume. The
 report is read-only by construction: it is rendered from an already captured
 footprint and does not contact ArcGIS Online, ArcGIS Server, FileGDB paths,
 Honua services, or any telemetry endpoint.

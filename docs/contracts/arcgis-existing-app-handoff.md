@@ -1,12 +1,17 @@
+---
+type: reference
+title: "ArcGIS existing-app handoff"
+description: "The bounded incremental import path for one ArcGIS service, and the source-to-target id mapping a retained Esri JS application needs to keep working."
+resource: "https://github.com/honua-io/honua-migrate/tree/trunk/schemas"
+tags: [arcgis, handoff, incremental]
+---
 # ArcGIS existing-app handoff
 
 `honua-migrate services arcgis handoff` documents the bounded incremental
 import path for one ArcGIS service: discover a service, review its
 dependency closure and fidelity in a plan, apply it, verify the result, and
 export the target endpoint plus the source-to-target service/layer ID mapping
-that a retained Esri JS application will use. It is the CLI surface for the
-"existing-app handoff" acceptance criteria on honua-io/honua-migrate#92 and
-the reconciliation/status acceptance criteria on honua-io/honua-migrate#95.
+that a retained Esri JS application will use.
 
 ## Scope and dependency closure
 

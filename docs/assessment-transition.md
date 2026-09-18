@@ -1,7 +1,7 @@
 ---
 type: guide
 title: "Assess before you migrate"
-description: "honua-migrate assess is the read-only entry point: what it inspects, what it never writes, and how its output feeds the rest of the migration."
+description: "The assess command moved from honua-esri-assess to honua-migrate: what each legacy entry point maps to, and how long the old names keep working."
 resource: "https://pypi.org/project/honua-migrate/"
 tags: [assess, read-only, workflow]
 ---
