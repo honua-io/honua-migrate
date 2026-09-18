@@ -6,15 +6,15 @@ tags: [entitlements, licensing, esri]
 ---
 # Entitlement Enumeration
 
-E6 adds read-only enumeration for Esri license entitlements and extension
-observations. The collector output is designed to slot into the optional
+The assessment enumerates Esri license entitlements and extension
+observations read-only. The collector output is designed to slot into the optional
 `portal.licensing` and `server.licensing` blocks in `EsriFootprint.json` v0.1.
 
 `EsriFootprint.json` remains the sole handoff contract; entitlement
 observations only reach the closed migration product when a `scan` handler
 attaches them to the emitted footprint.
 
-> **Status (E9 CLI consolidation).** The interim standalone
+> **Status.** The interim standalone
 > `honua-esri-assess entitlements` subcommand has been retired alongside the
 > CLI consolidation in [E9](../README.md#command-line-usage). The Python
 > collectors below remain the supported interim surface until scanner

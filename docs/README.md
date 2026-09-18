@@ -16,8 +16,8 @@ Pick the path that matches where you are.
 ## Evaluating whether to migrate
 
 Start with [what this repository owns](ownership-and-deprecation.md) for the
-scope, then [assess before you migrate](assessment-transition.md) for what the
-read-only pass actually does. If licensing is the question, the
+scope. [The assess command transition](assessment-transition.md) covers the move
+from `honua-esri-assess` if you used the older tooling. If licensing is the question, the
 [Esri IP and licensing guardrails](compliance/esri-ip-and-licensing-guardrails.md)
 set out the rules the tooling is built to observe.
 
