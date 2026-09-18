@@ -14,15 +14,14 @@ tags: [schema, footprint, v0.1]
 
 ## Purpose
 
-`EsriFootprint.json` is the read-only artifact that the open-source
-`honua-esri-assess` scanner emits and the **closed Honua migration product**
-ingests. The contract describes the inventory of a single Esri source
+`EsriFootprint.json` is the read-only artifact the assessment scan emits and
+the report, capability crosswalk and migration planning consume. The contract describes the inventory of a single Esri source
 (ArcGIS Online, ArcGIS Server, or FileGDB) in enough detail for the
 migration product to plan a Honua takeover *without round-tripping back to
 the source system*.
 
-The closed migration product is the sole intended consumer at v0.1. Other
-tools may read the file, but no other consumer is part of the contract.
+Honua's own migration commands are the intended consumers at v0.1. Other
+tools may read the file, but no external consumer is part of the contract.
 
 ## What this document covers
 
@@ -213,7 +212,7 @@ The Python entitlement collectors (`honua_esri_assess.entitlements`) emit
 `{ target, licensing, diagnostics }`, where `licensing` contains the same
 nested facet fragment documented here. That JSON fragment is a validation and
 integration surface only — the standalone `entitlements` CLI was retired in
-E9, and the closed migration product's handoff remains full
+the CLI consolidation, and the handoff remains the full
 `EsriFootprint.json`.
 
 ### ExtensionEntitlement
@@ -467,7 +466,7 @@ migration product.
 
 These items are deliberately deferred so the v0.1 contract stays focused on
 read-only inventory and typed diagnostics. They are candidates for v0.2 once
-the closed migration product ingests real fixture-backed footprints.
+migration planning ingests real fixture-backed footprints.
 
 - Per-item readiness or risk flags.
 - Explicit dependency edges across kinds (webmap → service → layer) — landed

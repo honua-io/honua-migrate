@@ -15,8 +15,8 @@ Schema body: [`docs/schemas/esri-footprint.v0.1.md`](./esri-footprint.v0.1.md)
 ## Scope
 
 This policy governs the `EsriFootprint.json` artifact emitted by
-`honua-esri-assess`. It is the sole supported handoff into the closed Honua
-migration product.
+`honua-esri-assess`. It is the sole supported handoff out of an
+assessment.
 
 The policy does **not** govern:
 
@@ -87,7 +87,7 @@ mistake.
 
 ## Closed-product pinning (v0.x)
 
-The closed Honua migration product declares the schema line it accepts by
+A consumer declares the schema line it accepts by
 pinning to an **exact `major.minor`** with a wildcard patch:
 
 ```
@@ -99,10 +99,10 @@ patch within the line is accepted, because the producer guarantees no
 breaking changes within a minor line
 (see [Pre-1.0 (v0.x) stance](#pre-10-v0x-stance)).
 
-Behavior the closed product implements:
+Behavior a conforming consumer implements:
 
 - Read `schemaVersion` from the incoming footprint. At v0.1 the literal
-  in-band value is `"v0.1"`; the closed product compares it to its pinned
+  in-band value is `"v0.1"`; a consumer compares it to its pinned
   major.minor directly.
 - If the document's `major.minor` does not match the pinned `major.minor`,
   reject with a typed error. Pre-1.0, any minor mismatch — higher *or*
@@ -119,7 +119,7 @@ the artifact rather than encode a patch into the schema pin. The schema pin
 is for shape compatibility only.
 
 Adopting a new minor (`0.2.x`) is **opt-in** for the consumer; the producer
-will keep publishing the previous line until the closed product is ready.
+will keep publishing the previous line until consumers are ready.
 
 ## Deprecation policy
 
@@ -179,7 +179,7 @@ Every `EsriFootprint.json` emitted by this tool:
 
 ## Consumer expectations
 
-A consumer of `EsriFootprint.json` (the closed migration product, or any
+A consumer of `EsriFootprint.json` (Honua's migration commands, or any
 third-party reader) MUST:
 
 - **Reject on incompatible major.** Refuse documents whose

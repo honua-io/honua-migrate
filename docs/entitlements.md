@@ -11,7 +11,7 @@ observations read-only. The collector output is designed to slot into the option
 `portal.licensing` and `server.licensing` blocks in `EsriFootprint.json` v0.1.
 
 `EsriFootprint.json` remains the sole handoff contract; entitlement
-observations only reach the closed migration product when a `scan` handler
+observations only reach downstream consumers when a `scan` handler
 attaches them to the emitted footprint.
 
 > **Status.** The interim standalone
