@@ -11,9 +11,7 @@ tags: [arcgis, handoff, incremental]
 import path for one ArcGIS service: discover a service, review its
 dependency closure and fidelity in a plan, apply it, verify the result, and
 export the target endpoint plus the source-to-target service/layer ID mapping
-that a retained Esri JS application will use. It is the CLI surface for the
-"existing-app handoff" acceptance criteria on honua-io/honua-migrate#92 and
-the reconciliation/status acceptance criteria on honua-io/honua-migrate#95.
+that a retained Esri JS application will use.
 
 ## Scope and dependency closure
 
