@@ -206,6 +206,7 @@ describe("denominator-complete usage inventory", () => {
         '<script type="module">',
         "  await layer.queryObjectIds({ geometry: null });",
         "  await layer.queryRelatedFeatures({ relationshipId: 0, objectIds: [1] });",
+        '  const extra = { portalItem: { id: "51c851fef66143959986b473b345b7ca" } };',
         '  viewElement.addEventListener("arcgisViewClick", () => {});',
         "</script>",
         "",
@@ -229,7 +230,10 @@ describe("denominator-complete usage inventory", () => {
     expect(report.readiness).not.toBe("ready");
     expect(report.readiness).not.toBe("no-arcgis-usage");
     expect(report.scanReport.flags).toContain("map-components-detected");
-    expect(report.scanReport.portalItemIds).toEqual(["00113543095f45e78e521e316dc447dd"]);
+    expect(report.scanReport.portalItemIds).toEqual([
+      "00113543095f45e78e521e316dc447dd",
+      "51c851fef66143959986b473b345b7ca",
+    ]);
     expect(report.usageInventory.moduleSitesByStyle["map-component"]).toBe(6);
     expect(report.usageInventory.moduleSitesByStyle["static-import"]).toBe(1);
     const htmlFile = report.conversion.files.find((file) => file.file === "index.html");

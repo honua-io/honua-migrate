@@ -294,11 +294,16 @@ function scriptKindForFile(file: string): ts.ScriptKind {
  */
 function findArcGisMapItemIds(source: string): string[] {
   const ids: string[] = [];
-  const pattern = /<arcgis-map\b[^>]*\bitem-id\s*=\s*["']([A-Za-z0-9]+)["']/gi;
-  let match: RegExpExecArray | null = pattern.exec(source);
-  while (match !== null) {
-    ids.push(match[1]);
-    match = pattern.exec(source);
+  const patterns = [
+    /<arcgis-map\b[^>]*\bitem-id\s*=\s*["']([A-Za-z0-9]+)["']/gi,
+    /portalItem\s*:\s*\{[^}]*\bid\s*:\s*["']([A-Za-z0-9]+)["']/gi,
+  ];
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null = pattern.exec(source);
+    while (match !== null) {
+      ids.push(match[1]);
+      match = pattern.exec(source);
+    }
   }
   return ids;
 }
