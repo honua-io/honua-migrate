@@ -31,9 +31,10 @@ The `codemod` report's `readiness` is one of:
 
 - `moduleSites` counts every ArcGIS module reference. `moduleSitesByStyle`
   splits it into static and dynamic ESM imports, CommonJS `require`, AMD
-  `require`/`define` arrays, and `$arcgis.import` calls, and
-  `handledModuleSites` plus `unsupportedModuleSites` add up to it. The codemod
-  leaves AMD and `$arcgis.import` loads as written.
+  `require`/`define` arrays, `$arcgis.import` calls, and map components
+  (`<arcgis-*>` elements, plus component API calls in a file that loads no
+  ArcGIS module). `handledModuleSites` plus `unsupportedModuleSites` add up to
+  it. The codemod leaves AMD, `$arcgis.import`, and map components as written.
 - `codemodScopedCallSites` is `automaticCallSites` plus `manualCallSites`.
 - `widgetRuntimeRequirements` says, per widget, whether its sites move onto a
   Honua compat widget (`honua`) or still need the classic ArcGIS widget runtime
@@ -80,6 +81,7 @@ a team can ship converted files first. Each held site carries a `code`, a
 | `manual-call-site` | A codemod-scoped call the codemod will not guess at; carries `line` and `column`. |
 | `import-left-in-place` | The module is in codemod scope, but the import is type-only, used only in type positions, or still needed by a manual call site. |
 | `module-loader-not-rewritten` | An AMD `require`/`define` array or a `$arcgis.import(...)` call. |
+| `map-component-not-rewritten` | An `<arcgis-*>` element, or a component API call such as `queryRelatedFeatures` in a file that does not load an ArcGIS module. |
 | `widget-on-arcgis-runtime` | A widget or widget support module, such as a view model, outside codemod scope; the action names its Honua disposition. |
 | `unsupported-module` | No mapping for the target, a side-effect import, or a re-export. |
 | `held-file` | A read, parse or write error; the file's module sites count as unhandled. |

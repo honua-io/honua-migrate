@@ -74,6 +74,7 @@ describe("denominator-complete usage inventory", () => {
         require: 0,
         "amd-require": 3,
         "arcgis-import": 3,
+        "map-component": 0,
       },
       handledModuleSites: 4,
       unsupportedModuleSites: 7,
@@ -192,6 +193,54 @@ describe("denominator-complete usage inventory", () => {
     expect(evaluateWidgetGate(widgetReport, 0).passed).toBe(false);
   });
 
+  it("counts an HTML map-component page as kept ArcGIS usage instead of an empty ready scan", () => {
+    const root = makeTempProject();
+    fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: "components", private: true }), "utf8");
+    fs.writeFileSync(
+      path.join(root, "index.html"),
+      [
+        "<arcgis-map>",
+        "  <arcgis-zoom></arcgis-zoom>",
+        "  <arcgis-legend></arcgis-legend>",
+        "</arcgis-map>",
+        '<script type="module">',
+        "  await layer.queryObjectIds({ geometry: null });",
+        "  await layer.queryRelatedFeatures({ relationshipId: 0, objectIds: [1] });",
+        '  viewElement.addEventListener("arcgisViewClick", () => {});',
+        "</script>",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(root, "imported.js"),
+      [
+        'import FeatureLayer from "@arcgis/core/layers/FeatureLayer.js";',
+        "export async function load(layer) {",
+        "  return layer.queryRelatedFeatures({ relationshipId: 0, objectIds: [1] });",
+        "}",
+        "export const Layer = FeatureLayer;",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const report = buildReport(root);
+    expect(report.readiness).not.toBe("ready");
+    expect(report.readiness).not.toBe("no-arcgis-usage");
+    expect(report.scanReport.flags).toContain("map-components-detected");
+    expect(report.usageInventory.moduleSitesByStyle["map-component"]).toBe(6);
+    expect(report.usageInventory.moduleSitesByStyle["static-import"]).toBe(1);
+    const htmlFile = report.conversion.files.find((file) => file.file === "index.html");
+    expect(htmlFile?.boundary).toBe("kept");
+    expect(htmlFile?.diagnostics.every((diagnostic) => diagnostic.code === "map-component-not-rewritten")).toBe(true);
+    const importedFile = report.conversion.files.find((file) => file.file === "imported.js");
+    expect(importedFile?.diagnostics.some((diagnostic) => diagnostic.code === "map-component-not-rewritten")).toBe(
+      false,
+    );
+    expect(report.conversion.recommendedMode).toBe("keep-esri-client");
+  });
+
   it("counts an AMD-only app as ArcGIS usage outside codemod scope instead of an empty, ready scan", () => {
     const root = makeTempProject();
     fs.writeFileSync(path.join(root, "package.json"), "{ not json", "utf8");
@@ -230,7 +279,7 @@ describe("denominator-complete usage inventory", () => {
     expect(result.stdout).toContain("readiness=assisted");
     expect(result.stdout).toContain(
       "usageInventory=moduleSites:11,handled:4,unsupported:7,static-import:5,dynamic-import:0,require:0," +
-        "amd-require:3,arcgis-import:3,callSites:4,automatic:4,manual:0,widgetSites:5,honuaWidgets:1," +
+        "amd-require:3,arcgis-import:3,map-component:0,callSites:4,automatic:4,manual:0,widgetSites:5,honuaWidgets:1," +
         "arcgisRuntimeWidgets:4,residualArcGisDependencies:3\n",
     );
     expect(result.stdout).toContain(

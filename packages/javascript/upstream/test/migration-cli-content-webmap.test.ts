@@ -128,4 +128,47 @@ describe("migration cli content-webmap", () => {
     expect(report.manualInterventionNeeded).toBe(false);
     expect(report.warningCodes).toEqual({});
   }, 30_000);
+
+  it("writes the report when the web map has warnings", () => {
+    ensureBuiltCliArtifacts();
+    const root = makeTempDir();
+    const inputPath = path.join(root, "csv-webmap.json");
+    const outputPath = path.join(root, "csv-webmap.honua.json");
+    const reportPath = path.join(root, "csv-webmap.report.json");
+    fs.writeFileSync(
+      inputPath,
+      `${JSON.stringify(
+        {
+          operationalLayers: [
+            {
+              id: "notes",
+              title: "Notes",
+              layerType: "CSV",
+              url: "https://example.com/notes.csv",
+            },
+          ],
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+
+    const result = runCli(
+      ["content-webmap", "--input", inputPath, "--output", outputPath, "--report", reportPath],
+      getProjectRoot(),
+    );
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain("manualIntervention=yes");
+    expect(fs.existsSync(outputPath)).toBe(true);
+    const report = JSON.parse(fs.readFileSync(reportPath, "utf8")) as {
+      warningCount: number;
+      manualInterventionNeeded: boolean;
+      warningCodes: Record<string, number>;
+    };
+    expect(report.warningCount).toBeGreaterThan(0);
+    expect(report.manualInterventionNeeded).toBe(true);
+    expect(report.warningCodes["unsupported-layer-type"]).toBe(1);
+  }, 30_000);
 });

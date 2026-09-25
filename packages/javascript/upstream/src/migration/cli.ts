@@ -875,14 +875,21 @@ function buildContentWebMapReport(
   warningCodes: Record<string, number>;
   manualInterventionNeeded: boolean;
 } {
+  const manualInterventionWarningCodes = new Set([
+    "unsupported-renderer",
+    "unsupported-layer-type",
+    "unsupported-feature-collection",
+    "unsupported-arcade-expression",
+    "unsupported-3d-property",
+    "complex-arcade",
+    "complex-label-expression",
+  ]);
   const warningCodes: Record<string, number> = {};
   for (const warning of result.warnings) {
     warningCodes[warning.code] = (warningCodes[warning.code] ?? 0) + 1;
   }
 
-  const manualInterventionNeeded = result.warnings.some((warning) =>
-    MANUAL_INTERVENTION_WARNING_CODES.has(warning.code),
-  );
+  const manualInterventionNeeded = result.warnings.some((warning) => manualInterventionWarningCodes.has(warning.code));
 
   return {
     inputPath,
@@ -896,16 +903,6 @@ function buildContentWebMapReport(
     manualInterventionNeeded,
   };
 }
-
-const MANUAL_INTERVENTION_WARNING_CODES = new Set([
-  "unsupported-renderer",
-  "unsupported-layer-type",
-  "unsupported-feature-collection",
-  "unsupported-arcade-expression",
-  "unsupported-3d-property",
-  "complex-arcade",
-  "complex-label-expression",
-]);
 
 function runFixtures(args: ParsedArgs): void {
   const outputPlan = preflightOutputPlan({ files: args.reportPath ? [args.reportPath] : [], force: args.force });

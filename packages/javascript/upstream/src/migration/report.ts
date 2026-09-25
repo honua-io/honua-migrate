@@ -18,6 +18,7 @@ import {
   type ArcGisDependencyManifest,
   type ArcGisImportHit,
   type ArcGisScanReport,
+  MAP_COMPONENT_CLAUSE,
   scanArcGisUsage,
   summarizeArcGisScan,
 } from "./scanner.js";
@@ -76,7 +77,13 @@ export interface ArcGisModuleSummary {
   count: number;
 }
 
-export type ArcGisUsageStyle = "static-import" | "dynamic-import" | "require" | "amd-require" | "arcgis-import";
+export type ArcGisUsageStyle =
+  | "static-import"
+  | "dynamic-import"
+  | "require"
+  | "amd-require"
+  | "arcgis-import"
+  | "map-component";
 
 /**
  * `no-arcgis-usage` means the scan discovered zero ArcGIS module sites and zero
@@ -157,6 +164,7 @@ export type JsFileDiagnosticCode =
   | "manual-call-site"
   | "import-left-in-place"
   | "module-loader-not-rewritten"
+  | "map-component-not-rewritten"
   | "widget-on-arcgis-runtime"
   | "unsupported-module";
 
@@ -467,9 +475,9 @@ function isImportHitHandledByCodemod(
   codemodResult: EsriCompatCodemodResult,
 ): boolean {
   const usageStyle = classifyUsageStyle(hit.importClause);
-  if (usageStyle === "amd-require" || usageStyle === "arcgis-import") {
-    // The codemod rewrites ESM and CommonJS sources; module-loader arrays and
-    // `$arcgis.import(...)` calls stay as written, whatever module they name.
+  if (usageStyle === "amd-require" || usageStyle === "arcgis-import" || usageStyle === "map-component") {
+    // The codemod rewrites ESM and CommonJS sources. Module-loader arrays,
+    // `$arcgis.import(...)` calls, and map components stay as written.
     return false;
   }
 
@@ -504,6 +512,7 @@ function buildUsageInventory(
     require: 0,
     "amd-require": 0,
     "arcgis-import": 0,
+    "map-component": 0,
   };
   const widgetRows = new Map<string, WidgetRuntimeRequirement>();
   let handledModuleSites = 0;
@@ -660,6 +669,9 @@ function classifyUsageStyle(importClause: string): ArcGisUsageStyle {
   }
   if (importClause === ARCGIS_IMPORT_CLAUSE) {
     return "arcgis-import";
+  }
+  if (importClause === MAP_COMPONENT_CLAUSE) {
+    return "map-component";
   }
   return "static-import";
 }
@@ -959,6 +971,16 @@ function describeUnhandledModuleSite(
       message: `${modulePath} is loaded through ${loader}, which the codemod leaves as written.`,
       action:
         "Keep this file on the ArcGIS JS client, or rewrite the load as an @arcgis/core ESM import and rerun the codemod.",
+    };
+  }
+
+  if (usageStyle === "map-component") {
+    return {
+      code: "map-component-not-rewritten",
+      modulePath,
+      message: `${modulePath} is a map component or a component API call, which the codemod does not rewrite.`,
+      action:
+        "Keep this file on the ArcGIS Maps SDK components, or port the view, layer, and related-record calls onto Honua by hand.",
     };
   }
 
