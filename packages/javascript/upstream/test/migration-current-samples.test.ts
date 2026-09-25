@@ -44,6 +44,7 @@ describe("current ArcGIS sample corpus", () => {
     expect(trees.report.unhandledArcGisModules.map((module) => module.modulePath)).not.toContain(
       "@arcgis/core/layers/FeatureLayer.js",
     );
+    expect(writtenPage("intro-featurelayer")).toContain('new MapCompat({ basemap: "hybrid" })');
 
     expect(counties.report.conversion.recommendedMode).toBe("assisted-conversion");
     const countyModules = counties.report.unhandledArcGisModules.map((module) => module.modulePath);
@@ -63,7 +64,7 @@ describe("current ArcGIS sample corpus", () => {
 
     const relatedPage = writtenPage("query-related-features");
     expect(relatedPage).toContain(
-      'const honuaView = new MapViewCompat({ container: document.getElementById("honua-map") });',
+      'const honuaView = new MapViewCompat({ container: document.getElementById("honua-map"), map: new WebMapCompat({ portalItem: { id: "00113543095f45e78e521e316dc447dd" } }) });',
     );
     expect(relatedPage).toContain("await honuaView.when()");
     expect(relatedPage).toContain("await honuaView.whenLayerView(layer)");

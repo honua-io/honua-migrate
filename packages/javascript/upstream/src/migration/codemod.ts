@@ -1023,6 +1023,8 @@ interface ShellElement {
   tag: string;
   symbol: string;
   id: string;
+  itemId?: string;
+  basemap?: string;
   children: ShellElement[];
 }
 
@@ -1044,7 +1046,14 @@ function parseShellElements(source: string): ShellElement[] {
     const existingId = /\sid\s*=\s*["']([^"']+)["']/i.exec(match[3])?.[1];
     const id =
       existingId ?? (tag === "arcgis-map" ? "honua-map" : `honua-${tag.slice("arcgis-".length)}-${++generated}`);
-    const element: ShellElement = { tag, symbol: SHELL_COMPONENT_SYMBOLS[tag] ?? tag, id, children: [] };
+    const element: ShellElement = {
+      tag,
+      symbol: SHELL_COMPONENT_SYMBOLS[tag] ?? tag,
+      id,
+      itemId: /\bitem-id\s*=\s*["']([A-Za-z0-9]+)["']/i.exec(match[3])?.[1],
+      basemap: /\bbasemap\s*=\s*["']([^"']+)["']/i.exec(match[3])?.[1],
+      children: [],
+    };
     const parent = stack[stack.length - 1];
     if (parent) {
       parent.children.push(element);
@@ -1065,6 +1074,22 @@ function flattenShell(elements: readonly ShellElement[]): ShellElement[] {
   return flat;
 }
 
+function mapConstructorForShell(element: ShellElement): { symbol: "WebMapCompat" | "MapCompat"; expression: string } {
+  if (element.itemId) {
+    return {
+      symbol: "WebMapCompat",
+      expression: `new WebMapCompat({ portalItem: { id: ${JSON.stringify(element.itemId)} } })`,
+    };
+  }
+  if (element.basemap) {
+    return {
+      symbol: "MapCompat",
+      expression: `new MapCompat({ basemap: ${JSON.stringify(element.basemap)} })`,
+    };
+  }
+  return { symbol: "MapCompat", expression: "new MapCompat()" };
+}
+
 function emitShellConstructors(
   element: ShellElement,
   lines: string[],
@@ -1073,7 +1098,11 @@ function emitShellConstructors(
 ): string {
   if (element.tag === "arcgis-map") {
     symbols.add("MapViewCompat");
-    lines.push(`const honuaView = new MapViewCompat({ container: document.getElementById("${element.id}") });`);
+    const mapForView = mapConstructorForShell(element);
+    symbols.add(mapForView.symbol);
+    lines.push(
+      `const honuaView = new MapViewCompat({ container: document.getElementById("${element.id}"), map: ${mapForView.expression} });`,
+    );
     for (const child of element.children) {
       emitShellConstructors(child, lines, symbols, usedNames);
     }
