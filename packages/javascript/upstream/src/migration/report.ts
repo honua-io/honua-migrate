@@ -493,6 +493,9 @@ function isImportHitHandledByCodemod(
     return REWRITTEN_SHELL_COMPONENT_PATHS.has(hit.modulePath);
   }
   if (usageStyle === "arcgis-import") {
+    if (hit.modulePath.includes("geometry/operators/geodeticLengthOperator")) {
+      return codemodResult.target === "honua-compat";
+    }
     const kind = supportedKindForModulePath(hit.modulePath);
     // Supported `$arcgis.import` loads are rewritten. Residual sites decide whether this one was removed.
     return kind !== undefined && isKindSupportedForTarget(kind, codemodResult.target);
@@ -980,6 +983,24 @@ function describeUnhandledModuleSite(
 ): JsFileDiagnostic {
   const modulePath = hit.modulePath;
   const usageStyle = classifyUsageStyle(hit.importClause);
+  if (modulePath.includes("/smartMapping/")) {
+    return {
+      code: "module-loader-not-rewritten",
+      modulePath,
+      message: `${modulePath} is an ArcGIS smart-mapping helper. Honua does not reproduce those statistics or generated renderers.`,
+      action: "Build the renderer or histogram from your own feature query, or keep this call on the ArcGIS client.",
+    };
+  }
+
+  if (modulePath.endsWith("/arcgis-cdn")) {
+    return {
+      code: "map-component-not-rewritten",
+      modulePath,
+      message: `${modulePath} still loads the ArcGIS Maps SDK from the CDN.`,
+      action: "Remove the CDN script after every ArcGIS load has been rewritten onto @honua/sdk-esri-compat.",
+    };
+  }
+
   if ((usageStyle === "amd-require" || usageStyle === "arcgis-import") && !inScope) {
     const loader = usageStyle === "amd-require" ? "an AMD require/define array" : "$arcgis.import(...)";
     return {

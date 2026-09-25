@@ -25,6 +25,8 @@ export const REWRITTEN_SHELL_COMPONENT_PATHS = new Set([
   "@arcgis/map-components/arcgis-layer-list",
   "@arcgis/map-components/viewOnReady",
   "@arcgis/map-components/whenLayerView",
+  "@arcgis/map-components/arcgis-popup",
+  "@arcgis/map-components/arcgis-cdn",
 ]);
 
 const MAP_COMPONENT_METHODS = ["queryRelatedFeatures", "queryObjectIds", "whenLayerView", "viewOnReady"] as const;

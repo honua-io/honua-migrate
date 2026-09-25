@@ -38,13 +38,16 @@ describe("current ArcGIS sample corpus", () => {
     const counties = migrate("featurelayer-query");
     const related = migrate("query-related-features");
 
-    expect(trees.report.conversion.recommendedMode).toBe("assisted-conversion");
+    expect(trees.report.conversion.recommendedMode).toBe("complete-honua-conversion");
     expect(trees.codemodResult.filesChanged).toBe(1);
-    expect(trees.report.conversion.files.find((file) => file.file === "index.html")?.boundary).toBe("mixed");
+    expect(trees.report.conversion.files.find((file) => file.file === "index.html")?.boundary).toBe("converted");
     expect(trees.report.unhandledArcGisModules.map((module) => module.modulePath)).not.toContain(
       "@arcgis/core/layers/FeatureLayer.js",
     );
-    expect(writtenPage("intro-featurelayer")).toContain('new MapCompat({ basemap: "hybrid" })');
+    const treesPage = writtenPage("intro-featurelayer");
+    expect(treesPage).toContain('new MapCompat({ basemap: "hybrid" })');
+    expect(treesPage).toContain("FeatureLayerCompat");
+    expect(treesPage).not.toContain('src="%CDN%"');
 
     expect(counties.report.conversion.recommendedMode).toBe("assisted-conversion");
     const countyModules = counties.report.unhandledArcGisModules.map((module) => module.modulePath);
@@ -77,5 +80,27 @@ describe("current ArcGIS sample corpus", () => {
     expect(relatedPage).not.toContain("<arcgis-zoom");
     expect(relatedPage).not.toContain("<arcgis-legend");
     expect(relatedPage).not.toContain("<arcgis-expand");
+  });
+
+  it("rewrites the popup shell and geodetic length, and leaves smart-mapping statistics held", () => {
+    const popup = migrate("popup-actions");
+    const popupModules = popup.report.unhandledArcGisModules.map((module) => module.modulePath);
+    expect(popupModules).not.toContain("@arcgis/core/geometry/operators/geodeticLengthOperator.js");
+    expect(popup.report.conversion.recommendedMode).not.toBe("keep-esri-client");
+    const popupPage = writtenPage("popup-actions");
+    expect(popupPage).toContain("geometryEngineCompat.geodesicLength(geometry, unit)");
+    expect(popupPage).not.toContain("geodeticLengthOperator.js");
+    expect(popupPage).not.toContain('src="%CDN%"');
+
+    const sizes = migrate("visualization-sm-size");
+    const sizeModules = sizes.report.unhandledArcGisModules.map((module) => module.modulePath);
+    expect(sizes.report.conversion.recommendedMode).toBe("assisted-conversion");
+    expect(sizeModules).toContain("@arcgis/core/smartMapping/renderers/size.js");
+    expect(sizeModules).toContain("@arcgis/core/smartMapping/statistics/histogram.js");
+    expect(sizeModules).toContain("@arcgis/map-components/arcgis-slider-size-legacy");
+    expect(sizeModules).not.toContain("@arcgis/map-components/arcgis-popup");
+    const sizePage = writtenPage("visualization-sm-size");
+    expect(sizePage).toContain("new PopupCompat({ view: honuaView, container:");
+    expect(sizePage).toContain('src="%CDN%"');
   });
 });

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>%title% | Sample | %PROD_NAME_LONG%</title>
+
+    <!-- Load the ArcGIS Maps SDK for JavaScript from CDN -->
+    <script type="module" src="%CDN%"></script>
+
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      #containerDiv {
+        background-color: var(--calcite-color-foreground-1);
+        padding: var(--calcite-spacing-sm);
+        text-align: center;
+        min-width: 260px;
+      }
+
+      #title {
+        font-size: var(--calcite-font-size-lg);
+      }
+    </style>
+  </head>
+
+  <body>
+    <arcgis-map basemap="gray-vector" center="-85.0502, 33.125524" zoom="5">
+      <arcgis-popup slot="popup"></arcgis-popup>
+      <arcgis-zoom slot="top-left"></arcgis-zoom>
+      <div id="containerDiv" slot="bottom-left">
+        <span id="title"></span>
+        <arcgis-slider-size-legacy></arcgis-slider-size-legacy>
+      </div>
+      <arcgis-legend slot="bottom-right"></arcgis-legend>
+    </arcgis-map>
+
+    <script type="module">
+      const [FeatureLayer, sizeRendererCreator, histogram] = await $arcgis.import([
+        "@arcgis/core/layers/FeatureLayer.js",
+        "@arcgis/core/smartMapping/renderers/size.js",
+        "@arcgis/core/smartMapping/statistics/histogram.js",
+      ]);
+      // Create FeatureLayer instance with popupTemplate.
+      const layer = new FeatureLayer({
+        title: "Poverty in the southeast U.S.",
+        url: "https://services.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/counties_politics_poverty/FeatureServer/0",
+        popupTemplate: {
+          // Autocasts as new PopupTemplate().
+          title: "{COUNTY}, {STATE}",
+          content: "{POP_POVERTY} of {TOTPOP_CY} people live below the poverty line.",
+          fieldInfos: [
+            {
+              fieldName: "POP_POVERTY",
+              format: {
+                digitSeparator: true,
+                places: 0,
+              },
+            },
+            {
+              fieldName: "TOTPOP_CY",
+              format: {
+                digitSeparator: true,
+                places: 0,
+              },
+            },
+          ],
+        },
+      });
+      const viewElement = document.querySelector("arcgis-map");
+      await viewElement.viewOnReady();
+      viewElement.map.add(layer);
+      // Configure parameters for the size renderer generator
+      // the layer must be specified along with a field name.
+      // The view determines the appropriate default size scheme.
+      // @@Start(sizeParams)
+      const sizeParams = {
+        layer: layer,
+        view: viewElement.view,
+        valueExpression: "( $feature.POP_POVERTY / $feature.TOTPOP_CY ) * 100",
+        legendOptions: {
+          title: "% population living in poverty",
+        },
+        minValue: 15,
+        maxValue: 60,
+        outlineOptimizationEnabled: true,
+        sizeOptimizationEnabled: true,
+      };
+      // Generate a continuous size renderer based on the
+      // statistics of the data in the provided layer and field.
+      //
+      // This resolves to an object containing several helpful
+      // properties, including size scheme, statistics,
+      // the renderer, and visual variable.
+      let rendererResult = null;
+      sizeRendererCreator
+        .createContinuousRenderer(sizeParams)
+        .then((response) => {
+          // Set the output renderer on the layer.
+          rendererResult = response;
+          layer.renderer = rendererResult.renderer;
+          // @@End(sizeParams)
+          // Generate a histogram for use in the slider. Input the layer
+          // and field name to generate it.
+          // @@Start(histogramAndSlider)
+          return histogram({
+            layer: layer,
+            valueExpression: sizeParams.valueExpression,
+            view: viewElement.view,
+            minValue: sizeParams.minValue,
+            maxValue: sizeParams.maxValue,
+            numBins: 30,
+          });
+        })
+        .then((histogramResult) => {
+          // Create a size slider from the renderer and histogram result.
+          const sizeSlider = document.querySelector("arcgis-slider-size-legacy");
+          sizeSlider.updateFromRendererResult(rendererResult, histogramResult);
+          // Color the slider track to match the renderer.
+          const iconColor = rendererResult.renderer.classBreakInfos[0].symbol.color;
+          sizeSlider.sliderStyle.trackFillColor = iconColor;
+          sizeSlider.precision = 1;
+          sizeSlider.histogramConfig.standardDeviation = null;
+          const titleElement = document.getElementById("title");
+          titleElement.textContent = sizeParams.legendOptions.title;
+          // @@End(histogramAndSlider) @@Start(sliderEventHandler)
+          // When the user slides the handle(s), update the renderer
+          // with the updated color visual variable object.
+          const changeEventHandler = () => {
+            const renderer = layer.renderer.clone();
+            const sizeVariable = renderer.visualVariables[0];
+            renderer.visualVariables = [sizeSlider.updateVisualVariable(sizeVariable)];
+            layer.renderer = renderer;
+          };
+          sizeSlider.addEventListener("arcgisThumbChange", changeEventHandler);
+          sizeSlider.addEventListener("arcgisThumbDrag", changeEventHandler);
+        })
+        .catch((error) => {
+          console.error("There was an error: ", error);
+        });
+      // @@End(sliderEventHandler)
+    </script>
+  </body>
+</html>

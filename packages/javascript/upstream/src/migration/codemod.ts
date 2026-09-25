@@ -1017,6 +1017,7 @@ const SHELL_COMPONENT_SYMBOLS: Readonly<Record<string, string>> = {
   "arcgis-legend": "LegendCompat",
   "arcgis-expand": "ExpandCompat",
   "arcgis-layer-list": "LayerListCompat",
+  "arcgis-popup": "PopupCompat",
 };
 
 interface ShellElement {
@@ -1029,7 +1030,7 @@ interface ShellElement {
 }
 
 function parseShellElements(source: string): ShellElement[] {
-  const pattern = /<(\/?)(arcgis-map|arcgis-zoom|arcgis-legend|arcgis-expand|arcgis-layer-list)\b([^>]*)>/gi;
+  const pattern = /<(\/?)(arcgis-map|arcgis-zoom|arcgis-legend|arcgis-expand|arcgis-layer-list|arcgis-popup)\b([^>]*)>/gi;
   const roots: ShellElement[] = [];
   const stack: ShellElement[] = [];
   let generated = 0;
@@ -1136,7 +1137,7 @@ function rewriteMapComponentShell(source: string): {
 
   let index = 0;
   let next = source.replace(
-    /<(arcgis-map|arcgis-zoom|arcgis-legend|arcgis-expand|arcgis-layer-list)\b([^>]*)>/gi,
+    /<(arcgis-map|arcgis-zoom|arcgis-legend|arcgis-expand|arcgis-layer-list|arcgis-popup)\b([^>]*)>/gi,
     (_full, rawTag: string, attrs: string) => {
       const element = flat[index++];
       const symbol = SHELL_COMPONENT_SYMBOLS[rawTag.toLowerCase()] ?? rawTag;
@@ -1145,7 +1146,10 @@ function rewriteMapComponentShell(source: string): {
       return `<div id="${id}" data-honua-compat="${symbol}"${withoutId}>`;
     },
   );
-  next = next.replace(/<\/(?:arcgis-map|arcgis-zoom|arcgis-legend|arcgis-expand|arcgis-layer-list)>/gi, "</div>");
+  next = next.replace(
+    /<\/(?:arcgis-map|arcgis-zoom|arcgis-legend|arcgis-expand|arcgis-layer-list|arcgis-popup)>/gi,
+    "</div>",
+  );
 
   const map = flat.find((element) => element.tag === "arcgis-map");
   const mapId = map?.id ?? "honua-map";
@@ -1166,6 +1170,9 @@ function rewriteMapComponentShell(source: string): {
   for (const root of roots) {
     emitShellConstructors(root, lines, symbols, usedNames);
   }
+  if (next.includes("geometryEngineCompat.geodesicLength")) {
+    symbols.add("geometryEngineCompat");
+  }
   const bootstrap = `import { ${Array.from(symbols).sort().join(", ")} } from "@honua/sdk-esri-compat";\n${lines.join("\n")}\n`;
   let injected = false;
   next = next.replace(/<script\b([^>]*)>/gi, (full, attrs: string) => {
@@ -1176,6 +1183,12 @@ function rewriteMapComponentShell(source: string): {
     const open = /\btype\s*=/i.test(attrs) ? full : full.replace(/<script\b/i, '<script type="module"');
     return `${open}\n${bootstrap}`;
   });
+  if (!next.includes("$arcgis") && !next.includes("@arcgis/core")) {
+    const withoutCdn = next.replace(/<script\b[^>]*\bsrc\s*=\s*["'][^"']*%CDN%[^"']*["'][^>]*>\s*<\/script>\s*/gi, "");
+    if (withoutCdn !== next) {
+      next = withoutCdn;
+    }
+  }
   return { nextSource: next, rewrites: flat.length, addedCompatImport: injected };
 }
 
@@ -3471,7 +3484,10 @@ function arcGisDollarImportRewrite(
   const awaited = ts.isAwaitExpression(node.parent);
   for (const modulePath of specifiers) {
     const spec = MODULE_TO_SPEC.get(modulePath) ?? MODULE_TO_SPEC.get(normalizeArcGisModulePath(modulePath));
-    if (spec && isKindSupportedForTarget(spec.kind, target)) {
+    if (isGeodeticLengthOperatorModule(modulePath) && target === "honua-compat") {
+      parts.push(geodeticLengthOperatorShim());
+      kinds.push("geometry-engine");
+    } else if (spec && isKindSupportedForTarget(spec.kind, target)) {
       parts.push(compatDollarImportText(compatImportPath, spec.compatSymbol, awaited));
       kinds.push(spec.kind);
     } else {
@@ -3490,6 +3506,23 @@ function arcGisDollarImportRewrite(
     text,
     kinds,
   };
+}
+
+function isGeodeticLengthOperatorModule(modulePath: string): boolean {
+  return modulePath.includes("geometry/operators/geodeticLengthOperator");
+}
+
+function geodeticLengthOperatorShim(): string {
+  return [
+    "Promise.resolve({",
+    "  isLoaded() { return true; },",
+    "  load() { return Promise.resolve(); },",
+    "  execute(geometry, options) {",
+    '    const unit = options && options.unit ? options.unit : "meters";',
+    "    return geometryEngineCompat.geodesicLength(geometry, unit);",
+    "  },",
+    "})",
+  ].join(" ");
 }
 
 function isArcGisDollarImportCall(node: ts.CallExpression): boolean {
