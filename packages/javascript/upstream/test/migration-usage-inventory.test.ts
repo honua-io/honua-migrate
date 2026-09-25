@@ -199,7 +199,7 @@ describe("denominator-complete usage inventory", () => {
     fs.writeFileSync(
       path.join(root, "index.html"),
       [
-        "<arcgis-map>",
+        '<arcgis-map item-id="00113543095f45e78e521e316dc447dd">',
         "  <arcgis-zoom></arcgis-zoom>",
         "  <arcgis-legend></arcgis-legend>",
         "</arcgis-map>",
@@ -229,6 +229,7 @@ describe("denominator-complete usage inventory", () => {
     expect(report.readiness).not.toBe("ready");
     expect(report.readiness).not.toBe("no-arcgis-usage");
     expect(report.scanReport.flags).toContain("map-components-detected");
+    expect(report.scanReport.portalItemIds).toEqual(["00113543095f45e78e521e316dc447dd"]);
     expect(report.usageInventory.moduleSitesByStyle["map-component"]).toBe(6);
     expect(report.usageInventory.moduleSitesByStyle["static-import"]).toBe(1);
     const htmlFile = report.conversion.files.find((file) => file.file === "index.html");

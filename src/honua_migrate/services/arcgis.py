@@ -216,7 +216,7 @@ def _read_artifact(path: Path) -> tuple[str, dict[str, Any], dict[str, Any]]:
         raise ArcGisMigrationError("Plan artifact has no supported immutable plan ID.")
     _validate_shared_contract("plan", artifact)
     actions = artifact.get("actions")
-    action = actions[0] if isinstance(actions, list) and len(actions) == 1 else None
+    action = actions[0] if isinstance(actions, list) and len(actions) >= 1 else None
     request = action.get("request") if isinstance(action, dict) else None
     if (
         artifact.get("service") != "arcgis"
@@ -235,6 +235,101 @@ def _read_artifact(path: Path) -> tuple[str, dict[str, Any], dict[str, Any]]:
     if not contract.verify(artifact):
         raise ArcGisMigrationError("Plan artifact was modified after it was reviewed.")
     return stored_id, request, artifact
+
+
+def _import_payloads(artifact: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Import requests with relationship evidence removed so it is not sent to Honua."""
+
+    actions = artifact.get("actions")
+    if not isinstance(actions, list) or len(actions) < 1:
+        raise ArcGisMigrationError("Plan artifact has no valid request.")
+    payloads: list[dict[str, Any]] = []
+    for action in actions:
+        if not isinstance(action, dict) or action.get("kind") != "arcgis-service-import":
+            raise ArcGisMigrationError("Plan artifact has no valid request.")
+        request = action.get("request")
+        if not isinstance(request, dict):
+            raise ArcGisMigrationError("Plan artifact has no valid request.")
+        payloads.append({key: value for key, value in request.items() if key != "relationships"})
+    return payloads
+
+
+def _table_name_from_layer(name: str, layer_id: int) -> str:
+    cleaned = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+    return (cleaned[:48] or f"layer_{layer_id}")
+
+
+def _relationship_records(origin_layer_id: int, layer_document: Mapping[str, Any]) -> list[dict[str, Any]]:
+    relationships = layer_document.get("relationships")
+    if not isinstance(relationships, list):
+        return []
+    records: list[dict[str, Any]] = []
+    for item in relationships:
+        if not isinstance(item, Mapping):
+            continue
+        related = item.get("relatedTableId")
+        if isinstance(related, bool) or not isinstance(related, int):
+            continue
+        records.append(
+            {
+                "id": item.get("id"),
+                "name": item.get("name"),
+                "originLayerId": origin_layer_id,
+                "destinationLayerId": related,
+                "keyField": item.get("keyField"),
+                "cardinality": item.get("cardinality"),
+                "role": item.get("role"),
+            }
+        )
+    return records
+
+
+def expand_service_plan(origin: Mapping[str, Any], catalog: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """One import action for the origin and each related layer, with relationship evidence on the origin."""
+
+    layer_id = origin["layerId"]
+    if isinstance(layer_id, bool) or not isinstance(layer_id, int):
+        raise ArcGisMigrationError("Relationship catalog requires an integer origin layer id.")
+    service = catalog.get("service") if isinstance(catalog.get("service"), Mapping) else {}
+    named_layers: dict[int, str] = {}
+    for collection_name in ("layers", "tables"):
+        collection = service.get(collection_name) if isinstance(service, Mapping) else None
+        if not isinstance(collection, list):
+            continue
+        for item in collection:
+            if not isinstance(item, Mapping) or isinstance(item.get("id"), bool) or not isinstance(item.get("id"), int):
+                continue
+            layer_name = item.get("name")
+            named_layers[item["id"]] = layer_name if isinstance(layer_name, str) and layer_name else f"layer_{item['id']}"
+    layer_documents = catalog.get("layers") if isinstance(catalog.get("layers"), Mapping) else {}
+    origin_document = layer_documents.get(str(layer_id), {})
+    if not isinstance(origin_document, Mapping):
+        origin_document = {}
+    relationships = _relationship_records(layer_id, origin_document)
+    origin_request = dict(origin)
+    origin_request["relationships"] = relationships
+    actions = [{"kind": "arcgis-service-import", "request": origin_request}]
+    seen = {layer_id}
+    service_name = origin.get("serviceName")
+    for record in relationships:
+        related_id = record["destinationLayerId"]
+        if related_id in seen:
+            continue
+        seen.add(related_id)
+        request: dict[str, Any] = {
+            "serviceUrl": origin["serviceUrl"],
+            "layerId": related_id,
+            "tableName": _table_name_from_layer(named_layers.get(related_id, f"layer_{related_id}"), related_id),
+            "targetSrid": origin["targetSrid"],
+            "overwriteExisting": origin["overwriteExisting"],
+            "maxRetries": origin["maxRetries"],
+            "requestTimeoutSeconds": origin["requestTimeoutSeconds"],
+            "autoPublish": origin["autoPublish"],
+        }
+        if isinstance(service_name, str) and service_name:
+            request["serviceName"] = f"{service_name}-rel-{related_id}"
+        actions.append({"kind": "arcgis-service-import", "request": request})
+    return actions
 
 
 @dataclass
@@ -463,6 +558,11 @@ def plan_command(
     service_name: str | None = typer.Option(None),
     where_clause: str | None = typer.Option(None),
     output_fields: list[str] | None = typer.Option(None, help="Repeat for each source field."),
+    relationships_file: Path | None = typer.Option(
+        None,
+        "--relationships-file",
+        help="Local service/layer JSON. Adds related import actions and relationship evidence. Does not contact the source.",
+    ),
 ) -> None:
     """Create a local, machine-readable apply plan without mutating either system."""
     try:
@@ -471,10 +571,25 @@ def plan_command(
         for key, value in {"targetSchema": target_schema, "batchSize": batch_size, "serviceName": service_name, "whereClause": where_clause, "outputFields": output_fields}.items():
             if value is not None:
                 request[key] = value
+        actions: tuple[dict[str, Any], ...]
+        identity: Mapping[str, Any]
+        if relationships_file is None:
+            actions = ({"kind": "arcgis-service-import", "request": request},)
+            identity = request
+        else:
+            try:
+                catalog = json.loads(relationships_file.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise ArcGisMigrationError("Could not read the relationships file.") from exc
+            if not isinstance(catalog, dict):
+                raise ArcGisMigrationError("Relationships file must be a JSON object.")
+            expanded = expand_service_plan(request, catalog)
+            actions = tuple(expanded)
+            identity = {"actions": [action["request"] for action in expanded]}
         artifact = MigrationPlan(
-            id=f"arcgis-plan-{_plan_id(request).removeprefix('sha256:')}",
+            id=f"arcgis-plan-{_plan_id(identity).removeprefix('sha256:')}",
             service="arcgis",
-            actions=({"kind": "arcgis-service-import", "request": request},),
+            actions=actions,
         ).to_dict()
         _validate_shared_contract("plan", artifact)
         _emit(artifact, output, force=force)
@@ -496,19 +611,22 @@ def _apply(
     if not yes:
         raise typer.BadParameter("Apply mutates the Honua target. Re-run with --yes.")
     _preflight_output(output, force=force)
-    plan_id, request, _plan_artifact = _read_artifact(plan)
+    plan_id, _request, plan_artifact = _read_artifact(plan)
     validated_secret_reference = _validate_secret_reference(token_secret_ref)
+    payloads = _import_payloads(plan_artifact)
     if validated_secret_reference:
-        request["credentials"] = {
+        credential = {
             "mode": "token",
             "accessTokenSecretReference": validated_secret_reference,
         }
-    response = ArcGisClient.from_options(honua_url, api_key, timeout_seconds, retries).start(request)
+        payloads = [{**payload, "credentials": credential} for payload in payloads]
+    client = ArcGisClient.from_options(honua_url, api_key, timeout_seconds, retries)
+    responses = [client.start(payload) for payload in payloads]
     artifact = {
         "artifactVersion": ARTIFACT_VERSION,
         "kind": "apply",
         "planId": plan_id,
-        "response": response,
+        "response": responses[0] if len(responses) == 1 else responses,
     }
     _emit(artifact, output, force=force)
 

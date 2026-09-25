@@ -158,6 +158,73 @@ def test_apply_injects_runtime_credential_and_round_trips_optional_fields(tmp_pa
 
 
 @responses.activate
+def test_relationships_file_plans_the_related_table_and_apply_omits_evidence(tmp_path):
+    catalog = tmp_path / "relationships.json"
+    catalog.write_text(
+        json.dumps(
+            {
+                "service": {
+                    "layers": [{"id": 0, "name": "Hexes"}],
+                    "tables": [{"id": 1, "name": "Aggregated Group By"}],
+                },
+                "layers": {
+                    "0": {
+                        "relationships": [
+                            {
+                                "id": 0,
+                                "name": "groupBySummary",
+                                "relatedTableId": 1,
+                                "cardinality": "esriRelCardinalityOneToMany",
+                                "role": "esriRelRoleOrigin",
+                                "keyField": "Join_ID",
+                            }
+                        ]
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    plan = tmp_path / "plan.json"
+    result = _invoke(
+        [
+            "plan",
+            SOURCE_URL,
+            "--layer-id",
+            "0",
+            "--table-name",
+            "hexes",
+            "--no-auto-publish",
+            "--service-name",
+            "cities",
+            "--relationships-file",
+            str(catalog),
+            "--output",
+            str(plan),
+        ]
+    )
+    assert result.exit_code == 0, result.output
+    artifact = json.loads(plan.read_text(encoding="utf-8"))
+    actions = artifact["actions"]
+    assert [action["request"]["layerId"] for action in actions] == [0, 1]
+    relationship = actions[0]["request"]["relationships"][0]
+    assert relationship["keyField"] == "Join_ID"
+    assert relationship["destinationLayerId"] == 1
+    assert relationship["cardinality"] == "esriRelCardinalityOneToMany"
+    assert actions[1]["request"]["tableName"] == "aggregated_group_by"
+    assert actions[1]["request"]["serviceName"] == "cities-rel-1"
+    assert "relationships" not in actions[1]["request"]
+
+    responses.add(responses.POST, f"https://honua.test{API_PREFIX}/start", json={"jobId": "job-a"}, status=202)
+    responses.add(responses.POST, f"https://honua.test{API_PREFIX}/start", json={"jobId": "job-b"}, status=202)
+    apply_result = _invoke(["apply", str(plan), "--yes"], env=HONUA_ENV)
+    assert apply_result.exit_code == 0, apply_result.output
+    sent = [json.loads(call.request.body) for call in responses.calls]
+    assert [item["layerId"] for item in sent] == [0, 1]
+    assert all("relationships" not in item for item in sent)
+
+
+@responses.activate
 def test_apply_refuses_existing_output_before_network(tmp_path):
     plan = tmp_path / "plan.json"
     assert _plan(plan).exit_code == 0

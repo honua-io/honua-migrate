@@ -57,6 +57,8 @@ export interface ArcGisScanReport {
   arcgisDependencies?: ArcGisDependencyHit[];
   symbolUsageCounts: Record<string, number>;
   flags: string[];
+  /** Portal item ids declared on `<arcgis-map item-id>`. Present only when found. */
+  portalItemIds?: string[];
 }
 
 /**
@@ -77,6 +79,7 @@ export function scanArcGisUsage(rootDir: string): ArcGisScanReport {
   const esriLeafletImports: ArcGisImportHit[] = [];
   const flags = new Set<string>();
   const symbolUsageCounts: Record<string, number> = {};
+  const portalItemIds = new Set<string>();
 
   for (const file of files) {
     const source = fs.readFileSync(file, "utf8");
@@ -100,6 +103,9 @@ export function scanArcGisUsage(rootDir: string): ArcGisScanReport {
     );
     if (componentHits.length > 0) {
       flags.add("map-components-detected");
+    }
+    for (const portalItemId of findArcGisMapItemIds(source)) {
+      portalItemIds.add(portalItemId);
     }
     const fileImports = [...moduleHits, ...componentHits];
     if (fileImports.some((item) => item.importClause.startsWith("export "))) {
@@ -141,6 +147,7 @@ export function scanArcGisUsage(rootDir: string): ArcGisScanReport {
     arcgisDependencies: dependencyScan.dependencies,
     symbolUsageCounts,
     flags: Array.from(flags).sort(),
+    ...(portalItemIds.size > 0 ? { portalItemIds: Array.from(portalItemIds).sort() } : {}),
   };
 }
 
@@ -285,6 +292,17 @@ function scriptKindForFile(file: string): ts.ScriptKind {
  * Calls are skipped when the file already has module sites, so a FeatureLayer
  * import that also calls `queryRelatedFeatures` is not counted twice.
  */
+function findArcGisMapItemIds(source: string): string[] {
+  const ids: string[] = [];
+  const pattern = /<arcgis-map\b[^>]*\bitem-id\s*=\s*["']([A-Za-z0-9]+)["']/gi;
+  let match: RegExpExecArray | null = pattern.exec(source);
+  while (match !== null) {
+    ids.push(match[1]);
+    match = pattern.exec(source);
+  }
+  return ids;
+}
+
 function findMapComponentHits(source: string, file: string, includeCalls: boolean): ArcGisImportHit[] {
   const hits: ArcGisImportHit[] = [];
   const tagPattern = /<arcgis-([a-z0-9]+(?:-[a-z0-9]+)*)\b/gi;
