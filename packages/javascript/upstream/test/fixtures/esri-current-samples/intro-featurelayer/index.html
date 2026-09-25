@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>%title% | Sample | %PROD_NAME_LONG%</title>
+
+    <!-- Load the ArcGIS Maps SDK for JavaScript from CDN -->
+    <script type="module" src="%CDN%"></script>
+
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+    </style>
+  </head>
+
+  <body>
+    <arcgis-map basemap="hybrid">
+      <arcgis-zoom slot="top-left"></arcgis-zoom>
+      <arcgis-layer-list slot="top-right"></arcgis-layer-list>
+      <arcgis-legend slot="bottom-left"></arcgis-legend>
+    </arcgis-map>
+
+    <script type="module">
+      const FeatureLayer = await $arcgis.import("@arcgis/core/layers/FeatureLayer.js");
+
+      const viewElement = document.querySelector("arcgis-map");
+      await viewElement.viewOnReady(); // Wait for the properties to be ready.
+
+      // Configure the renderer to alter the symbol style, size breaks, and legend.
+      const outline = { color: "#A9A9A9", width: 0.5 }; // autocasts as new SimpleLineSymbol()
+      const renderer = {
+        type: "simple", // autocasts as new SimpleRenderer()
+        // autocasts as new SimpleMarkerSymbol()
+        symbol: { type: "simple-marker", size: 6, color: "#13EB0C", outline },
+        visualVariables: [
+          {
+            type: "size", // autocasts as new SizeVariable()
+            field: "C_Storage",
+            legendOptions: { title: "Carbon Storage" },
+            stops: [
+              { value: 1000, size: 4, label: "<1000" },
+              { value: 4000, size: 12, label: "4000" },
+              { value: 8000, size: 20, label: "8000" },
+              { value: 10000, size: 26, label: "10,000" },
+              { value: 13000, size: 30, label: ">13,000" },
+            ],
+          },
+        ],
+      };
+
+      const fieldFormat = { type: "number", useGrouping: "always" };
+      const fieldInfos = [{ fieldName: "Crown_Height" }, { fieldName: "C_Storage" }];
+      const featureLayer = new FeatureLayer({
+        // Point to the Warren Wilson College tree carbon storage service.
+        url: "https://services.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/Landscape_Trees/FeatureServer/0",
+        // Define the number formatting and labels for popup values.
+        fieldConfigurations: [
+          { name: "Crown_Height", alias: "Crown Height (ft)", fieldFormat },
+          { name: "C_Storage", alias: "Carbon Storage (kg)", fieldFormat },
+        ],
+        // Order smaller features on top of larger features based on carbon storage.
+        orderBy: [{ field: "C_Storage" }], // defaults to ascending
+        popupTemplate: {
+          title: "Tree ID: {Tree_ID}", // Specify the popup title.
+          content: [{ type: "fields", fieldInfos }], // Specify the fields to display.
+        },
+        renderer, // Add the renderer to load the symbol configuration.
+      });
+
+      viewElement.map.add(featureLayer); // Use the map property to add the layer.
+      await viewElement.whenLayerView(featureLayer); // Wait for the layer to be usable.
+
+      // Zoom to the layer's full extent and customize the animation.
+      await viewElement.goTo(featureLayer.fullExtent, { animate: true, duration: 2500 });
+
+      // Constrain navigation to the layer's full extent.
+      viewElement.constraints = { geometry: featureLayer.fullExtent, minScale: 10000 };
+    </script>
+  </body>
+</html>

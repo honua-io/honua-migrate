@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>%title% | Sample | %PROD_NAME_LONG%</title>
+
+    <!-- Load the ArcGIS Maps SDK for JavaScript from CDN -->
+    <script type="module" src="%CDN%"></script>
+
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      #content {
+        width: 400px;
+        max-height: 400px;
+      }
+    </style>
+  </head>
+  <body>
+    <arcgis-map item-id="00113543095f45e78e521e316dc447dd" popup-disabled>
+      <arcgis-zoom slot="top-left"></arcgis-zoom>
+      <arcgis-expand slot="top-right" expand-tooltip="Show Legend">
+        <arcgis-legend></arcgis-legend>
+      </arcgis-expand>
+      <calcite-panel
+        id="content"
+        slot="bottom-left"
+        heading="US Cities"
+        description="Click on a hexagon in the map to view the cities and their population located in that area."
+      >
+        <calcite-block id="block">
+          <div id="query-results"></div>
+        </calcite-block>
+        <calcite-button slot="footer" id="clear-button" style="display: none">Clear Query</calcite-button>
+      </calcite-panel>
+    </arcgis-map>
+    <script type="module">
+      let highlight;
+      const viewElement = document.querySelector("arcgis-map");
+      await viewElement.viewOnReady();
+      const results = document.getElementById("query-results");
+      const block = document.getElementById("block");
+      // Call the clearMap method when clear button is clicked.
+      const clearbutton = document.getElementById("clear-button");
+      clearbutton.addEventListener("click", clearMap);
+      viewElement.addEventListener("arcgisViewClick", (event) => {
+        clearMap();
+        queryFeatures(event.detail);
+      });
+      const layer = viewElement.map.layers.at(0);
+      async function queryFeatures(event) {
+        // Query the for the feature ids where the user clicked.
+        // @@Start(queryIDs)
+        const objectIds = await layer.queryObjectIds({
+          geometry: event.mapPoint,
+          spatialRelationship: "intersects",
+          returnGeometry: false,
+          outFields: ["*"],
+        });
+        // @@End(queryIDs)
+        if (!objectIds.length) {
+          return;
+        }
+        // Highlight the area returned from the first query.
+        const layerView = await viewElement.whenLayerView(layer);
+        if (highlight) {
+          highlight.remove();
+        }
+        highlight = layerView.highlight(objectIds);
+        // Query for the related features for the features ids found.
+        // @@Start(queryRelatedFeatures)
+        const relatedFeatureSetByObjectId = await layer.queryRelatedFeatures({
+          outFields: ["NAME", "SUM_POPULATION"],
+          relationshipId: layer.relationships[0].id,
+          objectIds: objectIds,
+        });
+        // @@End(queryRelatedFeatures)
+        if (!relatedFeatureSetByObjectId) {
+          return;
+        }
+        // Create a Calcite table that will be populated with the related records
+        const tableComp = document.createElement("calcite-table");
+        tableComp.caption = "table";
+        tableComp.interactionMode = "static";
+        // Create header row for the table
+        const headerRow = document.createElement("calcite-table-row");
+        headerRow.slot = "table-header";
+        const firstFeature = relatedFeatureSetByObjectId[Object.keys(relatedFeatureSetByObjectId)[0]].features[0];
+        // Create headers based on the first feature's attributes
+        Object.keys(firstFeature.attributes).forEach((key) => {
+          let tableHeader = document.createElement("calcite-table-header");
+          tableHeader.heading = key;
+          headerRow.appendChild(tableHeader);
+        });
+        // Append header row once
+        tableComp.appendChild(headerRow);
+        // Populate the table with attribute values from related features
+        Object.keys(relatedFeatureSetByObjectId).forEach((objectId) => {
+          const relatedFeatureSet = relatedFeatureSetByObjectId[objectId];
+          relatedFeatureSet.features.forEach((feature) => {
+            let tableRow = document.createElement("calcite-table-row");
+            Object.keys(feature.attributes).forEach((key) => {
+              let tableCell = document.createElement("calcite-table-cell");
+              tableCell.textContent = feature.attributes[key];
+              tableRow.appendChild(tableCell);
+            });
+            // Append each row to the table
+            tableComp.appendChild(tableRow);
+          });
+        });
+        // Append the table to the block.
+        block.appendChild(tableComp);
+        // Expand the block and display the clear button when results are displayed.
+        block.expanded = true;
+        clearbutton.style.display = "inline";
+      }
+      // Function to clear the highlights from the map and reconfigure the UI
+      function clearMap() {
+        if (highlight) {
+          highlight.remove();
+        }
+        while (block.firstChild) {
+          block.removeChild(block.firstChild);
+        }
+        block.expanded = false;
+        clearbutton.style.display = "none";
+      }
+    </script>
+  </body>
+</html>

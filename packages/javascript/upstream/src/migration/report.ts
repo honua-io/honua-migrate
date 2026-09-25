@@ -466,6 +466,16 @@ interface ImportHitDispositions {
   handled: ReadonlySet<ArcGisImportHit>;
 }
 
+function supportedKindForModulePath(modulePath: string): CodemodConstructorKind | undefined {
+  const withExtension = modulePath.endsWith(".js") ? modulePath : `${modulePath}.js`;
+  const withoutExtension = modulePath.endsWith(".js") ? modulePath.slice(0, -3) : modulePath;
+  return (
+    SUPPORTED_ARCGIS_MODULE_KIND_BY_PATH[modulePath] ??
+    SUPPORTED_ARCGIS_MODULE_KIND_BY_PATH[withExtension] ??
+    SUPPORTED_ARCGIS_MODULE_KIND_BY_PATH[withoutExtension]
+  );
+}
+
 function importSiteKey(hit: ArcGisImportHit): string {
   return `${path.resolve(hit.file)} ${hit.modulePath} ${classifyUsageStyle(hit.importClause)}`;
 }
@@ -475,10 +485,14 @@ function isImportHitHandledByCodemod(
   codemodResult: EsriCompatCodemodResult,
 ): boolean {
   const usageStyle = classifyUsageStyle(hit.importClause);
-  if (usageStyle === "amd-require" || usageStyle === "arcgis-import" || usageStyle === "map-component") {
-    // The codemod rewrites ESM and CommonJS sources. Module-loader arrays,
-    // `$arcgis.import(...)` calls, and map components stay as written.
+  if (usageStyle === "amd-require" || usageStyle === "map-component") {
+    // AMD arrays and map components stay as written.
     return false;
+  }
+  if (usageStyle === "arcgis-import") {
+    const kind = supportedKindForModulePath(hit.modulePath);
+    // Supported `$arcgis.import` loads are rewritten. Residual sites decide whether this one was removed.
+    return kind !== undefined && isKindSupportedForTarget(kind, codemodResult.target);
   }
 
   const isReExport = hit.importClause.startsWith("export ");
@@ -963,7 +977,7 @@ function describeUnhandledModuleSite(
 ): JsFileDiagnostic {
   const modulePath = hit.modulePath;
   const usageStyle = classifyUsageStyle(hit.importClause);
-  if (usageStyle === "amd-require" || usageStyle === "arcgis-import") {
+  if ((usageStyle === "amd-require" || usageStyle === "arcgis-import") && !inScope) {
     const loader = usageStyle === "amd-require" ? "an AMD require/define array" : "$arcgis.import(...)";
     return {
       code: "module-loader-not-rewritten",

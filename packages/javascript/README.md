@@ -34,7 +34,7 @@ The `codemod` report's `readiness` is one of:
   `require`/`define` arrays, `$arcgis.import` calls, and map components
   (`<arcgis-*>` elements, plus component API calls in a file that loads no
   ArcGIS module). `handledModuleSites` plus `unsupportedModuleSites` add up to
-  it. The codemod leaves AMD, `$arcgis.import`, and map components as written.
+  it. The codemod rewrites `$arcgis.import` of a module it already knows, including inside an HTML script. AMD loads, unsupported `$arcgis.import` specifiers, and map components stay as written.
 - `codemodScopedCallSites` is `automaticCallSites` plus `manualCallSites`.
 - `widgetRuntimeRequirements` says, per widget, whether its sites move onto a
   Honua compat widget (`honua`) or still need the classic ArcGIS widget runtime

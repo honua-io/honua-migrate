@@ -6,7 +6,8 @@ import ts from "typescript";
 
 import { type ArcGisImportHit, findArcGisModuleSites } from "./scanner.js";
 
-const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
+const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".html", ".htm"]);
+const HTML_EXTENSIONS = new Set([".html", ".htm"]);
 const SKIP_DIRS = new Set(["node_modules", "dist", ".git"]);
 const DEFAULT_COMPAT_IMPORT_PATH = "@honua/sdk-esri-compat";
 const ESRI_LEAFLET_IMPORT_PATH = "esri-leaflet";
@@ -816,15 +817,9 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
 
     let fileResult: ReturnType<typeof codemodFile>;
     try {
-      fileResult = codemodFile(
-        file,
-        source,
-        compatImportPath,
-        annotateTodos,
-        target,
-        localArcGisReExports,
-        sourceFilesSet,
-      );
+      fileResult = HTML_EXTENSIONS.has(path.extname(file).toLowerCase())
+        ? codemodHtmlFile(file, source, compatImportPath, annotateTodos, target, localArcGisReExports, sourceFilesSet)
+        : codemodFile(file, source, compatImportPath, annotateTodos, target, localArcGisReExports, sourceFilesSet);
     } catch (error) {
       errors.push({
         file,
@@ -938,6 +933,75 @@ function assertParsableSource(file: string, source: string): void {
 
   const message = ts.flattenDiagnosticMessageText(syntaxError.messageText, "\n");
   throw new Error(`Unable to parse source file: ${message}`);
+}
+
+function codemodHtmlFile(
+  file: string,
+  source: string,
+  compatImportPath: string,
+  annotateTodos: boolean,
+  target: CodemodTarget,
+  localArcGisReExports: ReadonlyMap<string, Readonly<Record<string, CodemodConstructorKind>>>,
+  sourceFilesSet: ReadonlySet<string>,
+): ReturnType<typeof codemodFile> {
+  const scriptPattern = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
+  const scripts: Array<{ bodyStart: number; bodyEnd: number; body: string }> = [];
+  let match: RegExpExecArray | null = scriptPattern.exec(source);
+  while (match !== null) {
+    if (!/\ssrc\s*=/i.test(match[1])) {
+      const bodyStart = match.index + match[0].indexOf(">") + 1;
+      scripts.push({ bodyStart, bodyEnd: bodyStart + match[2].length, body: match[2] });
+    }
+    match = scriptPattern.exec(source);
+  }
+
+  let nextSource = source;
+  let rewrittenImports = 0;
+  let rewrittenConstructors = 0;
+  let rewrittenDynamicImports = 0;
+  let rewrittenEventNames = 0;
+  const rewrittenKinds: CodemodConstructorKind[] = [];
+  let addedCompatImport = false;
+  let removedArcGisImports = 0;
+  let annotatedTodoComments = 0;
+  const manualTodos: MigrationTodo[] = [];
+
+  for (const script of scripts.reverse()) {
+    const result = codemodFile(
+      `${file}.inline.js`,
+      script.body,
+      compatImportPath,
+      annotateTodos,
+      target,
+      localArcGisReExports,
+      sourceFilesSet,
+    );
+    if (result.nextSource !== script.body) {
+      nextSource = `${nextSource.slice(0, script.bodyStart)}${result.nextSource}${nextSource.slice(script.bodyEnd)}`;
+    }
+    rewrittenImports += result.rewrittenImports;
+    rewrittenConstructors += result.rewrittenConstructors;
+    rewrittenDynamicImports += result.rewrittenDynamicImports;
+    rewrittenEventNames += result.rewrittenEventNames;
+    rewrittenKinds.push(...result.rewrittenKinds);
+    addedCompatImport = addedCompatImport || result.addedCompatImport;
+    removedArcGisImports += result.removedArcGisImports;
+    annotatedTodoComments += result.annotatedTodoComments;
+    manualTodos.push(...result.manualTodos);
+  }
+
+  return {
+    nextSource,
+    rewrittenImports,
+    rewrittenConstructors,
+    rewrittenDynamicImports,
+    rewrittenEventNames,
+    rewrittenKinds,
+    addedCompatImport,
+    removedArcGisImports,
+    annotatedTodoComments,
+    manualTodos: manualTodos.sort(compareTodos),
+  };
 }
 
 function codemodFile(
@@ -1073,6 +1137,13 @@ function codemodFile(
   }
 
   walk(sourceFile, (node) => {
+    const dollarImport = arcGisDollarImportRewrite(node, sourceFile, compatImportPath, target);
+    if (dollarImport) {
+      dynamicImportEdits.push({ start: dollarImport.start, end: dollarImport.end, text: dollarImport.text });
+      rewrittenKinds.push(...dollarImport.kinds);
+      return;
+    }
+
     if (isArcGisDynamicImportCall(node)) {
       const firstArg = node.arguments[0];
       if (!ts.isStringLiteral(firstArg)) {
@@ -3204,6 +3275,75 @@ function findImportInsertionIndex(sourceFile: ts.SourceFile): number {
     index = statement.end;
   }
   return index;
+}
+
+function arcGisDollarImportRewrite(
+  node: ts.Node,
+  sourceFile: ts.SourceFile,
+  compatImportPath: string,
+  target: CodemodTarget,
+): { start: number; end: number; text: string; kinds: CodemodConstructorKind[] } | undefined {
+  if (target !== "honua-compat" || !ts.isCallExpression(node) || !isArcGisDollarImportCall(node)) {
+    return undefined;
+  }
+  const specifiers = dollarImportSpecifiers(node);
+  if (!specifiers) {
+    return undefined;
+  }
+
+  const parts: string[] = [];
+  const kinds: CodemodConstructorKind[] = [];
+  const awaited = ts.isAwaitExpression(node.parent);
+  for (const modulePath of specifiers) {
+    const spec = MODULE_TO_SPEC.get(modulePath) ?? MODULE_TO_SPEC.get(normalizeArcGisModulePath(modulePath));
+    if (spec && isKindSupportedForTarget(spec.kind, target)) {
+      parts.push(compatDollarImportText(compatImportPath, spec.compatSymbol, awaited));
+      kinds.push(spec.kind);
+    } else {
+      parts.push(`$arcgis.import(${JSON.stringify(modulePath)})`);
+    }
+  }
+  if (kinds.length === 0) {
+    return undefined;
+  }
+
+  const text = specifiers.length === 1 ? parts[0] : `Promise.all([${parts.join(", ")}])`;
+  const replaced = awaited ? node.parent : node;
+  return {
+    start: replaced.getStart(sourceFile),
+    end: replaced.getEnd(),
+    text,
+    kinds,
+  };
+}
+
+function isArcGisDollarImportCall(node: ts.CallExpression): boolean {
+  return (
+    ts.isPropertyAccessExpression(node.expression) &&
+    ts.isIdentifier(node.expression.expression) &&
+    node.expression.expression.text === "$arcgis" &&
+    node.expression.name.text === "import" &&
+    node.arguments.length === 1
+  );
+}
+
+function dollarImportSpecifiers(node: ts.CallExpression): string[] | undefined {
+  const argument = node.arguments[0];
+  if (ts.isStringLiteral(argument)) {
+    return [argument.text];
+  }
+  if (ts.isArrayLiteralExpression(argument) && argument.elements.every((element) => ts.isStringLiteral(element))) {
+    return argument.elements.map((element) => (element as ts.StringLiteral).text);
+  }
+  return undefined;
+}
+
+function compatDollarImportText(compatImportPath: string, compatSymbol: string, awaited: boolean): string {
+  const specifier = JSON.stringify(compatImportPath);
+  if (awaited) {
+    return `(await import(${specifier})).${compatSymbol}`;
+  }
+  return `import(${specifier}).then((m) => m.${compatSymbol})`;
 }
 
 function isArcGisDynamicImportCall(node: ts.Node): node is ts.CallExpression {

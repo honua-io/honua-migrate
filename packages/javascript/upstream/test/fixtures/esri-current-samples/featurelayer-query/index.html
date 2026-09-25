@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>%title% | Sample | %PROD_NAME_LONG%</title>
+
+    <!-- Load the ArcGIS Maps SDK for JavaScript from CDN -->
+    <script type="module" src="%CDN%"></script>
+
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      calcite-panel {
+        min-width: 400px;
+        max-width: 400px;
+      }
+    </style>
+  </head>
+  <body>
+    <calcite-shell>
+      <!-- Note: popup-component-enabled enables the Popup component (beta). See https://developers.arcgis.com/javascript/latest/references/map-components/components/arcgis-map/#popupComponentEnabled for details. -->
+      <arcgis-map center="-98, 38" zoom="3" id="map-element" popup-component-enabled>
+        <arcgis-zoom slot="top-left"></arcgis-zoom>
+        <arcgis-expand slot="top-left" expand-tooltip="Expand legend">
+          <arcgis-legend></arcgis-legend>
+        </arcgis-expand>
+      </arcgis-map>
+      <calcite-panel
+        slot="panel-end"
+        heading="Medium household income by counties from highest to lowest"
+        description="returns 20 counties at a time"
+      >
+        <calcite-list id="incomeList"></calcite-list>
+        <div slot="footer">
+          <calcite-pagination id="tablePager" start-item="1" page-size="20"></calcite-pagination>
+        </div>
+      </calcite-panel>
+    </calcite-shell>
+
+    <script type="module">
+      const [Map, FeatureLayer, centroidOperator] = await $arcgis.import([
+        "@arcgis/core/Map.js",
+        "@arcgis/core/layers/FeatureLayer.js",
+        "@arcgis/core/geometry/operators/centroidOperator.js",
+      ]);
+
+      const map = new Map({
+        basemap: "gray-vector",
+      });
+
+      const viewElement = document.querySelector("arcgis-map");
+      viewElement.map = map;
+
+      // do not let users zoom beyond us boundaries
+      viewElement.constraints = {
+        geometry: {
+          type: "extent",
+          xmin: -17206956,
+          xmax: -4570726,
+          ymin: 1737191,
+          ymax: 7421660,
+          spatialReference: {
+            wkid: 102100,
+          },
+        },
+        minZoom: 3,
+      };
+
+      await viewElement.viewOnReady();
+      viewElement.highlights.reverse();
+
+      const listNode = document.getElementById("incomeList");
+
+      // Create the FeatureLayer using the popupTemplate
+      const featureLayer = new FeatureLayer({
+        portalItem: {
+          id: "51c851fef66143959986b473b345b7ca",
+        },
+        outFields: ["*"],
+      });
+      map.add(featureLayer);
+
+      let features;
+      let start = 0;
+      let highlight;
+
+      // @@Start(queryFeatureCount)
+      // Get number of all features from the service and use the count
+      // to set the number of pages in the calcite-pagination component
+      const featureCount = await featureLayer.queryFeatureCount();
+      document.getElementById("tablePager").setAttribute("total-items", featureCount);
+      // @@End(queryFeatureCount)
+
+      // Get the instance of the layerview representing the counties feature layer
+      const layerView = await viewElement.whenLayerView(featureLayer);
+
+      // fetch the first twenty counties that have the highest household median income
+      await queryPage(0);
+
+      // @@Start(queryPage)
+      // Fetches 20 features from a specified start location
+      // Called when the application loads first then it is called whenever
+      // user changes the page number on the calcite-pagination component
+      async function queryPage(page) {
+        // Create the query object honoring layer settings
+        // sets returnGeometry=true and outFields to "*"
+        const query = featureLayer.createQuery();
+        // Set query parameters for pagination and sorting
+        query.start = page;
+        query.num = 20;
+        query.orderByFields = ["MEDHINC_CY DESC"];
+
+        const queryResult = await featureLayer.queryFeatures(query);
+        features = queryResult.features;
+        convertFeatureSetToRows(features, query);
+      }
+      // @@End(queryPage)
+
+      // @@Start(displayCountiesInfo)
+      // Called once next twenty counties are fetched
+      // and sets up the list items in the calcite-list component
+      function convertFeatureSetToRows(features, query) {
+        // Use a local variable for the list node
+        const incomeList = document.getElementById("incomeList");
+        incomeList.textContent = "";
+
+        // Use a DocumentFragment for efficient DOM updates
+        const fragment = document.createDocumentFragment();
+
+        features.forEach((result, index) => {
+          const { NAME, MEDHINC_CY } = result.attributes;
+          const item = document.createElement("calcite-list-item");
+          item.setAttribute("label", NAME);
+          item.setAttribute("value", index);
+          item.setAttribute("description", `median income: ${MEDHINC_CY}`);
+          item.addEventListener("click", onCountyClickHandler);
+          fragment.appendChild(item);
+        });
+
+        incomeList.appendChild(fragment);
+
+        // Safely remove previous highlight and add new one
+        try {
+          highlight?.remove();
+          highlight = layerView.highlight(features, { name: "temporary" });
+        } catch (error) {
+          console.error("Highlight error:", error);
+        }
+      }
+      // @@End(displayCountiesInfo)
+
+      // @@Start(pageChanged)
+      // Set query.page and fetch the features from the service corresponding
+      // to the page number when user clicks a page number on calcite-pagination
+      document.getElementById("tablePager").addEventListener("calcitePaginationChange", async (event) => {
+        // Calculate zero-based page index
+        const page = event.target.startItem - 1;
+        try {
+          await queryPage(page);
+
+          // Optionally reset view only if needed
+          viewElement.zoom = 3;
+          viewElement.center = [-98, 38];
+
+          // Close popup if open
+          if (viewElement.popupElement?.open) {
+            viewElement.closePopup();
+          }
+        } catch (error) {
+          console.error("Error updating page:", error);
+        }
+      });
+      // @@End(pageChanged)
+
+      // Runs when user clicks on the county item in the list
+      async function onCountyClickHandler(event) {
+        try {
+          const target = event.target;
+          const resultId = parseInt(target.getAttribute("value"), 10);
+
+          // Validate resultId and features array
+          if (isNaN(resultId) || !features || !features[resultId]) return;
+
+          const result = features[resultId];
+          if (!result.geometry) return;
+
+          const centroid = centroidOperator.execute(result.geometry);
+
+          await viewElement.goTo(result.geometry.extent.expand(6));
+          viewElement.openPopup({
+            features: [result],
+            location: centroid,
+          });
+        } catch (error) {
+          console.error("Error handling county click:", error);
+        }
+      }
+    </script>
+  </body>
+</html>

@@ -76,17 +76,17 @@ describe("denominator-complete usage inventory", () => {
         "arcgis-import": 3,
         "map-component": 0,
       },
-      handledModuleSites: 4,
-      unsupportedModuleSites: 7,
-      codemodScopedCallSites: 4,
-      automaticCallSites: 4,
+      handledModuleSites: 6,
+      unsupportedModuleSites: 5,
+      codemodScopedCallSites: 6,
+      automaticCallSites: 6,
       manualCallSites: 0,
       widgetSites: 5,
-      honuaWidgetSites: 1,
-      arcgisRuntimeWidgetSites: 4,
+      honuaWidgetSites: 2,
+      arcgisRuntimeWidgetSites: 3,
     });
     expect(widgetRuntimeRequirements).toEqual([
-      { widget: "Expand", supportModule: false, disposition: "automated", runtime: "arcgis-js", sites: 1 },
+      { widget: "Expand", supportModule: false, disposition: "automated", runtime: "honua", sites: 1 },
       { widget: "LayerList", supportModule: false, disposition: "automated", runtime: "arcgis-js", sites: 1 },
       { widget: "Legend", supportModule: false, disposition: "automated", runtime: "honua", sites: 1 },
       { widget: "Search", supportModule: true, disposition: "support-module", runtime: "arcgis-js", sites: 1 },
@@ -100,8 +100,6 @@ describe("denominator-complete usage inventory", () => {
     ]);
 
     expect(report.unhandledArcGisModules).toEqual([
-      { modulePath: "@arcgis/core/layers/GraphicsLayer.js", usageStyle: "arcgis-import", count: 1 },
-      { modulePath: "@arcgis/core/widgets/Expand.js", usageStyle: "arcgis-import", count: 1 },
       { modulePath: "@arcgis/core/widgets/Search/SearchViewModel", usageStyle: "static-import", count: 1 },
       { modulePath: "esri/Map", usageStyle: "amd-require", count: 1 },
       { modulePath: "esri/views/MapView", usageStyle: "amd-require", count: 1 },
@@ -110,18 +108,18 @@ describe("denominator-complete usage inventory", () => {
     ]);
     // The intervention metric and the inventory share one denominator.
     expect(report.manualInterventionMetric).toMatchObject({
-      numerator: 7,
+      numerator: 5,
       denominator: 11,
       manualCodemodCallSites: 0,
-      unhandledUsageHits: 7,
+      unhandledUsageHits: 5,
     });
-    expect(report.manualRewriteMetric).toMatchObject({ numerator: 0, denominator: 4, ratio: 0 });
+    expect(report.manualRewriteMetric).toMatchObject({ numerator: 0, denominator: 6, ratio: 0 });
 
     expect(report.scanReport.flags).toEqual(["amd-modules-detected", "arcgis-import-detected"]);
     expect(report.readiness).toBe("assisted");
     expect(report.gates).toEqual([
       { gate: "no-manual-todos", passed: true, detail: "all codemod-scoped call sites auto-migrated" },
-      { gate: "no-unhandled-modules", passed: false, detail: "7 ArcGIS modules remain outside codemod scope" },
+      { gate: "no-unhandled-modules", passed: false, detail: "5 ArcGIS modules remain outside codemod scope" },
       { gate: "no-blocking-flags", passed: true, detail: "no blocking migration flags detected" },
     ]);
   });
@@ -283,9 +281,9 @@ describe("denominator-complete usage inventory", () => {
     expect(result.stdout).toContain("writeMode=dry-run");
     expect(result.stdout).toContain("readiness=assisted");
     expect(result.stdout).toContain(
-      "usageInventory=moduleSites:11,handled:4,unsupported:7,static-import:5,dynamic-import:0,require:0," +
-        "amd-require:3,arcgis-import:3,map-component:0,callSites:4,automatic:4,manual:0,widgetSites:5,honuaWidgets:1," +
-        "arcgisRuntimeWidgets:4,residualArcGisDependencies:3\n",
+      "usageInventory=moduleSites:11,handled:6,unsupported:5,static-import:5,dynamic-import:0,require:0," +
+        "amd-require:3,arcgis-import:3,map-component:0,callSites:6,automatic:6,manual:0,widgetSites:5,honuaWidgets:2," +
+        "arcgisRuntimeWidgets:3,residualArcGisDependencies:3\n",
     );
     expect(result.stdout).toContain(
       [
