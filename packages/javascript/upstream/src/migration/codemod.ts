@@ -1019,53 +1019,135 @@ const SHELL_COMPONENT_SYMBOLS: Readonly<Record<string, string>> = {
   "arcgis-layer-list": "LayerListCompat",
 };
 
+interface ShellElement {
+  tag: string;
+  symbol: string;
+  id: string;
+  children: ShellElement[];
+}
+
+function parseShellElements(source: string): ShellElement[] {
+  const pattern = /<(\/?)(arcgis-map|arcgis-zoom|arcgis-legend|arcgis-expand|arcgis-layer-list)\b([^>]*)>/gi;
+  const roots: ShellElement[] = [];
+  const stack: ShellElement[] = [];
+  let generated = 0;
+  let match: RegExpExecArray | null = pattern.exec(source);
+  while (match !== null) {
+    const tag = match[2].toLowerCase();
+    if (match[1] === "/") {
+      if (stack.length > 0 && stack[stack.length - 1]?.tag === tag) {
+        stack.pop();
+      }
+      match = pattern.exec(source);
+      continue;
+    }
+    const existingId = /\sid\s*=\s*["']([^"']+)["']/i.exec(match[3])?.[1];
+    const id =
+      existingId ?? (tag === "arcgis-map" ? "honua-map" : `honua-${tag.slice("arcgis-".length)}-${++generated}`);
+    const element: ShellElement = { tag, symbol: SHELL_COMPONENT_SYMBOLS[tag] ?? tag, id, children: [] };
+    const parent = stack[stack.length - 1];
+    if (parent) {
+      parent.children.push(element);
+    } else {
+      roots.push(element);
+    }
+    stack.push(element);
+    match = pattern.exec(source);
+  }
+  return roots;
+}
+
+function flattenShell(elements: readonly ShellElement[]): ShellElement[] {
+  const flat: ShellElement[] = [];
+  for (const element of elements) {
+    flat.push(element, ...flattenShell(element.children));
+  }
+  return flat;
+}
+
+function emitShellConstructors(
+  element: ShellElement,
+  lines: string[],
+  symbols: Set<string>,
+  usedNames: Set<string>,
+): string {
+  if (element.tag === "arcgis-map") {
+    symbols.add("MapViewCompat");
+    lines.push(`const honuaView = new MapViewCompat({ container: document.getElementById("${element.id}") });`);
+    for (const child of element.children) {
+      emitShellConstructors(child, lines, symbols, usedNames);
+    }
+    return "honuaView";
+  }
+  const childNames = element.children.map((child) => emitShellConstructors(child, lines, symbols, usedNames));
+  symbols.add(element.symbol);
+  let varName = `honua${element.symbol.replace(/Compat$/, "")}`;
+  let suffix = 2;
+  while (usedNames.has(varName)) {
+    varName = `honua${element.symbol.replace(/Compat$/, "")}${suffix++}`;
+  }
+  usedNames.add(varName);
+  const content = childNames[0] ? `, content: ${childNames[0]}` : "";
+  lines.push(
+    `const ${varName} = new ${element.symbol}({ view: honuaView, container: document.getElementById("${element.id}")${content} });`,
+  );
+  return varName;
+}
+
 function rewriteMapComponentShell(source: string): {
   nextSource: string;
   rewrites: number;
   addedCompatImport: boolean;
 } {
-  let next = source;
-  let rewrites = 0;
-  for (const [tag, symbol] of Object.entries(SHELL_COMPONENT_SYMBOLS)) {
-    const open = new RegExp(`<${tag}\\b`, "gi");
-    const close = new RegExp(`</${tag}>`, "gi");
-    const opened = next.match(open)?.length ?? 0;
-    if (opened > 0) {
-      next = next.replace(open, `<div data-honua-compat="${symbol}"`);
-      next = next.replace(close, "</div>");
-      rewrites += opened;
+  const roots = parseShellElements(source);
+  const flat = flattenShell(roots);
+  if (flat.length === 0) {
+    return { nextSource: source, rewrites: 0, addedCompatImport: false };
+  }
+
+  let index = 0;
+  let next = source.replace(
+    /<(arcgis-map|arcgis-zoom|arcgis-legend|arcgis-expand|arcgis-layer-list)\b([^>]*)>/gi,
+    (_full, rawTag: string, attrs: string) => {
+      const element = flat[index++];
+      const symbol = SHELL_COMPONENT_SYMBOLS[rawTag.toLowerCase()] ?? rawTag;
+      const id = element?.id ?? `honua-${rawTag.toLowerCase()}`;
+      const withoutId = attrs.replace(/\s+id\s*=\s*(["'])[\s\S]*?\1/i, "");
+      return `<div id="${id}" data-honua-compat="${symbol}"${withoutId}>`;
+    },
+  );
+  next = next.replace(/<\/(?:arcgis-map|arcgis-zoom|arcgis-legend|arcgis-expand|arcgis-layer-list)>/gi, "</div>");
+
+  const map = flat.find((element) => element.tag === "arcgis-map");
+  const mapId = map?.id ?? "honua-map";
+  const declaration = /const\s+(\w+)\s*=\s*document\.querySelector\(\s*(["'])arcgis-map\2\s*\)\s*;/;
+  const viewName = next.match(declaration)?.[1];
+  if (viewName) {
+    next = next.replace(declaration, `const ${viewName} = document.getElementById("${mapId}");`);
+    const ident = viewName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    next = next.replace(new RegExp(`\\b${ident}\\.viewOnReady\\s*\\(\\s*\\)`, "g"), "honuaView.when()");
+    next = next.replace(new RegExp(`\\b${ident}\\.whenLayerView\\s*\\(`, "g"), "honuaView.whenLayerView(");
+    next = next.replace(new RegExp(`\\b${ident}\\.goTo\\s*\\(`, "g"), "honuaView.goTo(");
+    next = next.replace(new RegExp(`\\b${ident}\\.map\\b`, "g"), "honuaView.map");
+  }
+
+  const lines: string[] = [];
+  const symbols = new Set<string>();
+  const usedNames = new Set<string>(["honuaView"]);
+  for (const root of roots) {
+    emitShellConstructors(root, lines, symbols, usedNames);
+  }
+  const bootstrap = `import { ${Array.from(symbols).sort().join(", ")} } from "@honua/sdk-esri-compat";\n${lines.join("\n")}\n`;
+  let injected = false;
+  next = next.replace(/<script\b([^>]*)>/gi, (full, attrs: string) => {
+    if (injected || /\ssrc\s*=/i.test(attrs)) {
+      return full;
     }
-  }
-  const selector = /document\.querySelector\((["'])arcgis-map\1\)/g;
-  const selectors = next.match(selector)?.length ?? 0;
-  if (selectors > 0) {
-    next = next.replace(selector, 'document.querySelector("[data-honua-compat=\\"MapViewCompat\\"]")');
-    rewrites += selectors;
-  }
-  const ready = next.match(/\.viewOnReady\s*\(\s*\)/g)?.length ?? 0;
-  if (ready > 0) {
-    next = next.replace(/\.viewOnReady\s*\(\s*\)/g, ".when()");
-    rewrites += ready;
-  }
-  const layerView = /(\w+)\.whenLayerView\s*\(/g;
-  const layerViews = next.match(layerView)?.length ?? 0;
-  if (layerViews > 0) {
-    next = next.replace(layerView, "MapViewCompat.prototype.whenLayerView.call($1, ");
-    rewrites += layerViews;
-  }
-  let addedCompatImport = false;
-  if (next.includes("MapViewCompat") && !next.includes('from "@honua/sdk-esri-compat"')) {
-    let injected = false;
-    next = next.replace(/<script\b([^>]*)>/gi, (full, attrs: string) => {
-      if (injected || /\ssrc\s*=/i.test(attrs)) {
-        return full;
-      }
-      injected = true;
-      addedCompatImport = true;
-      return `${full}\nimport { MapViewCompat } from "@honua/sdk-esri-compat";`;
-    });
-  }
-  return { nextSource: next, rewrites, addedCompatImport };
+    injected = true;
+    const open = /\btype\s*=/i.test(attrs) ? full : full.replace(/<script\b/i, '<script type="module"');
+    return `${open}\n${bootstrap}`;
+  });
+  return { nextSource: next, rewrites: flat.length, addedCompatImport: injected };
 }
 
 function codemodFile(

@@ -364,6 +364,11 @@ function findMapComponentHits(source: string, file: string, includeCalls: boolea
   }
 
   for (const name of MAP_COMPONENT_METHODS) {
+    // A rewritten page calls whenLayerView on a MapViewCompat instance. That is
+    // the compat view API, not an unrewritten component call.
+    if (name === "whenLayerView" && source.includes("new MapViewCompat(")) {
+      continue;
+    }
     const callPattern = new RegExp(`\\.${name}\\s*\\(`, "g");
     let callMatch: RegExpExecArray | null = callPattern.exec(source);
     while (callMatch !== null) {

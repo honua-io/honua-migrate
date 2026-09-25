@@ -1,12 +1,29 @@
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { runEsriCompatCodemod } from "../src/migration/codemod.js";
 import { buildJsMigrationReport } from "../src/migration/report.js";
 import { scanArcGisUsage } from "../src/migration/scanner.js";
 
 const CORPUS = path.join(import.meta.dirname, "fixtures", "esri-current-samples");
+const tempDirs: string[] = [];
+
+afterEach(() => {
+  for (const dir of tempDirs.splice(0)) {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+function writtenPage(name: string): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-current-sample-"));
+  tempDirs.push(dir);
+  fs.cpSync(path.join(CORPUS, name), dir, { recursive: true });
+  runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+  return fs.readFileSync(path.join(dir, "index.html"), "utf8");
+}
 
 function migrate(name: string) {
   const rootDir = path.join(CORPUS, name);
@@ -43,5 +60,21 @@ describe("current ArcGIS sample corpus", () => {
     expect(relatedModules).not.toContain("@arcgis/map-components/arcgis-map");
     expect(relatedModules).not.toContain("@arcgis/map-components/viewOnReady");
     expect(relatedModules).not.toContain("@arcgis/map-components/whenLayerView");
+
+    const relatedPage = writtenPage("query-related-features");
+    expect(relatedPage).toContain(
+      'const honuaView = new MapViewCompat({ container: document.getElementById("honua-map") });',
+    );
+    expect(relatedPage).toContain("await honuaView.when()");
+    expect(relatedPage).toContain("await honuaView.whenLayerView(layer)");
+    expect(relatedPage).not.toContain("viewElement.when()");
+    expect(relatedPage).not.toContain("MapViewCompat.prototype.whenLayerView");
+    expect(relatedPage).toContain("new ZoomCompat({ view: honuaView, container:");
+    expect(relatedPage).toContain("new LegendCompat({ view: honuaView, container:");
+    expect(relatedPage).toContain("new ExpandCompat({ view: honuaView, container:");
+    expect(relatedPage).not.toContain("<arcgis-map");
+    expect(relatedPage).not.toContain("<arcgis-zoom");
+    expect(relatedPage).not.toContain("<arcgis-legend");
+    expect(relatedPage).not.toContain("<arcgis-expand");
   });
 });
