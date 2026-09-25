@@ -19,6 +19,7 @@ import {
   type ArcGisImportHit,
   type ArcGisScanReport,
   MAP_COMPONENT_CLAUSE,
+  REWRITTEN_SHELL_COMPONENT_PATHS,
   scanArcGisUsage,
   summarizeArcGisScan,
 } from "./scanner.js";
@@ -485,9 +486,11 @@ function isImportHitHandledByCodemod(
   codemodResult: EsriCompatCodemodResult,
 ): boolean {
   const usageStyle = classifyUsageStyle(hit.importClause);
-  if (usageStyle === "amd-require" || usageStyle === "map-component") {
-    // AMD arrays and map components stay as written.
+  if (usageStyle === "amd-require") {
     return false;
+  }
+  if (usageStyle === "map-component") {
+    return REWRITTEN_SHELL_COMPONENT_PATHS.has(hit.modulePath);
   }
   if (usageStyle === "arcgis-import") {
     const kind = supportedKindForModulePath(hit.modulePath);
@@ -988,7 +991,7 @@ function describeUnhandledModuleSite(
     };
   }
 
-  if (usageStyle === "map-component") {
+  if (usageStyle === "map-component" && !inScope) {
     return {
       code: "map-component-not-rewritten",
       modulePath,

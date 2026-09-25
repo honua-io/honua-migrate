@@ -16,7 +16,7 @@ function migrate(name: string) {
 }
 
 describe("current ArcGIS sample corpus", () => {
-  it("rewrites supported $arcgis.import loads and leaves a component-only page on the Esri client", () => {
+  it("rewrites supported loads and the viewer shell, and holds related-record calls", () => {
     const trees = migrate("intro-featurelayer");
     const counties = migrate("featurelayer-query");
     const related = migrate("query-related-features");
@@ -34,7 +34,14 @@ describe("current ArcGIS sample corpus", () => {
     expect(countyModules).not.toContain("@arcgis/core/Map.js");
     expect(countyModules).toContain("@arcgis/core/geometry/operators/centroidOperator.js");
 
-    expect(related.report.conversion.recommendedMode).toBe("keep-esri-client");
-    expect(related.codemodResult.filesChanged).toBe(0);
+    expect(related.report.conversion.recommendedMode).toBe("assisted-conversion");
+    expect(related.report.conversion.recommendedMode).not.toBe("complete-honua-conversion");
+    expect(related.codemodResult.filesChanged).toBe(1);
+    const relatedModules = related.report.unhandledArcGisModules.map((module) => module.modulePath);
+    expect(relatedModules).toContain("@arcgis/map-components/queryRelatedFeatures");
+    expect(relatedModules).toContain("@arcgis/map-components/arcgisViewClick");
+    expect(relatedModules).not.toContain("@arcgis/map-components/arcgis-map");
+    expect(relatedModules).not.toContain("@arcgis/map-components/viewOnReady");
+    expect(relatedModules).not.toContain("@arcgis/map-components/whenLayerView");
   });
 });

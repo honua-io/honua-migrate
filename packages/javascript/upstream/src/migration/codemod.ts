@@ -990,6 +990,13 @@ function codemodHtmlFile(
     manualTodos.push(...result.manualTodos);
   }
 
+  if (target === "honua-compat") {
+    const shell = rewriteMapComponentShell(nextSource);
+    nextSource = shell.nextSource;
+    rewrittenConstructors += shell.rewrites;
+    addedCompatImport = addedCompatImport || shell.addedCompatImport;
+  }
+
   return {
     nextSource,
     rewrittenImports,
@@ -1002,6 +1009,63 @@ function codemodHtmlFile(
     annotatedTodoComments,
     manualTodos: manualTodos.sort(compareTodos),
   };
+}
+
+const SHELL_COMPONENT_SYMBOLS: Readonly<Record<string, string>> = {
+  "arcgis-map": "MapViewCompat",
+  "arcgis-zoom": "ZoomCompat",
+  "arcgis-legend": "LegendCompat",
+  "arcgis-expand": "ExpandCompat",
+  "arcgis-layer-list": "LayerListCompat",
+};
+
+function rewriteMapComponentShell(source: string): {
+  nextSource: string;
+  rewrites: number;
+  addedCompatImport: boolean;
+} {
+  let next = source;
+  let rewrites = 0;
+  for (const [tag, symbol] of Object.entries(SHELL_COMPONENT_SYMBOLS)) {
+    const open = new RegExp(`<${tag}\\b`, "gi");
+    const close = new RegExp(`</${tag}>`, "gi");
+    const opened = next.match(open)?.length ?? 0;
+    if (opened > 0) {
+      next = next.replace(open, `<div data-honua-compat="${symbol}"`);
+      next = next.replace(close, "</div>");
+      rewrites += opened;
+    }
+  }
+  const selector = /document\.querySelector\((["'])arcgis-map\1\)/g;
+  const selectors = next.match(selector)?.length ?? 0;
+  if (selectors > 0) {
+    next = next.replace(selector, 'document.querySelector("[data-honua-compat=\\"MapViewCompat\\"]")');
+    rewrites += selectors;
+  }
+  const ready = next.match(/\.viewOnReady\s*\(\s*\)/g)?.length ?? 0;
+  if (ready > 0) {
+    next = next.replace(/\.viewOnReady\s*\(\s*\)/g, ".when()");
+    rewrites += ready;
+  }
+  const layerView = /(\w+)\.whenLayerView\s*\(/g;
+  const layerViews = next.match(layerView)?.length ?? 0;
+  if (layerViews > 0) {
+    next = next.replace(layerView, "MapViewCompat.prototype.whenLayerView.call($1, ");
+    rewrites += layerViews;
+  }
+  let addedCompatImport = false;
+  if (next.includes("MapViewCompat") && !next.includes('from "@honua/sdk-esri-compat"')) {
+    let injected = false;
+    next = next.replace(/<script\b([^>]*)>/gi, (full, attrs: string) => {
+      if (injected || /\ssrc\s*=/i.test(attrs)) {
+        return full;
+      }
+      injected = true;
+      addedCompatImport = true;
+      return `${full}\nimport { MapViewCompat } from "@honua/sdk-esri-compat";`;
+    });
+  }
+  return { nextSource: next, rewrites, addedCompatImport };
 }
 
 function codemodFile(

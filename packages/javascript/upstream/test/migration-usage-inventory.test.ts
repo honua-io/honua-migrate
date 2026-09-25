@@ -235,13 +235,18 @@ describe("denominator-complete usage inventory", () => {
     expect(report.usageInventory.moduleSitesByStyle["map-component"]).toBe(6);
     expect(report.usageInventory.moduleSitesByStyle["static-import"]).toBe(1);
     const htmlFile = report.conversion.files.find((file) => file.file === "index.html");
-    expect(htmlFile?.boundary).toBe("kept");
-    expect(htmlFile?.diagnostics.every((diagnostic) => diagnostic.code === "map-component-not-rewritten")).toBe(true);
+    expect(htmlFile?.boundary).toBe("mixed");
+    expect(htmlFile?.handledModuleSites).toBe(3);
+    expect(htmlFile?.diagnostics.map((diagnostic) => diagnostic.modulePath).sort()).toEqual([
+      "@arcgis/map-components/arcgisViewClick",
+      "@arcgis/map-components/queryObjectIds",
+      "@arcgis/map-components/queryRelatedFeatures",
+    ]);
     const importedFile = report.conversion.files.find((file) => file.file === "imported.js");
     expect(importedFile?.diagnostics.some((diagnostic) => diagnostic.code === "map-component-not-rewritten")).toBe(
       false,
     );
-    expect(report.conversion.recommendedMode).toBe("keep-esri-client");
+    expect(report.conversion.recommendedMode).toBe("assisted-conversion");
   });
 
   it("counts an AMD-only app as ArcGIS usage outside codemod scope instead of an empty, ready scan", () => {

@@ -13,6 +13,19 @@ export const AMD_REQUIRE_IMPORT_CLAUSE = "amd-require(...)";
 export const ARCGIS_IMPORT_CLAUSE = "$arcgis.import(...)";
 /** `importClause` marker for an `<arcgis-*>` element or a component API call with no ArcGIS module load. */
 export const MAP_COMPONENT_CLAUSE = "map-component";
+/**
+ * Shell tags and lifecycle calls the codemod rewrites onto compat classes.
+ * Other component calls, including `queryRelatedFeatures` and `arcgisViewClick`, stay held.
+ */
+export const REWRITTEN_SHELL_COMPONENT_PATHS = new Set([
+  "@arcgis/map-components/arcgis-map",
+  "@arcgis/map-components/arcgis-zoom",
+  "@arcgis/map-components/arcgis-legend",
+  "@arcgis/map-components/arcgis-expand",
+  "@arcgis/map-components/arcgis-layer-list",
+  "@arcgis/map-components/viewOnReady",
+  "@arcgis/map-components/whenLayerView",
+]);
 
 const MAP_COMPONENT_METHODS = ["queryRelatedFeatures", "queryObjectIds", "whenLayerView", "viewOnReady"] as const;
 
@@ -70,7 +83,12 @@ export interface ArcGisScanReport {
 export function findArcGisModuleSites(source: string, file: string): ArcGisImportHit[] {
   const imports = findArcGisImports(source, file);
   const loaders = findModuleLoaderHits(source, file);
-  return [...imports, ...loaders, ...findMapComponentHits(source, file, imports.length === 0 && loaders.length === 0)];
+  return [
+    ...imports,
+    ...loaders,
+    ...findMapComponentHits(source, file, imports.length === 0 && loaders.length === 0),
+    ...findArcGisRuntimeScriptHits(source, file),
+  ];
 }
 
 export function scanArcGisUsage(rootDir: string): ArcGisScanReport {
@@ -107,7 +125,7 @@ export function scanArcGisUsage(rootDir: string): ArcGisScanReport {
     for (const portalItemId of findArcGisMapItemIds(source)) {
       portalItemIds.add(portalItemId);
     }
-    const fileImports = [...moduleHits, ...componentHits];
+    const fileImports = [...moduleHits, ...componentHits, ...findArcGisRuntimeScriptHits(source, file)];
     if (fileImports.some((item) => item.importClause.startsWith("export "))) {
       flags.add("arcgis-reexports-detected");
     }
@@ -292,6 +310,25 @@ function scriptKindForFile(file: string): ts.ScriptKind {
  * Calls are skipped when the file already has module sites, so a FeatureLayer
  * import that also calls `queryRelatedFeatures` is not counted twice.
  */
+function findArcGisRuntimeScriptHits(source: string, file: string): ArcGisImportHit[] {
+  const hits: ArcGisImportHit[] = [];
+  const pattern = /<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi;
+  let match: RegExpExecArray | null = pattern.exec(source);
+  while (match !== null) {
+    const src = match[1];
+    if (src.includes("%CDN%") || /js\.arcgis\.com/i.test(src)) {
+      hits.push({
+        file,
+        modulePath: "@arcgis/map-components/arcgis-cdn",
+        importClause: MAP_COMPONENT_CLAUSE,
+        symbols: [],
+      });
+    }
+    match = pattern.exec(source);
+  }
+  return hits;
+}
+
 function findArcGisMapItemIds(source: string): string[] {
   const ids: string[] = [];
   const patterns = [
