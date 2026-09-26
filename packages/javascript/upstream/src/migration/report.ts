@@ -933,7 +933,9 @@ function buildFileMigrations(
     const fileHits = hitsByFile.get(path.resolve(hit.file)) ?? [];
     const valueHits = fileHits.filter((candidate) => !isTypeOnlyImportClause(candidate.importClause));
     const typeOnlySettled =
-      isTypeOnlyImportClause(hit.importClause) && valueHits.every((candidate) => importHits.handled.has(candidate));
+      isTypeOnlyImportClause(hit.importClause) &&
+      valueHits.length > 0 &&
+      valueHits.every((candidate) => importHits.handled.has(candidate));
     entry.moduleSites += 1;
     if (importHits.handled.has(hit) || typeOnlySettled) {
       entry.handledModuleSites += 1;

@@ -3447,6 +3447,14 @@ function rewriteIdentityCalls(options: {
     if (!isIdentityModule(canonical)) {
       continue;
     }
+    // rewriteIdentityManagerImports preserves the local binding by aliasing
+    // the compat export, so no call-site edit or second compat import is
+    // needed for IdentityManager.
+    const hasDedicatedIdentityImportRewrite =
+      statement.moduleSpecifier.text.startsWith("@arcgis/core/") && canonical.endsWith("/identity/IdentityManager");
+    if (hasDedicatedIdentityImportRewrite) {
+      continue;
+    }
     const localName = statement.importClause?.name?.text;
     if (!localName) {
       continue;
@@ -3499,9 +3507,17 @@ function rewriteIdentityCalls(options: {
       });
       compatSymbols.add("IdentityCredentialCompat");
     }
-    const bounds = expandToFullLine(options.source, statement.getStart(options.sourceFile), statement.getEnd());
-    edits.push({ start: bounds.start, end: bounds.end, text: "" });
-    rewrittenKinds.push("identity-manager");
+    // IdentityManager's import is rewritten by rewriteIdentityManagerImports;
+    // adding a full-line delete here would overlap that replacement. OAuthInfo
+    // and Credential imports still need removal here because they have no
+    // dedicated import rewrite.
+    if (!hasDedicatedIdentityImportRewrite) {
+      const bounds = expandToFullLine(options.source, statement.getStart(options.sourceFile), statement.getEnd());
+      edits.push({ start: bounds.start, end: bounds.end, text: "" });
+    }
+    if (canonical.endsWith("/identity/Credential")) {
+      rewrittenKinds.push("identity-manager");
+    }
   }
   return { edits, rewrittenKinds, compatSymbols: Array.from(compatSymbols) };
 }
@@ -4313,7 +4329,12 @@ function ensureCompatNamedImports(
     if (namedBindings && ts.isNamedImports(namedBindings)) {
       const existingSpecifiers = namedBindings.elements.map((element) => element.getText(sourceFile));
       const existingLocalNames = new Set(namedBindings.elements.map((element) => element.name.text));
-      const missing = symbols.filter((symbol) => !existingLocalNames.has(symbol));
+      const existingImportedNames = new Set(
+        namedBindings.elements.map((element) => element.propertyName?.text ?? element.name.text),
+      );
+      const missing = symbols.filter(
+        (symbol) => !existingImportedNames.has(symbol) && !existingLocalNames.has(symbol),
+      );
       if (missing.length === 0) {
         return { nextSource: source, changed: false };
       }
