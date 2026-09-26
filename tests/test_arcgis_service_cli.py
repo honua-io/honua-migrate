@@ -197,6 +197,8 @@ def test_relationships_file_plans_the_related_table_and_apply_omits_evidence(tmp
             "--no-auto-publish",
             "--service-name",
             "cities",
+            "--target-schema",
+            "reviewed_destination",
             "--relationships-file",
             str(catalog),
             "--output",
@@ -207,6 +209,7 @@ def test_relationships_file_plans_the_related_table_and_apply_omits_evidence(tmp
     artifact = json.loads(plan.read_text(encoding="utf-8"))
     actions = artifact["actions"]
     assert [action["request"]["layerId"] for action in actions] == [0, 1]
+    assert all(action["request"]["targetSchema"] == "reviewed_destination" for action in actions)
     relationship = actions[0]["request"]["relationships"][0]
     assert relationship["keyField"] == "Join_ID"
     assert relationship["destinationLayerId"] == 1
@@ -222,6 +225,7 @@ def test_relationships_file_plans_the_related_table_and_apply_omits_evidence(tmp
     sent = [json.loads(call.request.body) for call in responses.calls]
     assert [item["layerId"] for item in sent] == [0, 1]
     assert all("relationships" not in item for item in sent)
+    assert all(item["targetSchema"] == "reviewed_destination" for item in sent)
 
 
 @responses.activate

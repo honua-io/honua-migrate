@@ -326,6 +326,8 @@ def expand_service_plan(origin: Mapping[str, Any], catalog: Mapping[str, Any]) -
             "requestTimeoutSeconds": origin["requestTimeoutSeconds"],
             "autoPublish": origin["autoPublish"],
         }
+        if "targetSchema" in origin:
+            request["targetSchema"] = origin["targetSchema"]
         if isinstance(service_name, str) and service_name:
             request["serviceName"] = f"{service_name}-rel-{related_id}"
         actions.append({"kind": "arcgis-service-import", "request": request})

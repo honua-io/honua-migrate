@@ -818,7 +818,7 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
   const compatImportPath = options.compatImportPath ?? DEFAULT_COMPAT_IMPORT_PATH;
   const annotateTodos = options.annotateTodos ?? false;
   const target = options.target ?? "honua-compat";
-  const shellPlan = target === "honua-compat" ? planMapComponentShells(files) : undefined;
+  const shellPlan = target === "honua-compat" ? planMapComponentShells(files, compatImportPath) : undefined;
 
   const metrics: CodemodMetrics = {
     totalCodemodScopedCallSites: 0,
@@ -1008,10 +1008,13 @@ function rewriteRewrittenEsriNamespaceTypes(sourceFile: ts.SourceFile, compatSym
 }
 
 function ensureCompatPackageDependency(rootDir: string, importPath: string, range: string): void {
-  const manifestPath = path.join(rootDir, "package.json");
-  if (!fs.existsSync(manifestPath)) {
-    return;
+  let manifestDir = path.resolve(rootDir);
+  while (!fs.existsSync(path.join(manifestDir, "package.json"))) {
+    const parent = path.dirname(manifestDir);
+    if (parent === manifestDir) return;
+    manifestDir = parent;
   }
+  const manifestPath = path.join(manifestDir, "package.json");
   let manifest: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
   try {
     manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
@@ -1106,7 +1109,7 @@ function codemodHtmlFile(
   }
 
   if (target === "honua-compat" && shellMode !== "skip") {
-    const shell = rewriteMapComponentShell(nextSource, shellMode === "host" ? "tags-only" : "inline");
+    const shell = rewriteMapComponentShell(nextSource, shellMode === "host" ? "tags-only" : "inline", compatImportPath);
     nextSource = shell.nextSource;
     rewrittenConstructors += shell.rewrites;
     addedCompatImport = addedCompatImport || shell.addedCompatImport;
@@ -1250,7 +1253,7 @@ function arcgisMapQuerySelectorPattern(): RegExp {
   return /document\.querySelector(?:<[^>]+>)?\(\s*(["'])arcgis-map\1\s*\)/g;
 }
 
-function planMapComponentShells(files: readonly string[]): {
+function planMapComponentShells(files: readonly string[], compatImportPath: string): {
   htmlMode: Map<string, MapComponentShellMode>;
   bootstrapByHost: Map<string, string>;
 } {
@@ -1286,7 +1289,7 @@ function planMapComponentShells(files: readonly string[]): {
       continue;
     }
     htmlMode.set(path.resolve(htmlFile), "host");
-    const shell = rewriteMapComponentShell(source, "tags-only");
+    const shell = rewriteMapComponentShell(source, "tags-only", compatImportPath);
     const resolvedHost = path.resolve(host);
     bootstrapByHost.set(resolvedHost, `${bootstrapByHost.get(resolvedHost) ?? ""}${shell.bootstrap}`);
   }
@@ -1313,6 +1316,7 @@ function installShellBootstrap(source: string, bootstrap: string): string {
 function rewriteMapComponentShell(
   source: string,
   inject: "inline" | "tags-only",
+  compatImportPath: string,
 ): {
   nextSource: string;
   rewrites: number;
@@ -1363,7 +1367,7 @@ function rewriteMapComponentShell(
   if (next.includes("geometryEngineCompat.geodesicLength")) {
     symbols.add("geometryEngineCompat");
   }
-  const bootstrap = `import { ${Array.from(symbols).sort().join(", ")} } from "@honua/sdk-esri-compat";\n${lines.join("\n")}\n`;
+  const bootstrap = `import { ${Array.from(symbols).sort().join(", ")} } from ${JSON.stringify(compatImportPath)};\n${lines.join("\n")}\n`;
   if (inject === "tags-only") {
     return { nextSource: next, rewrites: flat.length, addedCompatImport: false, bootstrap };
   }
@@ -3491,21 +3495,14 @@ function rewriteIdentityCalls(options: {
       });
       compatSymbols.add("identityManager");
     } else if (canonical.endsWith("/Credential")) {
-      walk(options.sourceFile, (node) => {
-        if (
-          ts.isIdentifier(node) &&
-          node.text === localName &&
-          !ts.isImportSpecifier(node) &&
-          !ts.isImportClause(node.parent)
-        ) {
-          edits.push({
-            start: node.getStart(options.sourceFile),
-            end: node.getEnd(),
-            text: "IdentityCredentialCompat",
-          });
-        }
+      // Keep the local binding intact, including shorthand keys and shadowed names.
+      edits.push({
+        start: statement.getStart(options.sourceFile),
+        end: statement.getEnd(),
+        text: `import ${statement.importClause?.isTypeOnly ? "type " : ""}{ IdentityCredentialCompat as ${localName} } from ${JSON.stringify(options.compatImportPath)};`,
       });
-      compatSymbols.add("IdentityCredentialCompat");
+      rewrittenKinds.push("identity-manager");
+      continue;
     }
     // IdentityManager's import is rewritten by rewriteIdentityManagerImports;
     // adding a full-line delete here would overlap that replacement. OAuthInfo

@@ -4314,3 +4314,52 @@ describe("runEsriCompatCodemod", () => {
     );
   });
 });
+
+describe("PR 172 review regressions", () => {
+  it("preserves external-only shells without a bootstrap host", () => {
+    const root = makeTempProject();
+    const file = path.join(root, "index.html");
+    const source = '<arcgis-map></arcgis-map><script type="module" src="main.js"></script>';
+    fs.writeFileSync(file, source);
+    runEsriCompatCodemod({ rootDir: root, write: true });
+    expect(fs.readFileSync(file, "utf8")).toBe(source);
+  });
+
+  it.each([false, true])("uses selected shell package (external host: %s)", (external) => {
+    const root = makeTempProject();
+    const file = path.join(root, "index.html");
+    fs.writeFileSync(file, '<arcgis-map></arcgis-map>' + (external
+      ? '<script type="module" src="main.js"></script>'
+      : '<script type="module">console.log("ready");</script>'));
+    if (external) fs.writeFileSync(path.join(root, "main.js"), 'const view = document.querySelector("arcgis-map");');
+    runEsriCompatCodemod({ rootDir: root, write: true, compatImportPath: "@private/compat" });
+    const output = fs.readFileSync(external ? path.join(root, "main.js") : file, "utf8");
+    expect(output).toContain('from "@private/compat"');
+    expect(output).toContain("new MapViewCompat(");
+    expect(output).not.toContain("@honua/sdk-esri-compat");
+  });
+
+  it("updates ancestor manifest when scanning src", () => {
+    const root = makeTempProject();
+    const src = path.join(root, "src");
+    fs.mkdirSync(src);
+    fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ dependencies: { "@honua/sdk-esri-compat": "^0.1.2-beta.0" } }));
+    fs.writeFileSync(path.join(src, "main.ts"), 'import Locator from "esri/tasks/Locator";\nconst locator = new Locator({ url: geocodeURL });');
+    runEsriCompatCodemod({ rootDir: src, write: true });
+    expect(fs.readFileSync(path.join(src, "main.ts"), "utf8")).toContain("new LocatorCompat(");
+    expect(JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).dependencies["@honua/sdk-esri-compat"]).toBe("^0.1.9-beta.0");
+    expect(fs.existsSync(path.join(src, "package.json"))).toBe(false);
+  });
+
+  it.each(["Credential", "MyCredential"])("preserves binding %s, keys, shorthand and shadowing", (binding) => {
+    const root = makeTempProject();
+    const file = path.join(root, "identity.js");
+    const body = `const data = { ${binding} };\nresponse.${binding};\nconst explicit = { ${binding}: 42 };\nfunction shadow(${binding}) { return { ${binding} }; }\nvoid ${binding};\n`;
+    fs.writeFileSync(file, `import ${binding} from "esri/identity/Credential";\n${body}`);
+    runEsriCompatCodemod({ rootDir: root, write: true });
+    const output = fs.readFileSync(file, "utf8");
+    expect(output).toContain(`IdentityCredentialCompat as ${binding}`);
+    expect(output).toContain(body);
+    expect(output).not.toContain('from "esri/identity/Credential"');
+  });
+});
