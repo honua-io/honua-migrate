@@ -107,6 +107,90 @@ describe("current ArcGIS sample corpus", () => {
     );
   });
 
+  it("leaves a Point on Esri when it is passed to an unre-written Esri call", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-point-esri-"));
+    tempDirs.push(dir);
+    const source = [
+      'import Point from "esri/geometry/Point";',
+      'import RouteTask from "esri/tasks/RouteTask";',
+      "export function solve(lon: number, lat: number) {",
+      "  const point = new Point({ longitude: lon, latitude: lat });",
+      '  const task = new RouteTask({ url: "https://example.com/route" });',
+      "  return task.solve(point);",
+      "}",
+      "",
+    ].join("\n");
+    fs.writeFileSync(path.join(dir, "route.ts"), source, "utf8");
+    runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+    expect(fs.readFileSync(path.join(dir, "route.ts"), "utf8")).toBe(source);
+  });
+
+  it("removes a js.arcgis.com worker loader and keeps a config file that sets an api key", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-esri-config-"));
+    tempDirs.push(dir);
+    fs.writeFileSync(
+      path.join(dir, "workers.ts"),
+      [
+        'import esriConfig from "esri/config";',
+        'esriConfig.workers.loaderScript = "https://js.arcgis.com/4.14/";',
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(dir, "keyed.ts"),
+      ['import esriConfig from "esri/config";', 'esriConfig.apiKey = "secret";', ""].join("\n"),
+      "utf8",
+    );
+    runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+    const workers = fs.readFileSync(path.join(dir, "workers.ts"), "utf8");
+    expect(workers).toContain('from "@honua/sdk-esri-compat"');
+    expect(workers).not.toContain("loaderScript");
+    expect(workers).toContain("TODO(honua-migrate)[esri-config]");
+    expect(fs.readFileSync(path.join(dir, "keyed.ts"), "utf8")).toContain('esriConfig.apiKey = "secret"');
+    expect(fs.readFileSync(path.join(dir, "keyed.ts"), "utf8")).not.toContain("@honua/sdk-esri-compat");
+  });
+
+  it("rewrites esri.Point after the Point value moved and keeps an unmapped type", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-esri-types-"));
+    tempDirs.push(dir);
+    fs.writeFileSync(
+      path.join(dir, "types.ts"),
+      [
+        "import esri = __esri;",
+        'import Point from "esri/geometry/Point";',
+        "export function mark(): esri.Point {",
+        "  const center: esri.Point = new Point({ x: 1, y: 2 });",
+        "  return center;",
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(dir, "route-type.ts"),
+      [
+        "import esri = __esri;",
+        'import Point from "esri/geometry/Point";',
+        "export function mark(): esri.DirectionsFeatureSet {",
+        "  const center: esri.Point = new Point({ x: 1, y: 2 });",
+        "  return center as unknown as esri.DirectionsFeatureSet;",
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+    const types = fs.readFileSync(path.join(dir, "types.ts"), "utf8");
+    expect(types).toContain("PointCompat");
+    expect(types).not.toContain("esri.Point");
+    expect(types).not.toContain("import esri = __esri");
+    const routeType = fs.readFileSync(path.join(dir, "route-type.ts"), "utf8");
+    expect(routeType).toContain("import esri = __esri");
+    expect(routeType).toContain("esri.DirectionsFeatureSet");
+    expect(routeType).toContain("PointCompat");
+  });
+
   it("rewrites watchUtils calls onto the compat view and leaves init", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-watch-utils-"));
     tempDirs.push(dir);
@@ -141,7 +225,7 @@ describe("current ArcGIS sample corpus", () => {
     expect(written).not.toContain('whenOnce(view, "ready")');
   });
 
-  it("leaves sign-in on the Esri client when IdentityManager is still imported from esri", () => {
+  it("rewrites sign-in onto identityManager and OAuthInfoCompat", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-esri-oauth-"));
     tempDirs.push(dir);
     const source = [
@@ -149,7 +233,7 @@ describe("current ArcGIS sample corpus", () => {
       'import IdentityManager from "esri/identity/IdentityManager";',
       'import OAuthInfo from "esri/identity/OAuthInfo";',
       "export function initialize(appId: string) {",
-      "  const info = new OAuthInfo({ appId, portalUrl: \"https://www.arcgis.com\", popup: true });",
+      '  const info = new OAuthInfo({ appId, portalUrl: "https://www.arcgis.com", popup: true });',
       "  IdentityManager.registerOAuthInfos([info]);",
       "  return Credential;",
       "}",
@@ -157,7 +241,11 @@ describe("current ArcGIS sample corpus", () => {
     ].join("\n");
     fs.writeFileSync(path.join(dir, "oauth.ts"), source, "utf8");
     runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
-    expect(fs.readFileSync(path.join(dir, "oauth.ts"), "utf8")).toBe(source);
+    const written = fs.readFileSync(path.join(dir, "oauth.ts"), "utf8");
+    expect(written).toContain("identityManager.registerOAuthInfos");
+    expect(written).toContain("new OAuthInfoCompat");
+    expect(written).toContain("IdentityCredentialCompat");
+    expect(written).not.toContain('from "esri/');
   });
 
   it("rewrites supported loads and the viewer shell, and holds related-record calls", () => {

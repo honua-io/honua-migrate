@@ -121,7 +121,7 @@ The codemod writes these replacements. Do not write them again:
 | Held call | Replacement |
 | --- | --- |
 | `whenOnce(view, "ready")` | `view.when()` |
-| `once(view, "extent")` | `reactiveUtils.once(() => view.extent)` |
+| `once(view, "extent")` | `new Promise((resolve) => { reactiveUtils.watch(() => view.extent, resolve, { once: true }); })` |
 | `whenTrueOnce(view, "stationary")` | `reactiveUtils.whenOnce(() => view.stationary)` |
 | `whenFalseOnce(target, "prop")` | `reactiveUtils.whenOnce(() => !target.prop)` |
 | `import { geodesicLength } from "esri/geometry/geometryEngine"` | `geometryEngineCompat.geodesicLength` |

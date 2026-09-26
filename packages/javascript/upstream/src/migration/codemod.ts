@@ -220,6 +220,7 @@ export type CodemodConstructorKind =
   | "print-widget"
   | "home-widget"
   | "basemap-toggle-widget"
+  | "identity-manager"
   | "locate-widget"
   | "scale-bar-widget"
   | "search-widget"
@@ -923,6 +924,41 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
   };
 }
 
+function rewriteRewrittenEsriNamespaceTypes(sourceFile: ts.SourceFile, compatSymbols: ReadonlySet<string>): TextEdit[] {
+  const compatByEsriName = new Map<string, string>();
+  for (const spec of REWRITE_SPECS) {
+    if (!compatSymbols.has(spec.compatSymbol)) {
+      continue;
+    }
+    for (const modulePath of spec.arcGisModules) {
+      const leaf = modulePath.split("/").pop()?.replace(/\.js$/, "");
+      if (leaf && !compatByEsriName.has(leaf)) {
+        compatByEsriName.set(leaf, spec.compatSymbol);
+      }
+    }
+  }
+  if (compatByEsriName.size === 0) {
+    return [];
+  }
+  const edits: TextEdit[] = [];
+  walk(sourceFile, (node) => {
+    if (
+      !ts.isQualifiedName(node) ||
+      !ts.isIdentifier(node.left) ||
+      node.left.text !== "esri" ||
+      !ts.isIdentifier(node.right)
+    ) {
+      return;
+    }
+    const compat = compatByEsriName.get(node.right.text);
+    if (!compat) {
+      return;
+    }
+    edits.push({ start: node.getStart(sourceFile), end: node.getEnd(), text: compat });
+  });
+  return edits;
+}
+
 function ensureCompatPackageDependency(rootDir: string, importPath: string): void {
   const manifestPath = path.join(rootDir, "package.json");
   if (!fs.existsSync(manifestPath)) {
@@ -1242,6 +1278,7 @@ function codemodFile(
   assertParsableSource(file, source);
   const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
   const localsPinnedByWatchUtilsInit = localsPassedToWatchUtilsInit(sourceFile);
+  const classesPassedToEsri = classesPassedToUnrewrittenEsri(sourceFile);
   const imports = collectSupportedImports(sourceFile, file, localArcGisReExports, sourceFilesSet);
 
   const importsByLocalName = new Map<string, ArcGisImportBinding>();
@@ -1297,6 +1334,20 @@ function codemodFile(
   rewrittenKinds.push(...identityManagerImportRewrite.rewrittenKinds);
   manualTodos.push(...identityManagerImportRewrite.manualTodos);
   todoCommentEdits.push(...identityManagerImportRewrite.todoCommentEdits);
+
+  const identityRewrite = rewriteIdentityCalls({
+    source,
+    sourceFile,
+    file,
+    compatImportPath,
+    annotateTodos,
+    target,
+  });
+  importEdits.push(...identityRewrite.edits);
+  rewrittenKinds.push(...identityRewrite.rewrittenKinds);
+  for (const symbol of identityRewrite.compatSymbols) {
+    requiredCompatSymbols.add(symbol);
+  }
 
   const esriConfigImportRewrite = rewriteEsriConfigImports({
     source,
@@ -1655,7 +1706,7 @@ function codemodFile(
       return;
     }
 
-    if (localsPinnedByWatchUtilsInit.has(importBinding.localName)) {
+    if (localsPinnedByWatchUtilsInit.has(importBinding.localName) || classesPassedToEsri.has(importBinding.localName)) {
       return;
     }
 
@@ -1848,15 +1899,20 @@ function codemodFile(
     };
   }
 
+  const esriTypeEdits = rewriteRewrittenEsriNamespaceTypes(sourceFile, requiredCompatSymbols);
   let transformed = applyTextEdits(source, [
     ...importEdits,
     ...constructorEdits,
     ...dynamicImportEdits,
     ...eventNameEdits,
     ...todoCommentEdits,
+    ...esriTypeEdits,
   ]);
   const removedArcGisImports = removeUnusedArcGisImports(file, transformed);
   transformed = removedArcGisImports.nextSource;
+  if (!/\besri\./.test(transformed)) {
+    transformed = transformed.replace(/^[ \t]*import\s+esri\s*=\s*__esri\s*;?[ \t]*\r?\n/m, "");
+  }
 
   let addedCompatImport = false;
   const compatSymbols = Array.from(requiredCompatSymbols).sort();
@@ -1959,6 +2015,87 @@ function pushImportManualTodo(
       text: `// ${TODO_MARKER}[${kind}]: ${reason}\n`,
     });
   }
+}
+
+function calleeRootName(expression: ts.Expression): string | undefined {
+  let current = expression;
+  while (ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current)) {
+    current = current.expression;
+  }
+  return ts.isIdentifier(current) ? current.text : undefined;
+}
+
+function classesPassedToUnrewrittenEsri(sourceFile: ts.SourceFile): Set<string> {
+  const unrewritten = new Set<string>();
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
+      continue;
+    }
+    const canonical = canonicalArcGisModulePath(statement.moduleSpecifier.text);
+    if (!canonical.startsWith("@arcgis/core")) {
+      continue;
+    }
+    if (MODULE_TO_SPEC.get(canonical) ?? MODULE_TO_SPEC.get(`${canonical}.js`) ?? isIdentityModule(canonical)) {
+      continue;
+    }
+    const clause = statement.importClause;
+    if (!clause) {
+      continue;
+    }
+    if (clause.name) {
+      unrewritten.add(clause.name.text);
+    }
+    const named = clause.namedBindings;
+    if (named && ts.isNamespaceImport(named)) {
+      unrewritten.add(named.name.text);
+    } else if (named && ts.isNamedImports(named)) {
+      for (const element of named.elements) {
+        unrewritten.add(element.name.text);
+      }
+    }
+  }
+  const constructedClass = new Map<string, string>();
+  walk(sourceFile, (node) => {
+    if (!ts.isVariableDeclaration(node) || !ts.isIdentifier(node.name) || !node.initializer) {
+      return;
+    }
+    if (ts.isNewExpression(node.initializer) && ts.isIdentifier(node.initializer.expression)) {
+      constructedClass.set(node.name.text, node.initializer.expression.text);
+    }
+  });
+  const tainted = new Set<string>(unrewritten);
+  for (const [localName, className] of constructedClass) {
+    if (unrewritten.has(className)) {
+      tainted.add(localName);
+    }
+  }
+  const pinned = new Set<string>();
+  const pinFromArguments = (args: readonly ts.Expression[]) => {
+    for (const arg of args) {
+      walk(arg, (inner) => {
+        if (ts.isNewExpression(inner) && ts.isIdentifier(inner.expression)) {
+          pinned.add(inner.expression.text);
+        }
+        if (ts.isIdentifier(inner)) {
+          const className = constructedClass.get(inner.text);
+          if (className) {
+            pinned.add(className);
+          }
+        }
+      });
+    }
+  };
+  walk(sourceFile, (node) => {
+    if (!ts.isCallExpression(node)) {
+      return;
+    }
+    const root = calleeRootName(node.expression);
+    if (!root || !tainted.has(root)) {
+      return;
+    }
+    pinFromArguments(node.arguments);
+  });
+  return pinned;
 }
 
 function isWatchUtilsModule(modulePath: string): boolean {
@@ -2111,11 +2248,7 @@ function rewriteWatchUtilsCalls(options: {
       .filter((element) => kept.has(element.name.text))
       .map((element) => element.getText(options.sourceFile));
     if (keptSpecifiers.length === 0) {
-      const bounds = expandToFullLine(
-        options.source,
-        statement.getStart(options.sourceFile),
-        statement.getEnd(),
-      );
+      const bounds = expandToFullLine(options.source, statement.getStart(options.sourceFile), statement.getEnd());
       edits.push({ start: bounds.start, end: bounds.end, text: "" });
     } else if (rewroteCall) {
       const quote = statement.moduleSpecifier.getText(options.sourceFile).startsWith("'") ? "'" : '"';
@@ -2774,7 +2907,13 @@ function rewriteEsriConfigImports(options: {
     if (!statement.importClause) {
       continue;
     }
-    if (MODULE_TO_SPEC.get(statement.moduleSpecifier.text)?.kind !== "esri-config") {
+    const configModulePath = canonicalArcGisModulePath(statement.moduleSpecifier.text);
+    if (
+      (MODULE_TO_SPEC.get(configModulePath) ?? MODULE_TO_SPEC.get(`${configModulePath}.js`))?.kind !== "esri-config"
+    ) {
+      continue;
+    }
+    if (esriConfigKeepsArcGisRuntime(options.sourceFile, statement)) {
       continue;
     }
 
@@ -2821,6 +2960,7 @@ function rewriteEsriConfigImports(options: {
       end: statement.getEnd(),
       text: replacement,
     });
+    edits.push(...removeEsriWorkerLoaderAssignments(options.sourceFile, options.source, statement));
     rewrittenKinds.push("esri-config");
   }
 
@@ -2830,6 +2970,157 @@ function rewriteEsriConfigImports(options: {
     manualTodos,
     todoCommentEdits,
   };
+}
+
+function isIdentityModule(modulePath: string): boolean {
+  return (
+    modulePath.endsWith("/identity/IdentityManager") ||
+    modulePath.endsWith("/identity/OAuthInfo") ||
+    modulePath.endsWith("/identity/Credential")
+  );
+}
+
+function rewriteIdentityCalls(options: {
+  source: string;
+  sourceFile: ts.SourceFile;
+  file: string;
+  compatImportPath: string;
+  annotateTodos: boolean;
+  target: CodemodTarget;
+}): { edits: TextEdit[]; rewrittenKinds: CodemodConstructorKind[]; compatSymbols: string[] } {
+  const edits: TextEdit[] = [];
+  const rewrittenKinds: CodemodConstructorKind[] = [];
+  const compatSymbols = new Set<string>();
+  if (options.target !== "honua-compat") {
+    return { edits, rewrittenKinds, compatSymbols: [] };
+  }
+  for (const statement of options.sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
+      continue;
+    }
+    const canonical = canonicalArcGisModulePath(statement.moduleSpecifier.text);
+    if (!isIdentityModule(canonical)) {
+      continue;
+    }
+    const localName = statement.importClause?.name?.text;
+    if (!localName) {
+      continue;
+    }
+    if (canonical.endsWith("/IdentityManager")) {
+      walk(options.sourceFile, (node) => {
+        if (
+          !ts.isPropertyAccessExpression(node) ||
+          !ts.isIdentifier(node.expression) ||
+          node.expression.text !== localName
+        ) {
+          return;
+        }
+        edits.push({
+          start: node.expression.getStart(options.sourceFile),
+          end: node.expression.getEnd(),
+          text: "identityManager",
+        });
+      });
+      compatSymbols.add("identityManager");
+    } else if (canonical.endsWith("/Credential")) {
+      walk(options.sourceFile, (node) => {
+        if (
+          ts.isIdentifier(node) &&
+          node.text === localName &&
+          !ts.isImportSpecifier(node) &&
+          !ts.isImportClause(node.parent)
+        ) {
+          edits.push({
+            start: node.getStart(options.sourceFile),
+            end: node.getEnd(),
+            text: "IdentityCredentialCompat",
+          });
+        }
+      });
+      compatSymbols.add("IdentityCredentialCompat");
+    }
+    const bounds = expandToFullLine(options.source, statement.getStart(options.sourceFile), statement.getEnd());
+    edits.push({ start: bounds.start, end: bounds.end, text: "" });
+    rewrittenKinds.push("identity-manager");
+  }
+  return { edits, rewrittenKinds, compatSymbols: Array.from(compatSymbols) };
+}
+
+function esriConfigKeepsArcGisRuntime(sourceFile: ts.SourceFile, configImport: ts.ImportDeclaration): boolean {
+  const localName = configImport.importClause?.name?.text;
+  if (!localName) {
+    return false;
+  }
+  let keep = false;
+  walk(sourceFile, (node) => {
+    if (
+      !ts.isPropertyAccessExpression(node) ||
+      !ts.isIdentifier(node.expression) ||
+      node.expression.text !== localName
+    ) {
+      return;
+    }
+    if (node.name.text === "apiKey" || node.name.text === "interceptors") {
+      keep = true;
+    }
+    if (
+      node.name.text === "request" &&
+      node.parent &&
+      ts.isPropertyAccessExpression(node.parent) &&
+      node.parent.name.text === "interceptors"
+    ) {
+      keep = true;
+    }
+  });
+  return keep;
+}
+
+function removeEsriWorkerLoaderAssignments(
+  sourceFile: ts.SourceFile,
+  source: string,
+  configImport: ts.ImportDeclaration,
+): TextEdit[] {
+  if (!source.includes("js.arcgis.com")) {
+    return [];
+  }
+  const localName = configImport.importClause?.name?.text;
+  if (!localName) {
+    return [];
+  }
+  const edits: TextEdit[] = [];
+  let noted = false;
+  walk(sourceFile, (node) => {
+    if (!ts.isBinaryExpression(node) || node.operatorToken.kind !== ts.SyntaxKind.EqualsToken) {
+      return;
+    }
+    if (!ts.isPropertyAccessExpression(node.left)) {
+      return;
+    }
+    const property = node.left.name.text;
+    if (property !== "loaderUrl" && property !== "loaderScript" && property !== "loaderConfig") {
+      return;
+    }
+    let workers: ts.Expression = node.left.expression;
+    while (
+      ts.isParenthesizedExpression(workers) ||
+      ts.isAsExpression(workers) ||
+      ts.isTypeAssertionExpression(workers)
+    ) {
+      workers = workers.expression;
+    }
+    if (!ts.isPropertyAccessExpression(workers) || workers.name.text !== "workers") {
+      return;
+    }
+    const statement = node.parent;
+    if (!statement || !ts.isExpressionStatement(statement)) {
+      return;
+    }
+    const bounds = expandToFullLine(source, statement.getStart(sourceFile), statement.getEnd());
+    const note = noted ? "" : `/* ${TODO_MARKER}[esri-config]: removed a js.arcgis.com worker loader assignment */\n`;
+    noted = true;
+    edits.push({ start: bounds.start, end: bounds.end, text: note });
+  });
+  return edits;
 }
 
 function buildEsriConfigCompatImport(
