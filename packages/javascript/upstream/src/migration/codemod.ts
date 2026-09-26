@@ -2807,7 +2807,12 @@ function restLocatorLocalsWithheld(sourceFile: ts.SourceFile): Set<string> {
         ? node.parent.parent
         : undefined;
     const calledName = call ? locatorRestCallFunctionName(call, functionLocals, namespaceLocals) : undefined;
-    if (call && calledName && call.arguments.length === 2 && call.expression === (ts.isCallExpression(node.parent) ? node : node.parent)) {
+    if (
+      call &&
+      calledName &&
+      call.arguments.length === 2 &&
+      call.expression === (ts.isCallExpression(node.parent) ? node : node.parent)
+    ) {
       return;
     }
     withheld.add(node.text);
