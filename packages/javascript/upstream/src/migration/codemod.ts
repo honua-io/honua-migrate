@@ -897,6 +897,10 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
     residualArcGisModuleSites.push(...findArcGisModuleSites(fileResult.nextSource, file));
   }
 
+  if (options.write && fileResults.some((item) => item.addedCompatImport)) {
+    ensureCompatPackageDependency(rootDir, compatImportPath);
+  }
+
   return {
     rootDir,
     target,
@@ -917,6 +921,24 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
     residualArcGisModuleSites,
     errors: errors.length > 0 ? errors.sort(compareFileErrors) : undefined,
   };
+}
+
+function ensureCompatPackageDependency(rootDir: string, importPath: string): void {
+  const manifestPath = path.join(rootDir, "package.json");
+  if (!fs.existsSync(manifestPath)) {
+    return;
+  }
+  let manifest: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+  try {
+    manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  } catch {
+    return;
+  }
+  if (manifest.dependencies?.[importPath] || manifest.devDependencies?.[importPath]) {
+    return;
+  }
+  manifest.dependencies = { ...(manifest.dependencies ?? {}), [importPath]: "^0.1.2-beta.0" };
+  fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 }
 
 function assertParsableSource(file: string, source: string): void {
@@ -1626,6 +1648,15 @@ function codemodFile(
           end: rewriteTarget.end,
           text: spec.compatSymbol,
         });
+        if (importBinding.kind === "point-geometry") {
+          constructorEdits.push(...renamePointCoordinateProperties(node, sourceFile));
+        }
+        if (importBinding.kind === "map-view") {
+          constructorEdits.push(...removeObjectProperties(node, sourceFile, source, new Set(["ui"])));
+        }
+        if (importBinding.kind === "locate-widget") {
+          constructorEdits.push(...removeObjectProperties(node, sourceFile, source, new Set(["scale"])));
+        }
         if (importBinding.kind === "query") {
           // Deep-transform Query options into the Honua QueryFeaturesRequest
           // shape (renames + geometry split + outStatistics normalization).
@@ -1837,6 +1868,26 @@ function codemodFile(
     addedCompatImport = addedCompatImport || esriLeafletImportResult.changed;
   }
 
+  // OAuthInfoCompat cannot be registered with the Esri IdentityManager. Leave the
+  // whole file on the Esri client until Credential and IdentityManager move too.
+  if (
+    transformed.includes("OAuthInfoCompat") &&
+    /from\s+["']esri\/identity\/(?:IdentityManager|Credential)["']/.test(transformed)
+  ) {
+    return {
+      nextSource: source,
+      rewrittenImports: 0,
+      rewrittenConstructors: 0,
+      rewrittenDynamicImports: 0,
+      rewrittenEventNames: 0,
+      rewrittenKinds: [],
+      addedCompatImport: false,
+      removedArcGisImports: 0,
+      annotatedTodoComments: 0,
+      manualTodos: [],
+    };
+  }
+
   return {
     nextSource: transformed,
     rewrittenImports: importEdits.length,
@@ -1998,7 +2049,11 @@ function rewriteGeometryEngineImports(options: {
     if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
       continue;
     }
-    if (MODULE_TO_SPEC.get(statement.moduleSpecifier.text)?.kind !== "geometry-engine") {
+    const geometryModulePath = canonicalArcGisModulePath(statement.moduleSpecifier.text);
+    if (
+      (MODULE_TO_SPEC.get(geometryModulePath) ?? MODULE_TO_SPEC.get(`${geometryModulePath}.js`))?.kind !==
+      "geometry-engine"
+    ) {
       continue;
     }
 
@@ -2052,6 +2107,7 @@ function rewriteGeometryEngineImports(options: {
       end: statement.getEnd(),
       text: replacement,
     });
+    edits.push(...rewriteNamedGeometryEngineCalls(options.sourceFile, statement));
     rewrittenKinds.push("geometry-engine");
   }
 
@@ -2083,13 +2139,14 @@ function buildGeometryEngineCompatImport(
   if (namedBindings && ts.isNamespaceImport(namedBindings)) {
     specifiers.push(renderImportSpecifier(compatSymbol, namedBindings.name.text));
   } else if (namedBindings && ts.isNamedImports(namedBindings)) {
-    for (const element of namedBindings.elements) {
-      const importedName = element.propertyName?.text ?? element.name.text;
-      const localName = element.name.text;
-      if (importedName === "default" || importedName === compatSymbol) {
-        specifiers.push(renderImportSpecifier(compatSymbol, localName));
-        continue;
+    const namedOps = namedBindings.elements.map((element) => element.propertyName?.text ?? element.name.text);
+    if (
+      namedOps.every((name) => name === "default" || name === compatSymbol || GEOMETRY_ENGINE_COVERED_OPS.has(name))
+    ) {
+      if (!specifiers.includes(compatSymbol)) {
+        specifiers.push(compatSymbol);
       }
+    } else {
       return undefined;
     }
   }
@@ -2100,6 +2157,39 @@ function buildGeometryEngineCompatImport(
   }
 
   return `import { ${uniqueSpecifiers.join(", ")} } from "${compatImportPath}";`;
+}
+
+function rewriteNamedGeometryEngineCalls(sourceFile: ts.SourceFile, statement: ts.ImportDeclaration): TextEdit[] {
+  const namedBindings = statement.importClause?.namedBindings;
+  if (!namedBindings || !ts.isNamedImports(namedBindings)) {
+    return [];
+  }
+  const localToOp = new Map<string, string>();
+  for (const element of namedBindings.elements) {
+    const importedName = element.propertyName?.text ?? element.name.text;
+    if (GEOMETRY_ENGINE_COVERED_OPS.has(importedName)) {
+      localToOp.set(element.name.text, importedName);
+    }
+  }
+  if (localToOp.size === 0) {
+    return [];
+  }
+  const edits: TextEdit[] = [];
+  walk(sourceFile, (node) => {
+    if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) {
+      return;
+    }
+    const op = localToOp.get(node.expression.text);
+    if (!op) {
+      return;
+    }
+    edits.push({
+      start: node.expression.getStart(sourceFile),
+      end: node.expression.getEnd(),
+      text: `geometryEngineCompat.${op}`,
+    });
+  });
+  return edits;
 }
 
 /**
@@ -5261,6 +5351,69 @@ function isSafeGraphicCompatCall(node: ts.NewExpression): { ok: true } | { ok: f
   return { ok: true };
 }
 
+function renamePointCoordinateProperties(node: ts.NewExpression, sourceFile: ts.SourceFile): TextEdit[] {
+  const arg = node.arguments?.[0];
+  if (!arg || !ts.isObjectLiteralExpression(arg)) {
+    return [];
+  }
+  const edits: TextEdit[] = [];
+  for (const property of arg.properties) {
+    if (ts.isShorthandPropertyAssignment(property)) {
+      if (property.name.text === "longitude") {
+        edits.push({ start: property.getStart(sourceFile), end: property.getEnd(), text: "x: longitude" });
+      } else if (property.name.text === "latitude") {
+        edits.push({ start: property.getStart(sourceFile), end: property.getEnd(), text: "y: latitude" });
+      }
+      continue;
+    }
+    if (!ts.isPropertyAssignment(property) || !ts.isIdentifier(property.name)) {
+      continue;
+    }
+    if (property.name.text === "longitude") {
+      edits.push({ start: property.name.getStart(sourceFile), end: property.name.getEnd(), text: "x" });
+    } else if (property.name.text === "latitude") {
+      edits.push({ start: property.name.getStart(sourceFile), end: property.name.getEnd(), text: "y" });
+    }
+  }
+  return edits;
+}
+
+function removeObjectProperties(
+  node: ts.NewExpression,
+  sourceFile: ts.SourceFile,
+  source: string,
+  names: ReadonlySet<string>,
+): TextEdit[] {
+  const arg = node.arguments?.[0];
+  if (!arg || !ts.isObjectLiteralExpression(arg)) {
+    return [];
+  }
+  const edits: TextEdit[] = [];
+  for (const property of arg.properties) {
+    const name = getObjectPropertyName(property);
+    if (!name || !names.has(name)) {
+      continue;
+    }
+    let start = property.getStart(sourceFile);
+    let end = property.getEnd();
+    const trailing = /^\s*,/.exec(source.slice(end));
+    if (trailing) {
+      end += trailing[0].length;
+    } else {
+      const leading = /,\s*$/.exec(source.slice(Math.max(0, start - 8), start));
+      if (leading) {
+        start -= leading[0].length;
+      }
+    }
+    const note =
+      name === "ui"
+        ? `/* ${TODO_MARKER}[map-view]: ui.components was not copied; add controls with view.ui.add */ `
+        : `/* ${TODO_MARKER}[locate-widget]: scale was not copied */ `;
+    edits.push({ start, end, text: note });
+  }
+  return edits;
+}
+
 function isSafePointGeometryCompatCall(node: ts.NewExpression): { ok: true } | { ok: false; reason: string } {
   const args = node.arguments;
   if (!args || args.length === 0) {
@@ -5281,7 +5434,7 @@ function isSafePointGeometryCompatCall(node: ts.NewExpression): { ok: true } | {
     };
   }
 
-  const allowed = new Set(["x", "y", "z", "m", "spatialReference"]);
+  const allowed = new Set(["x", "y", "z", "m", "spatialReference", "longitude", "latitude"]);
   for (const property of arg.properties) {
     if (!isAssignableObjectProperty(property)) {
       return {
@@ -6208,7 +6361,7 @@ function isSafeMapViewCompatCall(
     }
   }
 
-  const unsupported = collectUnsupportedPropertyNames(arg, allowed);
+  const unsupported = collectUnsupportedPropertyNames(arg, allowed).filter((name) => name !== "ui");
   if (unsupported.length > 0) {
     return {
       ok: false,
@@ -6962,7 +7115,7 @@ function isSafeLocateWidgetCompatCall(node: ts.NewExpression): { ok: true } | { 
     }
   }
 
-  const unsupported = collectUnsupportedPropertyNames(arg, allowed);
+  const unsupported = collectUnsupportedPropertyNames(arg, allowed).filter((name) => name !== "scale");
   if (unsupported.length > 0) {
     return {
       ok: false,

@@ -74,6 +74,58 @@ describe("current ArcGIS sample corpus", () => {
     expect(fs.readFileSync(path.join(dir, "assets.d.ts"), "utf8")).toBe('declare module "*.svg";\n');
   });
 
+  it("rewrites a named geodesicLength import and a Point constructed with longitude and latitude", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-esri-length-"));
+    tempDirs.push(dir);
+    fs.writeFileSync(
+      path.join(dir, "nearby.ts"),
+      [
+        'import { geodesicLength } from "esri/geometry/geometryEngine";',
+        'import Polyline from "esri/geometry/Polyline";',
+        "export function miles(a: number, b: number) {",
+        "  const line = new Polyline({ paths: [[[a, b], [a + 1, b + 1]]] });",
+        '  return geodesicLength(line, "miles");',
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(dir, "point.ts"),
+      ['import Point from "esri/geometry/Point";', "export const p = new Point({ longitude, latitude });", ""].join(
+        "\n",
+      ),
+      "utf8",
+    );
+    runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+    const written = fs.readFileSync(path.join(dir, "nearby.ts"), "utf8");
+    expect(written).toContain("geometryEngineCompat.geodesicLength");
+    expect(written).toContain("PolylineCompat");
+    expect(written).not.toContain('from "esri/');
+    expect(fs.readFileSync(path.join(dir, "point.ts"), "utf8")).toContain(
+      "new PointCompat({ x: longitude, y: latitude })",
+    );
+  });
+
+  it("leaves sign-in on the Esri client when IdentityManager is still imported from esri", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-esri-oauth-"));
+    tempDirs.push(dir);
+    const source = [
+      'import Credential from "esri/identity/Credential";',
+      'import IdentityManager from "esri/identity/IdentityManager";',
+      'import OAuthInfo from "esri/identity/OAuthInfo";',
+      "export function initialize(appId: string) {",
+      "  const info = new OAuthInfo({ appId, portalUrl: \"https://www.arcgis.com\", popup: true });",
+      "  IdentityManager.registerOAuthInfos([info]);",
+      "  return Credential;",
+      "}",
+      "",
+    ].join("\n");
+    fs.writeFileSync(path.join(dir, "oauth.ts"), source, "utf8");
+    runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+    expect(fs.readFileSync(path.join(dir, "oauth.ts"), "utf8")).toBe(source);
+  });
+
   it("rewrites supported loads and the viewer shell, and holds related-record calls", () => {
     const trees = migrate("intro-featurelayer");
     const counties = migrate("featurelayer-query");
