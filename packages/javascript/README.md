@@ -106,11 +106,12 @@ to invent a new plan.
 constructor could move. Restore that behavior on the compat object, or delete
 the option. Do not put the call back on an Esri class.
 
-A rewritten value stays on one runtime. If a `*Compat` object is passed to a
-function or constructor still imported from `esri/` or `@arcgis/core`, revert
-that binding to the Esri import. Do not add another compat import to paper
-over the call. Sign-in is the pattern: `OAuthInfo` stays on Esri while
-`IdentityManager` or `Credential` is still imported from `esri/identity`.
+A rewritten value stays on one runtime. The codemod leaves a constructor on
+Esri when that value is passed to a call that is still imported from `esri/`
+or `@arcgis/core`. A `Point` passed to `Locator` stays `new Point`. Do not
+flip just that constructor to `PointCompat`. Sign-in is rewritten together:
+`OAuthInfoCompat` is registered on `identityManager`, and `Credential` is the
+`IdentityCredentialCompat` type.
 
 `import esri = __esri` is a type alias. Replace `esri.X` with the compat type
 only after the value import of `X` was rewritten. Leave the alias until the
