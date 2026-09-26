@@ -475,7 +475,20 @@ function findModuleLoaderHits(source: string, file: string): ArcGisImportHit[] {
   return hits;
 }
 
-const FROM_ARCGIS_MODULE = /\sfrom\s+["'](@arcgis\/core\/[^"']+)["'];?/g;
+const FROM_ARCGIS_MODULE = /\sfrom\s+["']((?:@arcgis\/core\/|esri\/)[^"']+)["'];?/g;
+
+/** Webpack and AMD apps import `esri/Map`. The codemod's module map is `@arcgis/core/Map`. */
+export function canonicalArcGisModulePath(modulePath: string): string {
+  if (modulePath.startsWith("@arcgis/core/") || modulePath === "@arcgis/core") {
+    return modulePath;
+  }
+  if (modulePath === "esri" || modulePath.startsWith("esri/")) {
+    const withoutJs = modulePath.endsWith(".js") ? modulePath.slice(0, -3) : modulePath;
+    const rest = withoutJs === "esri" ? "" : withoutJs.slice("esri/".length);
+    return rest ? `@arcgis/core/${rest}` : "@arcgis/core";
+  }
+  return modulePath;
+}
 
 /**
  * `<keyword> <clause> from "@arcgis/core/..."` sites, in source order, with the
@@ -548,18 +561,18 @@ function findArcGisImports(source: string, file: string): ArcGisImportHit[] {
   for (const match of findFromClauses(source, "import")) {
     hits.push({
       file,
-      modulePath: match.modulePath,
+      modulePath: canonicalArcGisModulePath(match.modulePath),
       importClause: match.clause,
       symbols: extractImportedSymbols(match.clause),
     });
   }
 
-  const sideEffectImportRegex = /import\s+["'](@arcgis\/core\/[^"']+)["'];?/g;
+  const sideEffectImportRegex = /import\s+["']((?:@arcgis\/core\/|esri\/)[^"']+)["'];?/g;
   let sideEffectImportMatch: RegExpExecArray | null = sideEffectImportRegex.exec(source);
   while (sideEffectImportMatch !== null) {
     hits.push({
       file,
-      modulePath: sideEffectImportMatch[1],
+      modulePath: canonicalArcGisModulePath(sideEffectImportMatch[1]),
       importClause: "side-effect-import",
       symbols: [],
     });
@@ -569,7 +582,7 @@ function findArcGisImports(source: string, file: string): ArcGisImportHit[] {
   for (const match of findFromClauses(source, "export")) {
     hits.push({
       file,
-      modulePath: match.modulePath,
+      modulePath: canonicalArcGisModulePath(match.modulePath),
       importClause: `export ${match.clause}`,
       symbols: extractImportedSymbols(match.clause),
     });

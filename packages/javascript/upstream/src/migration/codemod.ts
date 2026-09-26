@@ -4,7 +4,7 @@ import { type WebMapMapLibreManualGap, webmapJsonToMapLibreStyle } from "@honua/
 import type { WebMapJson } from "@honua/sdk/webmap";
 import ts from "typescript";
 
-import { type ArcGisImportHit, findArcGisModuleSites } from "./scanner.js";
+import { type ArcGisImportHit, canonicalArcGisModulePath, findArcGisModuleSites } from "./scanner.js";
 
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".html", ".htm"]);
 const HTML_EXTENSIONS = new Set([".html", ".htm"]);
@@ -815,6 +815,10 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
       continue;
     }
 
+    if (/^\s*declare\s+module\s+["'][^"']+["']\s*;\s*$/.test(source)) {
+      continue;
+    }
+
     let fileResult: ReturnType<typeof codemodFile>;
     try {
       fileResult = HTML_EXTENSIONS.has(path.extname(file).toLowerCase())
@@ -1030,7 +1034,8 @@ interface ShellElement {
 }
 
 function parseShellElements(source: string): ShellElement[] {
-  const pattern = /<(\/?)(arcgis-map|arcgis-zoom|arcgis-legend|arcgis-expand|arcgis-layer-list|arcgis-popup)\b([^>]*)>/gi;
+  const pattern =
+    /<(\/?)(arcgis-map|arcgis-zoom|arcgis-legend|arcgis-expand|arcgis-layer-list|arcgis-popup)\b([^>]*)>/gi;
   const roots: ShellElement[] = [];
   const stack: ShellElement[] = [];
   let generated = 0;
@@ -2991,9 +2996,10 @@ function collectSupportedImports(
       continue;
     }
 
-    const modulePath = statement.moduleSpecifier.text;
-    const normalizedModulePath = normalizeArcGisModulePath(modulePath);
-    const spec = MODULE_TO_SPEC.get(modulePath) ?? MODULE_TO_SPEC.get(normalizedModulePath);
+    const rawModulePath = statement.moduleSpecifier.text;
+    const modulePath = canonicalArcGisModulePath(rawModulePath);
+    const normalizedModulePath = modulePath;
+    const spec = MODULE_TO_SPEC.get(modulePath) ?? MODULE_TO_SPEC.get(`${modulePath}.js`);
 
     const importClause = statement.importClause;
     if (!importClause) {
@@ -3039,8 +3045,8 @@ function collectSupportedImports(
       continue;
     }
 
-    if (modulePath.startsWith(".") || modulePath.startsWith("/")) {
-      const resolvedImportPath = resolveLocalModulePath(file, modulePath, sourceFilesSet);
+    if (rawModulePath.startsWith(".") || rawModulePath.startsWith("/")) {
+      const resolvedImportPath = resolveLocalModulePath(file, rawModulePath, sourceFilesSet);
       if (!resolvedImportPath) {
         continue;
       }
@@ -4250,8 +4256,12 @@ function removeUnusedArcGisImports(file: string, source: string): { nextSource: 
     if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
       continue;
     }
-    const modulePath = statement.moduleSpecifier.text;
-    if (!MODULE_TO_SPEC.has(modulePath) && !isSupportedArcGisBarrelModulePath(modulePath)) {
+    const modulePath = canonicalArcGisModulePath(statement.moduleSpecifier.text);
+    if (
+      !MODULE_TO_SPEC.has(modulePath) &&
+      !MODULE_TO_SPEC.has(`${modulePath}.js`) &&
+      !isSupportedArcGisBarrelModulePath(modulePath)
+    ) {
       continue;
     }
 

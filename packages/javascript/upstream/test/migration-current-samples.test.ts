@@ -33,6 +33,47 @@ function migrate(name: string) {
 }
 
 describe("current ArcGIS sample corpus", () => {
+  it("rewrites webpack esri/ imports and ignores an ambient asset module", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-esri-webpack-"));
+    tempDirs.push(dir);
+    fs.writeFileSync(path.join(dir, "assets.d.ts"), 'declare module "*.svg";\n', "utf8");
+    fs.writeFileSync(
+      path.join(dir, "map.ts"),
+      [
+        'import ArcGISMap from "esri/Map";',
+        'import MapView from "esri/views/MapView";',
+        'import FeatureLayer from "esri/layers/FeatureLayer";',
+        "export function build() {",
+        '  const map = new ArcGISMap({ basemap: "topo-vector" });',
+        '  const view = new MapView({ map, container: "view" });',
+        '  const layer = new FeatureLayer({ url: "https://services.example.com/Places/FeatureServer/0" });',
+        "  map.add(layer);",
+        "  return view;",
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const scanReport = scanArcGisUsage(dir);
+    const codemodResult = runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+    const report = buildJsMigrationReport(dir, codemodResult, scanReport);
+    const written = fs.readFileSync(path.join(dir, "map.ts"), "utf8");
+
+    expect(codemodResult.errors).toBeUndefined();
+    expect(scanReport.imports.map((hit) => hit.modulePath).sort()).toEqual([
+      "@arcgis/core/Map",
+      "@arcgis/core/layers/FeatureLayer",
+      "@arcgis/core/views/MapView",
+    ]);
+    expect(report.conversion.recommendedMode).not.toBe("keep-esri-client");
+    expect(written).toContain("MapCompat");
+    expect(written).toContain("MapViewCompat");
+    expect(written).toContain("FeatureLayerCompat");
+    expect(written).not.toContain('from "esri/Map"');
+    expect(fs.readFileSync(path.join(dir, "assets.d.ts"), "utf8")).toBe('declare module "*.svg";\n');
+  });
+
   it("rewrites supported loads and the viewer shell, and holds related-record calls", () => {
     const trees = migrate("intro-featurelayer");
     const counties = migrate("featurelayer-query");
