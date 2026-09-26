@@ -312,6 +312,7 @@ function summarizeManualTodosByKind(todos: readonly MigrationTodo[]): Record<Cod
     "home-widget": 0,
     "basemap-toggle-widget": 0,
     "locate-widget": 0,
+    locator: 0,
     "scale-bar-widget": 0,
     "search-widget": 0,
     "basemap-layer-list-widget": 0,

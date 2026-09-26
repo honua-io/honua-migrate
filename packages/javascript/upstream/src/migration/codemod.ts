@@ -16,6 +16,9 @@ const HONUA_MAP_IMPORT_PATH = "@honua/sdk-js/map";
 const MAPLIBRE_IMPORT_PATH = "maplibre-gl";
 const MAPLIBRE_NAMESPACE = "maplibregl";
 const TODO_MARKER = "TODO(honua-migrate)";
+const DEFAULT_COMPAT_DEPENDENCY_RANGE = "^0.1.2-beta.0";
+/** First published `@honua/sdk-esri-compat` release that exports `LocatorCompat`. */
+const LOCATOR_COMPAT_DEPENDENCY_RANGE = "^0.1.9-beta.0";
 const CJS_REQUIRE_MANUAL_REASON =
   "CommonJS require constructors are not auto-migrated; convert the module to ESM and rerun.";
 const ESRI_LEAFLET_UNSUPPORTED_CONSTRUCTOR_REASON =
@@ -44,6 +47,7 @@ const GEOMETRY_ENGINE_IMPORT_UNSUPPORTED_REASON =
 // (geodesic densify, offset, cut, generalize, relate, ?) keeps a manual TODO.
 const GEOMETRY_ENGINE_COVERED_OPS: ReadonlySet<string> = new Set([
   "buffer",
+  "geodesicBuffer",
   "intersect",
   "union",
   "difference",
@@ -55,6 +59,16 @@ const GEOMETRY_ENGINE_COVERED_OPS: ReadonlySet<string> = new Set([
   "convexHull",
   "contains",
   "intersects",
+]);
+/** `geometryEngine.geodesicBuffer` is the call `buffer` already implements. */
+const GEOMETRY_ENGINE_COMPAT_METHOD: Readonly<Record<string, string>> = {
+  geodesicBuffer: "buffer",
+};
+const LOCATOR_REST_FUNCTIONS: ReadonlySet<string> = new Set([
+  "addressToLocations",
+  "addressesToLocations",
+  "locationToAddress",
+  "suggestLocations",
 ]);
 function geometryEngineUncoveredOpReason(op: string): string {
   return `geometryEngine.${op} is not covered by the geometryEngineCompat shim; requires manual migration.`;
@@ -133,6 +147,7 @@ const ESRI_LEAFLET_COMPAT_FALLBACK_KINDS = new Set<CodemodConstructorKind>([
   "home-widget",
   "basemap-toggle-widget",
   "locate-widget",
+  "locator",
   "scale-bar-widget",
   "basemap-gallery-widget",
   "expand-widget",
@@ -222,6 +237,7 @@ export type CodemodConstructorKind =
   | "basemap-toggle-widget"
   | "identity-manager"
   | "locate-widget"
+  | "locator"
   | "scale-bar-widget"
   | "search-widget"
   | "basemap-layer-list-widget"
@@ -482,6 +498,16 @@ const REWRITE_SPECS: readonly ConstructorRewriteSpec[] = [
     kind: "locate-widget",
     compatSymbol: "LocateCompat",
     arcGisModules: new Set(["@arcgis/core/widgets/Locate", "@arcgis/core/widgets/Locate.js"]),
+  },
+  {
+    kind: "locator",
+    compatSymbol: "LocatorCompat",
+    arcGisModules: new Set([
+      "@arcgis/core/tasks/Locator",
+      "@arcgis/core/tasks/Locator.js",
+      "@arcgis/core/rest/locator",
+      "@arcgis/core/rest/locator.js",
+    ]),
   },
   {
     kind: "scale-bar-widget",
@@ -899,7 +925,9 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
   }
 
   if (options.write && fileResults.some((item) => item.addedCompatImport)) {
-    ensureCompatPackageDependency(rootDir, compatImportPath);
+    const compatRange =
+      metrics.byKind.locator.autoMigrated > 0 ? LOCATOR_COMPAT_DEPENDENCY_RANGE : DEFAULT_COMPAT_DEPENDENCY_RANGE;
+    ensureCompatPackageDependency(rootDir, compatImportPath, compatRange);
   }
 
   return {
@@ -959,7 +987,7 @@ function rewriteRewrittenEsriNamespaceTypes(sourceFile: ts.SourceFile, compatSym
   return edits;
 }
 
-function ensureCompatPackageDependency(rootDir: string, importPath: string): void {
+function ensureCompatPackageDependency(rootDir: string, importPath: string, range: string): void {
   const manifestPath = path.join(rootDir, "package.json");
   if (!fs.existsSync(manifestPath)) {
     return;
@@ -970,10 +998,14 @@ function ensureCompatPackageDependency(rootDir: string, importPath: string): voi
   } catch {
     return;
   }
-  if (manifest.dependencies?.[importPath] || manifest.devDependencies?.[importPath]) {
+  if (manifest.devDependencies?.[importPath] && !manifest.dependencies?.[importPath]) {
     return;
   }
-  manifest.dependencies = { ...(manifest.dependencies ?? {}), [importPath]: "^0.1.2-beta.0" };
+  const current = manifest.dependencies?.[importPath];
+  if (current === range || (current && current !== DEFAULT_COMPAT_DEPENDENCY_RANGE)) {
+    return;
+  }
+  manifest.dependencies = { ...(manifest.dependencies ?? {}), [importPath]: range };
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 }
 
@@ -1279,6 +1311,7 @@ function codemodFile(
   const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
   const localsPinnedByWatchUtilsInit = localsPassedToWatchUtilsInit(sourceFile);
   const classesPassedToEsri = classesPassedToUnrewrittenEsri(sourceFile);
+  const withheldLocators = locatorClassNamesWithheld(sourceFile);
   const imports = collectSupportedImports(sourceFile, file, localArcGisReExports, sourceFilesSet);
 
   const importsByLocalName = new Map<string, ArcGisImportBinding>();
@@ -1403,6 +1436,21 @@ function codemodFile(
   rewrittenKinds.push(...geometryEngineImportRewrite.rewrittenKinds);
   manualTodos.push(...geometryEngineImportRewrite.manualTodos);
   todoCommentEdits.push(...geometryEngineImportRewrite.todoCommentEdits);
+
+  const locatorRestRewrite = rewriteRestLocatorCalls({
+    source,
+    sourceFile,
+    file,
+    annotateTodos,
+    target,
+  });
+  importEdits.push(...locatorRestRewrite.edits);
+  rewrittenKinds.push(...locatorRestRewrite.rewrittenKinds);
+  manualTodos.push(...locatorRestRewrite.manualTodos);
+  todoCommentEdits.push(...locatorRestRewrite.todoCommentEdits);
+  for (const symbol of locatorRestRewrite.compatSymbols) {
+    requiredCompatSymbols.add(symbol);
+  }
 
   // Flag call sites of uncovered geometryEngine ops (covered ops resolve to the
   // rewritten geometryEngineCompat import and need no TODO). Only when the
@@ -1710,6 +1758,34 @@ function codemodFile(
       return;
     }
 
+    if (importBinding.kind === "locator" && withheldLocators.has(importBinding.localName)) {
+      const withheld = isSafeLocatorCompatCall(node);
+      const reason = withheld.ok
+        ? "Another Locator in this file is not constructed with only url, so this Locator stays on Esri."
+        : withheld.reason;
+      const nodeStart = node.getStart(sourceFile);
+      const location = sourceFile.getLineAndCharacterOfPosition(nodeStart);
+      manualTodos.push({
+        kind: "locator",
+        file,
+        line: location.line + 1,
+        column: location.character + 1,
+        reason,
+        difficulty: "moderate",
+      });
+      if (annotateTodos) {
+        const lineStart = findLineStartOffset(source, nodeStart);
+        if (shouldInsertTodoComment(source, lineStart, nodeStart)) {
+          todoCommentEdits.push({
+            start: lineStart,
+            end: lineStart,
+            text: `// ${TODO_MARKER}[locator]: ${reason}\n`,
+          });
+        }
+      }
+      return;
+    }
+
     const safeCheck = isSafeConstructorCall(importBinding.kind, node, target);
     if (safeCheck.ok) {
       if (target === "honua-compat") {
@@ -1728,6 +1804,24 @@ function codemodFile(
         }
         if (importBinding.kind === "locate-widget") {
           constructorEdits.push(...removeObjectProperties(node, sourceFile, source, new Set(["scale"])));
+        }
+        if (importBinding.kind === "locator") {
+          const nodeStart = node.getStart(sourceFile);
+          const lineStart = findLineStartOffset(source, nodeStart);
+          todoCommentEdits.push({
+            start: lineStart,
+            end: lineStart,
+            text: `// ${TODO_MARKER}[locator]: set locator.provider before calling addressToLocations\n`,
+          });
+          const location = sourceFile.getLineAndCharacterOfPosition(nodeStart);
+          manualTodos.push({
+            kind: "locator",
+            file,
+            line: location.line + 1,
+            column: location.character + 1,
+            reason: "set locator.provider before calling addressToLocations",
+            difficulty: "moderate",
+          });
         }
         if (importBinding.kind === "query") {
           // Deep-transform Query options into the Honua QueryFeaturesRequest
@@ -2025,8 +2119,42 @@ function calleeRootName(expression: ts.Expression): string | undefined {
   return ts.isIdentifier(current) ? current.text : undefined;
 }
 
+function locatorClassNamesWithheld(sourceFile: ts.SourceFile): Set<string> {
+  const locatorNames = new Set<string>();
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
+      continue;
+    }
+    const canonical = canonicalArcGisModulePath(statement.moduleSpecifier.text);
+    const spec = MODULE_TO_SPEC.get(canonical) ?? MODULE_TO_SPEC.get(`${canonical}.js`);
+    if (spec?.kind !== "locator" || !statement.importClause?.name) {
+      continue;
+    }
+    locatorNames.add(statement.importClause.name.text);
+  }
+  const withheld = new Set<string>();
+  if (locatorNames.size === 0) {
+    return withheld;
+  }
+  walk(sourceFile, (node) => {
+    if (!ts.isNewExpression(node) || !ts.isIdentifier(node.expression) || !locatorNames.has(node.expression.text)) {
+      return;
+    }
+    if (!isSafeLocatorCompatCall(node).ok) {
+      withheld.add(node.expression.text);
+    }
+  });
+  return withheld;
+}
+
 function classesPassedToUnrewrittenEsri(sourceFile: ts.SourceFile): Set<string> {
   const unrewritten = new Set<string>();
+  for (const name of locatorClassNamesWithheld(sourceFile)) {
+    unrewritten.add(name);
+  }
+  for (const name of restLocatorLocalsWithheld(sourceFile)) {
+    unrewritten.add(name);
+  }
   for (const statement of sourceFile.statements) {
     if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
       continue;
@@ -2460,6 +2588,7 @@ function rewriteGeometryEngineImports(options: {
       text: replacement,
     });
     edits.push(...rewriteNamedGeometryEngineCalls(options.sourceFile, statement));
+    edits.push(...rewriteGeodesicBufferPropertyAccess(options.sourceFile, statement));
     rewrittenKinds.push("geometry-engine");
   }
 
@@ -2538,7 +2667,7 @@ function rewriteNamedGeometryEngineCalls(sourceFile: ts.SourceFile, statement: t
     edits.push({
       start: node.expression.getStart(sourceFile),
       end: node.expression.getEnd(),
-      text: `geometryEngineCompat.${op}`,
+      text: `geometryEngineCompat.${geometryEngineCompatMethod(op)}`,
     });
   });
   return edits;
@@ -2549,6 +2678,216 @@ function rewriteNamedGeometryEngineCalls(sourceFile: ts.SourceFile, statement: t
  * binding (default or namespace import). Used to scope the uncovered-op scan to
  * genuine `<geometryEngine>.<op>()` call sites.
  */
+function geometryEngineCompatMethod(op: string): string {
+  return GEOMETRY_ENGINE_COMPAT_METHOD[op] ?? op;
+}
+
+function rewriteGeodesicBufferPropertyAccess(sourceFile: ts.SourceFile, statement: ts.ImportDeclaration): TextEdit[] {
+  const locals = new Set<string>();
+  if (statement.importClause?.name) {
+    locals.add(statement.importClause.name.text);
+  }
+  const named = statement.importClause?.namedBindings;
+  if (named && ts.isNamespaceImport(named)) {
+    locals.add(named.name.text);
+  }
+  if (locals.size === 0) {
+    return [];
+  }
+  const edits: TextEdit[] = [];
+  walk(sourceFile, (node) => {
+    if (!ts.isPropertyAccessExpression(node) || node.name.text !== "geodesicBuffer") {
+      return;
+    }
+    if (!ts.isIdentifier(node.expression) || !locals.has(node.expression.text)) {
+      return;
+    }
+    edits.push({
+      start: node.name.getStart(sourceFile),
+      end: node.name.getEnd(),
+      text: "buffer",
+    });
+  });
+  return edits;
+}
+
+function isRestLocatorModule(modulePath: string): boolean {
+  const canonical = canonicalArcGisModulePath(modulePath).replace(/\.js$/, "");
+  return canonical === "@arcgis/core/rest/locator";
+}
+
+function restLocatorFunctionLocals(sourceFile: ts.SourceFile): Map<string, string> {
+  const locals = new Map<string, string>();
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
+      continue;
+    }
+    if (!isRestLocatorModule(statement.moduleSpecifier.text)) {
+      continue;
+    }
+    const named = statement.importClause?.namedBindings;
+    if (!named || !ts.isNamedImports(named)) {
+      continue;
+    }
+    for (const element of named.elements) {
+      const importedName = element.propertyName?.text ?? element.name.text;
+      if (LOCATOR_REST_FUNCTIONS.has(importedName)) {
+        locals.set(element.name.text, importedName);
+      }
+    }
+  }
+  return locals;
+}
+
+function restLocatorNamespaceLocals(sourceFile: ts.SourceFile): Set<string> {
+  const locals = new Set<string>();
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
+      continue;
+    }
+    if (!isRestLocatorModule(statement.moduleSpecifier.text)) {
+      continue;
+    }
+    const named = statement.importClause?.namedBindings;
+    if (named && ts.isNamespaceImport(named)) {
+      locals.add(named.name.text);
+    }
+  }
+  return locals;
+}
+
+function locatorRestCallFunctionName(
+  node: ts.CallExpression,
+  functionLocals: ReadonlyMap<string, string>,
+  namespaceLocals: ReadonlySet<string>,
+): string | undefined {
+  const callee = node.expression;
+  if (ts.isIdentifier(callee)) {
+    return functionLocals.get(callee.text);
+  }
+  if (
+    ts.isPropertyAccessExpression(callee) &&
+    ts.isIdentifier(callee.expression) &&
+    namespaceLocals.has(callee.expression.text) &&
+    LOCATOR_REST_FUNCTIONS.has(callee.name.text)
+  ) {
+    return callee.name.text;
+  }
+  return undefined;
+}
+
+/**
+ * A rest locator function stays on Esri unless every use is `fn(url, params)`.
+ * The class method takes the parameters only; the URL becomes `LocatorCompat`'s
+ * `url`. A third `requestOptions` argument, or passing the function itself
+ * around, is left as an Esri call so a Point inside it is not rewritten.
+ */
+function restLocatorLocalsWithheld(sourceFile: ts.SourceFile): Set<string> {
+  const functionLocals = restLocatorFunctionLocals(sourceFile);
+  const namespaceLocals = restLocatorNamespaceLocals(sourceFile);
+  const withheld = new Set<string>();
+  if (functionLocals.size === 0 && namespaceLocals.size === 0) {
+    return withheld;
+  }
+  walk(sourceFile, (node) => {
+    if (!ts.isIdentifier(node)) {
+      return;
+    }
+    const functionName = functionLocals.get(node.text);
+    const isNamespace = namespaceLocals.has(node.text);
+    if (!functionName && !isNamespace) {
+      return;
+    }
+    if (ts.isImportSpecifier(node.parent) || ts.isNamespaceImport(node.parent)) {
+      return;
+    }
+    const call = ts.isCallExpression(node.parent)
+      ? node.parent
+      : ts.isPropertyAccessExpression(node.parent) && ts.isCallExpression(node.parent.parent)
+        ? node.parent.parent
+        : undefined;
+    const calledName = call ? locatorRestCallFunctionName(call, functionLocals, namespaceLocals) : undefined;
+    if (call && calledName && call.arguments.length === 2 && call.expression === (ts.isCallExpression(node.parent) ? node : node.parent)) {
+      return;
+    }
+    withheld.add(node.text);
+  });
+  return withheld;
+}
+
+function rewriteRestLocatorCalls(options: {
+  source: string;
+  sourceFile: ts.SourceFile;
+  file: string;
+  annotateTodos: boolean;
+  target: CodemodTarget;
+}): {
+  edits: TextEdit[];
+  rewrittenKinds: CodemodConstructorKind[];
+  manualTodos: MigrationTodo[];
+  todoCommentEdits: TextEdit[];
+  compatSymbols: string[];
+} {
+  const edits: TextEdit[] = [];
+  const rewrittenKinds: CodemodConstructorKind[] = [];
+  const manualTodos: MigrationTodo[] = [];
+  const todoCommentEdits: TextEdit[] = [];
+  const compatSymbols: string[] = [];
+  if (options.target !== "honua-compat") {
+    return { edits, rewrittenKinds, manualTodos, todoCommentEdits, compatSymbols };
+  }
+  const functionLocals = restLocatorFunctionLocals(options.sourceFile);
+  const namespaceLocals = restLocatorNamespaceLocals(options.sourceFile);
+  const withheld = restLocatorLocalsWithheld(options.sourceFile);
+  if (functionLocals.size === 0 && namespaceLocals.size === 0) {
+    return { edits, rewrittenKinds, manualTodos, todoCommentEdits, compatSymbols };
+  }
+  walk(options.sourceFile, (node) => {
+    if (!ts.isCallExpression(node) || node.arguments.length !== 2) {
+      return;
+    }
+    const functionName = locatorRestCallFunctionName(node, functionLocals, namespaceLocals);
+    if (!functionName) {
+      return;
+    }
+    const root = ts.isIdentifier(node.expression)
+      ? node.expression.text
+      : ts.isPropertyAccessExpression(node.expression) && ts.isIdentifier(node.expression.expression)
+        ? node.expression.expression.text
+        : undefined;
+    if (!root || withheld.has(root)) {
+      return;
+    }
+    const [urlArg, paramsArg] = node.arguments;
+    // Keep the parameter argument in place so a Point constructed inside it can
+    // still be rewritten. Only the URL moves onto LocatorCompat.
+    edits.push({
+      start: node.expression.getStart(options.sourceFile),
+      end: paramsArg.getStart(options.sourceFile),
+      text: `new LocatorCompat({ url: ${urlArg.getText(options.sourceFile)} }).${functionName}(`,
+    });
+    rewrittenKinds.push("locator");
+    compatSymbols.push("LocatorCompat");
+    const nodeStart = node.getStart(options.sourceFile);
+    const lineStart = findLineStartOffset(options.source, nodeStart);
+    todoCommentEdits.push({
+      start: lineStart,
+      end: lineStart,
+      text: `// ${TODO_MARKER}[locator]: set locator.provider before calling addressToLocations\n`,
+    });
+    const location = options.sourceFile.getLineAndCharacterOfPosition(nodeStart);
+    manualTodos.push({
+      kind: "locator",
+      file: options.file,
+      line: location.line + 1,
+      column: location.character + 1,
+      reason: "set locator.provider before calling addressToLocations",
+      difficulty: "moderate",
+    });
+  });
+  return { edits, rewrittenKinds, manualTodos, todoCommentEdits, compatSymbols };
+}
+
 function collectGeometryEngineLocalNames(sourceFile: ts.SourceFile): Set<string> {
   const names = new Set<string>();
   for (const statement of sourceFile.statements) {
@@ -3563,6 +3902,7 @@ function createEmptyByKindMetrics(): CodemodMetricsByKind {
     "home-widget": { total: 0, autoMigrated: 0, manual: 0 },
     "basemap-toggle-widget": { total: 0, autoMigrated: 0, manual: 0 },
     "locate-widget": { total: 0, autoMigrated: 0, manual: 0 },
+    locator: { total: 0, autoMigrated: 0, manual: 0 },
     "scale-bar-widget": { total: 0, autoMigrated: 0, manual: 0 },
     "search-widget": { total: 0, autoMigrated: 0, manual: 0 },
     "basemap-layer-list-widget": { total: 0, autoMigrated: 0, manual: 0 },
@@ -5304,6 +5644,8 @@ function isSafeConstructorCall(
       return isSafeBasemapToggleWidgetCompatCall(node);
     case "locate-widget":
       return isSafeLocateWidgetCompatCall(node);
+    case "locator":
+      return isSafeLocatorCompatCall(node);
     case "scale-bar-widget":
       return isSafeScaleBarWidgetCompatCall(node);
     case "search-widget":
@@ -7607,6 +7949,29 @@ function isSafeBasemapToggleWidgetCompatCall(node: ts.NewExpression): { ok: true
     };
   }
 
+  return { ok: true };
+}
+
+function isSafeLocatorCompatCall(node: ts.NewExpression): { ok: true } | { ok: false; reason: string } {
+  const args = node.arguments;
+  if (!args || args.length === 0) {
+    return { ok: true };
+  }
+  if (args.length !== 1 || !ts.isObjectLiteralExpression(args[0])) {
+    return { ok: false, reason: "Locator constructor is not a single object literal." };
+  }
+  for (const property of args[0].properties) {
+    if (!isAssignableObjectProperty(property)) {
+      return { ok: false, reason: "Locator options contain spread/method/computed property syntax." };
+    }
+  }
+  const unsupported = collectUnsupportedPropertyNames(args[0], new Set(["url"]));
+  if (unsupported.length > 0) {
+    return {
+      ok: false,
+      reason: `Locator options include unsupported properties: ${unsupported.join(", ")}.`,
+    };
+  }
   return { ok: true };
 }
 

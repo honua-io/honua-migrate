@@ -108,9 +108,13 @@ the option. Do not put the call back on an Esri class.
 
 A rewritten value stays on one runtime. The codemod leaves a constructor on
 Esri when that value is passed to a call that is still imported from `esri/`
-or `@arcgis/core`. A `Point` passed to `Locator` stays `new Point`. Do not
-flip just that constructor to `PointCompat`. Sign-in is rewritten together:
-`OAuthInfoCompat` is registered on `identityManager`, and `Credential` is the
+or `@arcgis/core`. `new Locator({ url })` becomes `new LocatorCompat({ url })`,
+and a `Point` passed only to that locator moves with it. A `Locator` constructed
+with any option besides `url`, and a `Point` passed to that locator, stay on
+Esri. The locator manual todo means the constructor is already `LocatorCompat`.
+Set `provider` on that instance before `addressToLocations`. Do not move the
+call back to `Locator`. Sign-in is rewritten together: `OAuthInfoCompat` is
+registered on `identityManager`, and `Credential` is the
 `IdentityCredentialCompat` type.
 
 `import esri = __esri` is a type alias. Replace `esri.X` with the compat type
@@ -127,12 +131,19 @@ The codemod writes these replacements. Do not write them again:
 | `whenFalseOnce(target, "prop")` | `reactiveUtils.whenOnce(() => !target.prop)` |
 | `import { geodesicLength } from "esri/geometry/geometryEngine"` | `geometryEngineCompat.geodesicLength` |
 | `new Point({ longitude, latitude })` | `new PointCompat({ x: longitude, y: latitude })` |
+| `new Locator({ url })` | `new LocatorCompat({ url })` and `TODO(honua-migrate)[locator]: set locator.provider before calling addressToLocations` |
+| `addressToLocations(url, params)` from `@arcgis/core/rest/locator` | `new LocatorCompat({ url }).addressToLocations(params)` and the same provider TODO |
+| `geometryEngine.geodesicBuffer(geometry, distance, unit)` | `geometryEngineCompat.buffer(geometry, distance, unit)` |
 
 `init(locate, "viewModel.state", …)` stays. `LocateCompat` has no
 `viewModel`, so leave `Locate` on Esri while that call remains.
 
+A file that rewrites `Locator` declares `@honua/sdk-esri-compat` at
+`^0.1.9-beta.0`, the first published release that exports `LocatorCompat`.
+Other rewritten files stay on `^0.1.2-beta.0`.
+
 Do not invent a mapping for a kept module. Smart-mapping `size` and
-`histogram`, `DirectionsViewModel`, `Locator`, and a client-side `FeatureLayer`
+`histogram`, `DirectionsViewModel`, and a client-side `FeatureLayer`
 (`source`, `fields`, `objectIdField`, `geometryType`) stay kept. The report
 already names them.
 

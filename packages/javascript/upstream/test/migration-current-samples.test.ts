@@ -125,6 +125,142 @@ describe("current ArcGIS sample corpus", () => {
     expect(fs.readFileSync(path.join(dir, "route.ts"), "utf8")).toBe(source);
   });
 
+  it("rewrites Locator({ url }) and the Point passed to it", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-locator-"));
+    tempDirs.push(dir);
+    fs.writeFileSync(path.join(dir, "package.json"), '{"name":"locator-app","private":true}\n', "utf8");
+    fs.writeFileSync(
+      path.join(dir, "places.ts"),
+      [
+        'import Point from "esri/geometry/Point";',
+        'import Locator from "esri/tasks/Locator";',
+        "const geocoder = new Locator({ url: geocodeURL });",
+        "export function find(longitude: number, latitude: number) {",
+        "  const point = new Point({ longitude, latitude });",
+        "  return geocoder.addressToLocations({ location: point });",
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const scanReport = scanArcGisUsage(dir);
+    const codemodResult = runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+    const report = buildJsMigrationReport(dir, codemodResult, scanReport);
+    const written = fs.readFileSync(path.join(dir, "places.ts"), "utf8");
+    expect(written).toContain("new LocatorCompat({ url: geocodeURL })");
+    expect(written).toContain("new PointCompat({ x: longitude, y: latitude })");
+    expect(written).toContain("TODO(honua-migrate)[locator]: set locator.provider before calling addressToLocations");
+    expect(written).not.toContain('from "esri/');
+    expect(codemodResult.manualTodos.map((todo) => todo.reason)).toContain(
+      "set locator.provider before calling addressToLocations",
+    );
+    expect(report.conversion.files.find((file) => file.file === "places.ts")?.boundary).toBe("mixed");
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8")) as {
+      dependencies: Record<string, string>;
+    };
+    expect(manifest.dependencies["@honua/sdk-esri-compat"]).toBe("^0.1.9-beta.0");
+  });
+
+  it("leaves Locator and a Point passed to it on Esri when the constructor is not only url", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-locator-unsafe-"));
+    tempDirs.push(dir);
+    const source = [
+      'import Point from "esri/geometry/Point";',
+      'import Locator from "esri/tasks/Locator";',
+      'const geocoder = new Locator({ url: geocodeURL, countryCode: "US" });',
+      "export function find(longitude: number, latitude: number) {",
+      "  const point = new Point({ longitude, latitude });",
+      "  return geocoder.addressToLocations({ location: point });",
+      "}",
+      "",
+    ].join("\n");
+    fs.writeFileSync(path.join(dir, "places.ts"), source, "utf8");
+    runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+    const written = fs.readFileSync(path.join(dir, "places.ts"), "utf8");
+    expect(written).toBe(source);
+    expect(written).not.toContain("PointCompat");
+    expect(written).not.toContain("LocatorCompat");
+  });
+
+  it("rewrites rest locator functions onto LocatorCompat and aliases geodesicBuffer to buffer", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-rest-locator-"));
+    tempDirs.push(dir);
+    fs.writeFileSync(path.join(dir, "package.json"), '{"name":"locator-fn","private":true}\n', "utf8");
+    fs.writeFileSync(
+      path.join(dir, "geocode.ts"),
+      [
+        'import { addressToLocations } from "@arcgis/core/rest/locator.js";',
+        'import Point from "@arcgis/core/geometry/Point.js";',
+        "export function find(url: string, longitude: number, latitude: number) {",
+        "  const point = new Point({ longitude, latitude });",
+        "  return addressToLocations(url, { location: point, maxLocations: 5 });",
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(dir, "namespace.ts"),
+      [
+        'import * as locator from "@arcgis/core/rest/locator.js";',
+        "export function reverse(url: string, params: object) {",
+        "  return locator.locationToAddress(url, params);",
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(dir, "options.ts"),
+      [
+        'import { addressToLocations } from "@arcgis/core/rest/locator.js";',
+        'import Point from "@arcgis/core/geometry/Point.js";',
+        "export function find(url: string, longitude: number, latitude: number, requestOptions: object) {",
+        "  const point = new Point({ longitude, latitude });",
+        "  return addressToLocations(url, { location: point }, requestOptions);",
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(dir, "buffer.ts"),
+      [
+        'import { geodesicBuffer } from "@arcgis/core/geometry/geometryEngine.js";',
+        'import geometryEngine from "@arcgis/core/geometry/geometryEngine.js";',
+        "export function around(geometry: object) {",
+        '  return geodesicBuffer(geometry, 10, "meters");',
+        "}",
+        "export function aroundAgain(geometry: object) {",
+        '  return geometryEngine.geodesicBuffer(geometry, 10, "meters");',
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+    const geocode = fs.readFileSync(path.join(dir, "geocode.ts"), "utf8");
+    expect(geocode).toContain("new LocatorCompat({ url: url }).addressToLocations(");
+    expect(geocode).toContain("new PointCompat({ x: longitude, y: latitude })");
+    expect(geocode).toContain("TODO(honua-migrate)[locator]: set locator.provider before calling addressToLocations");
+    expect(geocode).not.toContain('from "@arcgis/core/rest/locator');
+    const namespace = fs.readFileSync(path.join(dir, "namespace.ts"), "utf8");
+    expect(namespace).toContain("new LocatorCompat({ url: url }).locationToAddress(params)");
+    expect(namespace).not.toContain('from "@arcgis/core/rest/locator');
+    const options = fs.readFileSync(path.join(dir, "options.ts"), "utf8");
+    expect(options).toContain('import { addressToLocations } from "@arcgis/core/rest/locator.js"');
+    expect(options).toContain("new Point({ longitude, latitude })");
+    expect(options).not.toContain("LocatorCompat");
+    const buffer = fs.readFileSync(path.join(dir, "buffer.ts"), "utf8");
+    expect(buffer).toContain('geometryEngineCompat.buffer(geometry, 10, "meters")');
+    expect(buffer).toContain('geometryEngine.buffer(geometry, 10, "meters")');
+    expect(buffer).not.toContain("geodesicBuffer");
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8")) as {
+      dependencies: Record<string, string>;
+    };
+    expect(manifest.dependencies["@honua/sdk-esri-compat"]).toBe("^0.1.9-beta.0");
+  });
+
   it("removes a js.arcgis.com worker loader and keeps a config file that sets an api key", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-esri-config-"));
     tempDirs.push(dir);
