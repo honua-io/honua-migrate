@@ -318,7 +318,7 @@ function findArcGisRuntimeScriptHits(source: string, file: string): ArcGisImport
   let match: RegExpExecArray | null = pattern.exec(source);
   while (match !== null) {
     const src = match[1];
-    if (src.includes("%CDN%") || /js\.arcgis\.com/i.test(src)) {
+    if (src.includes("%CDN%") || /(?:https?:)?\/\/js\.arcgis\.com(?:[/?#"'\s]|$)/i.test(src)) {
       hits.push({
         file,
         modulePath: "@arcgis/map-components/arcgis-cdn",
@@ -402,7 +402,7 @@ function findMapComponentHits(source: string, file: string, includeCalls: boolea
 /** Inline scripts only. A `src` script has no local body for the module scanners. */
 function extractInlineScripts(html: string): string {
   const bodies: string[] = [];
-  const scriptPattern = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
+  const scriptPattern = /<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi;
   let match: RegExpExecArray | null = scriptPattern.exec(html);
   while (match !== null) {
     if (!/\ssrc\s*=/i.test(match[1])) {

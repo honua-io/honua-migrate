@@ -1038,7 +1038,7 @@ function codemodHtmlFile(
   localArcGisReExports: ReadonlyMap<string, Readonly<Record<string, CodemodConstructorKind>>>,
   sourceFilesSet: ReadonlySet<string>,
 ): ReturnType<typeof codemodFile> {
-  const scriptPattern = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
+  const scriptPattern = /<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi;
   const scripts: Array<{ bodyStart: number; bodyEnd: number; body: string }> = [];
   let match: RegExpExecArray | null = scriptPattern.exec(source);
   while (match !== null) {
@@ -1279,7 +1279,10 @@ function rewriteMapComponentShell(source: string): {
     return `${open}\n${bootstrap}`;
   });
   if (!next.includes("$arcgis") && !next.includes("@arcgis/core")) {
-    const withoutCdn = next.replace(/<script\b[^>]*\bsrc\s*=\s*["'][^"']*%CDN%[^"']*["'][^>]*>\s*<\/script>\s*/gi, "");
+    const withoutCdn = next.replace(
+      /<script\b[^>]*\bsrc\s*=\s*["']%CDN%["'][^>]*>\s*<\/script\s*>\s*/gi,
+      "",
+    );
     if (withoutCdn !== next) {
       next = withoutCdn;
     }
@@ -3439,7 +3442,7 @@ function removeEsriWorkerLoaderAssignments(
   source: string,
   configImport: ts.ImportDeclaration,
 ): TextEdit[] {
-  if (!source.includes("js.arcgis.com")) {
+  if (!/(?:https?:)?\/\/js\.arcgis\.com(?:[/?#"'\s]|$)/i.test(source)) {
     return [];
   }
   const localName = configImport.importClause?.name?.text;
