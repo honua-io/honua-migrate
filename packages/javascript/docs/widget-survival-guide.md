@@ -689,3 +689,4 @@ These surfaces are intentionally **not** covered by the dispositions above:
 
 - [Migration punch list](https://github.com/honua-io/honua-sdk-js/blob/trunk/docs/migration-punch-list.md) — the honest parity/codemod accounting.
 - [Reading the migration report](../README.md#reading-the-migration-report) — readiness and denominators.
+- [Last mile](../README.md#last-mile) — what to edit after `--write`, and what to leave.

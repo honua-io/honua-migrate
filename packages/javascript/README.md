@@ -89,6 +89,55 @@ a team can ship converted files first. Each held site carries a `code`, a
 The `codemod` command prints the same plan as `conversion=`,
 `conversionModes:` and `fileDiagnostics:`.
 
+## Last mile
+
+After `--write`, finish the app from the report. Do not scan the source again
+to invent a new plan.
+
+- `keep-esri-client`: stop. The codemod rewrote nothing, or the scan is
+  `blocked`. Leave the source as written.
+- `complete-honua-conversion`: the source imports nothing from ArcGIS. Remove
+  `residualArcGisDependencies` and typecheck.
+- `assisted-conversion`: edit `mixed` files and `manualTodos`. A `converted`
+  file is done. A `kept` file was left because a binding could not move; do
+  not rewrite one constructor in it.
+
+`TODO(honua-migrate)[kind]:` names a property the codemod deleted so the
+constructor could move. Restore that behavior on the compat object, or delete
+the option. Do not put the call back on an Esri class.
+
+A rewritten value stays on one runtime. If a `*Compat` object is passed to a
+function or constructor still imported from `esri/` or `@arcgis/core`, revert
+that binding to the Esri import. Do not add another compat import to paper
+over the call. Sign-in is the pattern: `OAuthInfo` stays on Esri while
+`IdentityManager` or `Credential` is still imported from `esri/identity`.
+
+`import esri = __esri` is a type alias. Replace `esri.X` with the compat type
+only after the value import of `X` was rewritten. Leave the alias until the
+last type use is gone.
+
+These call shapes have a direct replacement:
+
+| Held call | Replacement |
+| --- | --- |
+| `whenOnce(view, "ready")` | `view.when()` |
+| `once(view, "extent")` | `reactiveUtils.once(() => view.extent)` |
+| `whenTrueOnce(view, "stationary")` | `reactiveUtils.whenOnce(() => view.stationary)` |
+| `whenFalseOnce(target, "prop")` | `reactiveUtils.whenOnce(() => !target.prop)` |
+| `import { geodesicLength } from "esri/geometry/geometryEngine"` | `geometryEngineCompat.geodesicLength` |
+| `new Point({ longitude, latitude })` | `new PointCompat({ x: longitude, y: latitude })` |
+
+`init(locate, "viewModel.state", …)` stays. `LocateCompat` has no
+`viewModel`, so leave `Locate` on Esri while that call remains.
+
+Do not invent a mapping for a kept module. Smart-mapping `size` and
+`histogram`, `DirectionsViewModel`, `Locator`, and a client-side `FeatureLayer`
+(`source`, `fields`, `objectIdField`, `geometryType`) stay kept. The report
+already names them.
+
+Typecheck once, then edit only the lines in that error list. Stop when the
+remaining errors are the kept modules from `unhandledArcGisModules`.
+
 ## Running the reviewed migration pipeline
 
 `honua-js-migrate migrate` takes one application through scan, reviewed
