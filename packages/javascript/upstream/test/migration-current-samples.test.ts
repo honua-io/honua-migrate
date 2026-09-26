@@ -233,7 +233,8 @@ describe("current ArcGIS sample corpus", () => {
       'import IdentityManager from "esri/identity/IdentityManager";',
       'import OAuthInfo from "esri/identity/OAuthInfo";',
       "export function initialize(appId: string) {",
-      '  const info = new OAuthInfo({ appId, portalUrl: "https://www.arcgis.com", popup: true });',
+      "  let info: OAuthInfo;",
+      '  info = new OAuthInfo({ appId, portalUrl: "https://www.arcgis.com", popup: true });',
       "  IdentityManager.registerOAuthInfos([info]);",
       "  return Credential;",
       "}",
@@ -243,6 +244,7 @@ describe("current ArcGIS sample corpus", () => {
     runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
     const written = fs.readFileSync(path.join(dir, "oauth.ts"), "utf8");
     expect(written).toContain("identityManager.registerOAuthInfos");
+    expect(written).toContain("let info: OAuthInfoCompat");
     expect(written).toContain("new OAuthInfoCompat");
     expect(written).toContain("IdentityCredentialCompat");
     expect(written).not.toContain('from "esri/');

@@ -3006,7 +3006,22 @@ function rewriteIdentityCalls(options: {
     if (!localName) {
       continue;
     }
-    if (canonical.endsWith("/IdentityManager")) {
+    if (canonical.endsWith("/OAuthInfo")) {
+      walk(options.sourceFile, (node) => {
+        if (!ts.isIdentifier(node) || node.text !== localName) {
+          return;
+        }
+        if (!ts.isTypeReferenceNode(node.parent) || node.parent.typeName !== node) {
+          return;
+        }
+        edits.push({
+          start: node.getStart(options.sourceFile),
+          end: node.getEnd(),
+          text: "OAuthInfoCompat",
+        });
+      });
+      compatSymbols.add("OAuthInfoCompat");
+    } else if (canonical.endsWith("/IdentityManager")) {
       walk(options.sourceFile, (node) => {
         if (
           !ts.isPropertyAccessExpression(node) ||
