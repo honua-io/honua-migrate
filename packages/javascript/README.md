@@ -116,7 +116,7 @@ over the call. Sign-in is the pattern: `OAuthInfo` stays on Esri while
 only after the value import of `X` was rewritten. Leave the alias until the
 last type use is gone.
 
-These call shapes have a direct replacement:
+The codemod writes these replacements. Do not write them again:
 
 | Held call | Replacement |
 | --- | --- |

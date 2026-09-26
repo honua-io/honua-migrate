@@ -107,6 +107,40 @@ describe("current ArcGIS sample corpus", () => {
     );
   });
 
+  it("rewrites watchUtils calls onto the compat view and leaves init", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-watch-utils-"));
+    tempDirs.push(dir);
+    fs.writeFileSync(
+      path.join(dir, "map.ts"),
+      [
+        'import { init, once, whenFalseOnce, whenOnce, whenTrueOnce } from "esri/core/watchUtils";',
+        'import Locate from "esri/widgets/Locate";',
+        "export async function run(view: { when(): Promise<void>; extent: unknown; stationary: boolean }, layerView: { updating: boolean }) {",
+        '  await whenOnce(view, "ready");',
+        '  await once(view, "extent");',
+        '  await whenTrueOnce(view, "stationary");',
+        '  await whenFalseOnce(layerView, "updating");',
+        "  const locate = new Locate({ view });",
+        '  init(locate, "viewModel.state", () => {});',
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+    const written = fs.readFileSync(path.join(dir, "map.ts"), "utf8");
+    expect(written).toContain("await view.when()");
+    expect(written).toContain("reactiveUtils.whenOnce(() => view.stationary)");
+    expect(written).toContain("reactiveUtils.whenOnce(() => !layerView.updating)");
+    expect(written).toContain(
+      "new Promise((resolve) => { reactiveUtils.watch(() => view.extent, resolve, { once: true }); })",
+    );
+    expect(written).toContain('import { init } from "esri/core/watchUtils"');
+    expect(written).toContain("new Locate(");
+    expect(written).not.toContain("LocateCompat");
+    expect(written).not.toContain('whenOnce(view, "ready")');
+  });
+
   it("leaves sign-in on the Esri client when IdentityManager is still imported from esri", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-esri-oauth-"));
     tempDirs.push(dir);

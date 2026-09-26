@@ -1241,6 +1241,7 @@ function codemodFile(
 } {
   assertParsableSource(file, source);
   const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
+  const localsPinnedByWatchUtilsInit = localsPassedToWatchUtilsInit(sourceFile);
   const imports = collectSupportedImports(sourceFile, file, localArcGisReExports, sourceFilesSet);
 
   const importsByLocalName = new Map<string, ArcGisImportBinding>();
@@ -1309,6 +1310,22 @@ function codemodFile(
   rewrittenKinds.push(...esriConfigImportRewrite.rewrittenKinds);
   manualTodos.push(...esriConfigImportRewrite.manualTodos);
   todoCommentEdits.push(...esriConfigImportRewrite.todoCommentEdits);
+
+  const watchUtilsRewrite = rewriteWatchUtilsCalls({
+    source,
+    sourceFile,
+    file,
+    compatImportPath,
+    annotateTodos,
+    target,
+  });
+  importEdits.push(...watchUtilsRewrite.edits);
+  rewrittenKinds.push(...watchUtilsRewrite.rewrittenKinds);
+  manualTodos.push(...watchUtilsRewrite.manualTodos);
+  todoCommentEdits.push(...watchUtilsRewrite.todoCommentEdits);
+  for (const symbol of watchUtilsRewrite.compatSymbols) {
+    requiredCompatSymbols.add(symbol);
+  }
 
   const reactiveUtilsImportRewrite = rewriteReactiveUtilsImports({
     source,
@@ -1638,6 +1655,10 @@ function codemodFile(
       return;
     }
 
+    if (localsPinnedByWatchUtilsInit.has(importBinding.localName)) {
+      return;
+    }
+
     const safeCheck = isSafeConstructorCall(importBinding.kind, node, target);
     if (safeCheck.ok) {
       if (target === "honua-compat") {
@@ -1938,6 +1959,204 @@ function pushImportManualTodo(
       text: `// ${TODO_MARKER}[${kind}]: ${reason}\n`,
     });
   }
+}
+
+function isWatchUtilsModule(modulePath: string): boolean {
+  const canonical = canonicalArcGisModulePath(modulePath);
+  return canonical === "@arcgis/core/core/watchUtils" || canonical.endsWith("/core/watchUtils");
+}
+
+function localsPassedToWatchUtilsInit(sourceFile: ts.SourceFile): Set<string> {
+  const initNames = new Set<string>();
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
+      continue;
+    }
+    if (!isWatchUtilsModule(statement.moduleSpecifier.text)) {
+      continue;
+    }
+    const named = statement.importClause?.namedBindings;
+    if (!named || !ts.isNamedImports(named)) {
+      continue;
+    }
+    for (const element of named.elements) {
+      const importedName = element.propertyName?.text ?? element.name.text;
+      if (importedName === "init") {
+        initNames.add(element.name.text);
+      }
+    }
+  }
+  const constructedClassByLocal = new Map<string, string>();
+  walk(sourceFile, (node) => {
+    if (!ts.isVariableDeclaration(node) || !ts.isIdentifier(node.name) || !node.initializer) {
+      return;
+    }
+    if (!ts.isNewExpression(node.initializer) || !ts.isIdentifier(node.initializer.expression)) {
+      return;
+    }
+    constructedClassByLocal.set(node.name.text, node.initializer.expression.text);
+  });
+  const pinned = new Set<string>();
+  if (initNames.size === 0) {
+    return pinned;
+  }
+  walk(sourceFile, (node) => {
+    if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression) || !initNames.has(node.expression.text)) {
+      return;
+    }
+    const target = node.arguments[0];
+    if (!target || !ts.isIdentifier(target)) {
+      return;
+    }
+    const className = constructedClassByLocal.get(target.text);
+    if (className) {
+      pinned.add(className);
+    }
+  });
+  return pinned;
+}
+
+function rewriteWatchUtilsCalls(options: {
+  source: string;
+  sourceFile: ts.SourceFile;
+  file: string;
+  compatImportPath: string;
+  annotateTodos: boolean;
+  target: CodemodTarget;
+}): {
+  edits: TextEdit[];
+  rewrittenKinds: CodemodConstructorKind[];
+  manualTodos: MigrationTodo[];
+  todoCommentEdits: TextEdit[];
+  compatSymbols: string[];
+} {
+  const edits: TextEdit[] = [];
+  const rewrittenKinds: CodemodConstructorKind[] = [];
+  const manualTodos: MigrationTodo[] = [];
+  const todoCommentEdits: TextEdit[] = [];
+  const compatSymbols: string[] = [];
+  if (options.target !== "honua-compat") {
+    return { edits, rewrittenKinds, manualTodos, todoCommentEdits, compatSymbols };
+  }
+
+  for (const statement of options.sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
+      continue;
+    }
+    if (!isWatchUtilsModule(statement.moduleSpecifier.text)) {
+      continue;
+    }
+    const named = statement.importClause?.namedBindings;
+    if (!named || !ts.isNamedImports(named)) {
+      continue;
+    }
+    const localToImported = new Map<string, string>();
+    for (const element of named.elements) {
+      localToImported.set(element.name.text, element.propertyName?.text ?? element.name.text);
+    }
+    const kept = new Set<string>();
+    let rewroteCall = false;
+    walk(options.sourceFile, (node) => {
+      if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) {
+        return;
+      }
+      const importedName = localToImported.get(node.expression.text);
+      if (!importedName) {
+        return;
+      }
+      const replacement = watchUtilsCallReplacement(node, importedName);
+      if (!replacement) {
+        kept.add(node.expression.text);
+        if (importedName === "init") {
+          const nodeStart = node.getStart(options.sourceFile);
+          const location = options.sourceFile.getLineAndCharacterOfPosition(nodeStart);
+          manualTodos.push({
+            kind: "reactive-utils",
+            file: options.file,
+            line: location.line + 1,
+            column: location.character + 1,
+            reason: "watchUtils.init watches viewModel.state; LocateCompat has no viewModel.",
+            difficulty: "moderate",
+          });
+          if (options.annotateTodos) {
+            const lineStart = findLineStartOffset(options.source, nodeStart);
+            if (shouldInsertTodoComment(options.source, lineStart, nodeStart)) {
+              todoCommentEdits.push({
+                start: lineStart,
+                end: lineStart,
+                text: `// ${TODO_MARKER}[reactive-utils]: watchUtils.init watches viewModel.state; LocateCompat has no viewModel.\n`,
+              });
+            }
+          }
+        }
+        return;
+      }
+      edits.push({
+        start: node.getStart(options.sourceFile),
+        end: node.getEnd(),
+        text: replacement,
+      });
+      rewroteCall = true;
+      if (replacement.includes("reactiveUtils.")) {
+        compatSymbols.push("reactiveUtils");
+      }
+      rewrittenKinds.push("reactive-utils");
+    });
+    for (const [localName, importedName] of localToImported) {
+      if (importedName === "init" || kept.has(localName)) {
+        kept.add(localName);
+      }
+    }
+    const keptSpecifiers = named.elements
+      .filter((element) => kept.has(element.name.text))
+      .map((element) => element.getText(options.sourceFile));
+    if (keptSpecifiers.length === 0) {
+      const bounds = expandToFullLine(
+        options.source,
+        statement.getStart(options.sourceFile),
+        statement.getEnd(),
+      );
+      edits.push({ start: bounds.start, end: bounds.end, text: "" });
+    } else if (rewroteCall) {
+      const quote = statement.moduleSpecifier.getText(options.sourceFile).startsWith("'") ? "'" : '"';
+      edits.push({
+        start: statement.getStart(options.sourceFile),
+        end: statement.getEnd(),
+        text: `import { ${keptSpecifiers.join(", ")} } from ${quote}${statement.moduleSpecifier.text}${quote};`,
+      });
+    }
+  }
+
+  return { edits, rewrittenKinds, manualTodos, todoCommentEdits, compatSymbols: Array.from(new Set(compatSymbols)) };
+}
+
+function watchUtilsCallReplacement(node: ts.CallExpression, importedName: string): string | undefined {
+  if (importedName === "init" || node.arguments.length < 2) {
+    return undefined;
+  }
+  const target = node.arguments[0];
+  const property = node.arguments[1];
+  if (!target || !property || !ts.isIdentifier(target) || !ts.isStringLiteral(property)) {
+    return undefined;
+  }
+  if (!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(property.text)) {
+    return undefined;
+  }
+  const targetText = target.text;
+  const propertyText = property.text;
+  if (importedName === "whenOnce" && propertyText === "ready") {
+    return `${targetText}.when()`;
+  }
+  if (importedName === "whenOnce" || importedName === "whenTrueOnce") {
+    return `reactiveUtils.whenOnce(() => ${targetText}.${propertyText})`;
+  }
+  if (importedName === "whenFalseOnce") {
+    return `reactiveUtils.whenOnce(() => !${targetText}.${propertyText})`;
+  }
+  if (importedName === "once") {
+    return `new Promise((resolve) => { reactiveUtils.watch(() => ${targetText}.${propertyText}, resolve, { once: true }); })`;
+  }
+  return undefined;
 }
 
 function rewriteReactiveUtilsImports(options: {
