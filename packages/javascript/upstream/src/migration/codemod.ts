@@ -4,6 +4,7 @@ import { type WebMapMapLibreManualGap, webmapJsonToMapLibreStyle } from "@honua/
 import type { WebMapJson } from "@honua/sdk/webmap";
 import ts from "typescript";
 
+import { removeArcGisCdnScriptTags } from "./html.js";
 import { type ArcGisImportHit, canonicalArcGisModulePath, findArcGisModuleSites } from "./scanner.js";
 
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".html", ".htm"]);
@@ -1038,7 +1039,7 @@ function codemodHtmlFile(
   localArcGisReExports: ReadonlyMap<string, Readonly<Record<string, CodemodConstructorKind>>>,
   sourceFilesSet: ReadonlySet<string>,
 ): ReturnType<typeof codemodFile> {
-  const scriptPattern = /<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi;
+  const scriptPattern = /<script\b([^>]*)>([\s\S]*?)<\/script\b[^>]*>/gi;
   const scripts: Array<{ bodyStart: number; bodyEnd: number; body: string }> = [];
   let match: RegExpExecArray | null = scriptPattern.exec(source);
   while (match !== null) {
@@ -1279,10 +1280,7 @@ function rewriteMapComponentShell(source: string): {
     return `${open}\n${bootstrap}`;
   });
   if (!next.includes("$arcgis") && !next.includes("@arcgis/core")) {
-    const withoutCdn = next.replace(
-      /<script\b[^>]*\bsrc\s*=\s*["']%CDN%["'][^>]*>\s*<\/script\s*>\s*/gi,
-      "",
-    );
+    const withoutCdn = removeArcGisCdnScriptTags(next);
     if (withoutCdn !== next) {
       next = withoutCdn;
     }

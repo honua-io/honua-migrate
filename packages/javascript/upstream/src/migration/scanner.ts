@@ -402,7 +402,7 @@ function findMapComponentHits(source: string, file: string, includeCalls: boolea
 /** Inline scripts only. A `src` script has no local body for the module scanners. */
 function extractInlineScripts(html: string): string {
   const bodies: string[] = [];
-  const scriptPattern = /<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi;
+  const scriptPattern = /<script\b([^>]*)>([\s\S]*?)<\/script\b[^>]*>/gi;
   let match: RegExpExecArray | null = scriptPattern.exec(html);
   while (match !== null) {
     if (!/\ssrc\s*=/i.test(match[1])) {
