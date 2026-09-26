@@ -100,7 +100,14 @@ to invent a new plan.
   `residualArcGisDependencies` and typecheck.
 - `assisted-conversion`: edit `mixed` files and `manualTodos`. A `converted`
   file is done. A `kept` file was left because a binding could not move; do
-  not rewrite one constructor in it.
+  not rewrite one constructor in it. An `import type` left behind does not
+  make the file mixed once every value import moved. Retype it, then delete it.
+  `<arcgis-chart>` stays on ArcGIS Charts.
+
+When the page's only script tag has a `src`, the codemod writes
+`new MapViewCompat` into the module that calls `querySelector("arcgis-map")`.
+The HTML tags become `div`s that constructor mounts. A page with no such
+module keeps the `<arcgis-*>` tags.
 
 `TODO(honua-migrate)[kind]:` names a property the codemod deleted so the
 constructor could move. Restore that behavior on the compat object, or delete

@@ -818,6 +818,7 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
   const compatImportPath = options.compatImportPath ?? DEFAULT_COMPAT_IMPORT_PATH;
   const annotateTodos = options.annotateTodos ?? false;
   const target = options.target ?? "honua-compat";
+  const shellPlan = target === "honua-compat" ? planMapComponentShells(files) : undefined;
 
   const metrics: CodemodMetrics = {
     totalCodemodScopedCallSites: 0,
@@ -850,8 +851,26 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
     let fileResult: ReturnType<typeof codemodFile>;
     try {
       fileResult = HTML_EXTENSIONS.has(path.extname(file).toLowerCase())
-        ? codemodHtmlFile(file, source, compatImportPath, annotateTodos, target, localArcGisReExports, sourceFilesSet)
+        ? codemodHtmlFile(
+            file,
+            source,
+            compatImportPath,
+            annotateTodos,
+            target,
+            localArcGisReExports,
+            sourceFilesSet,
+            shellPlan?.htmlMode.get(path.resolve(file)) ?? "inline",
+          )
         : codemodFile(file, source, compatImportPath, annotateTodos, target, localArcGisReExports, sourceFilesSet);
+      const hostBootstrap = shellPlan?.bootstrapByHost.get(path.resolve(file));
+      if (hostBootstrap) {
+        fileResult = {
+          ...fileResult,
+          nextSource: installShellBootstrap(fileResult.nextSource, hostBootstrap),
+          addedCompatImport: true,
+          rewrittenConstructors: fileResult.rewrittenConstructors + 1,
+        };
+      }
     } catch (error) {
       errors.push({
         file,
@@ -1038,6 +1057,7 @@ function codemodHtmlFile(
   target: CodemodTarget,
   localArcGisReExports: ReadonlyMap<string, Readonly<Record<string, CodemodConstructorKind>>>,
   sourceFilesSet: ReadonlySet<string>,
+  shellMode: MapComponentShellMode = "inline",
 ): ReturnType<typeof codemodFile> {
   const scriptPattern = /<script\b([^>]*)>([\s\S]*?)<\/script\b[^>]*>/gi;
   const scripts: Array<{ bodyStart: number; bodyEnd: number; body: string }> = [];
@@ -1085,8 +1105,8 @@ function codemodHtmlFile(
     manualTodos.push(...result.manualTodos);
   }
 
-  if (target === "honua-compat") {
-    const shell = rewriteMapComponentShell(nextSource);
+  if (target === "honua-compat" && shellMode !== "skip") {
+    const shell = rewriteMapComponentShell(nextSource, shellMode === "host" ? "tags-only" : "inline");
     nextSource = shell.nextSource;
     rewrittenConstructors += shell.rewrites;
     addedCompatImport = addedCompatImport || shell.addedCompatImport;
@@ -1220,15 +1240,89 @@ function emitShellConstructors(
   return varName;
 }
 
-function rewriteMapComponentShell(source: string): {
+type MapComponentShellMode = "inline" | "host" | "skip";
+
+function htmlHasInlineScript(source: string): boolean {
+  return /<script\b(?![^>]*\bsrc\s*=)[^>]*>/i.test(source);
+}
+
+function arcgisMapQuerySelectorPattern(): RegExp {
+  return /document\.querySelector(?:<[^>]+>)?\(\s*(["'])arcgis-map\1\s*\)/g;
+}
+
+function planMapComponentShells(files: readonly string[]): {
+  htmlMode: Map<string, MapComponentShellMode>;
+  bootstrapByHost: Map<string, string>;
+} {
+  const htmlMode = new Map<string, MapComponentShellMode>();
+  const bootstrapByHost = new Map<string, string>();
+  const htmlFiles = files.filter((file) => HTML_EXTENSIONS.has(path.extname(file).toLowerCase()));
+  for (const htmlFile of htmlFiles) {
+    let source: string;
+    try {
+      source = fs.readFileSync(htmlFile, "utf8");
+    } catch {
+      continue;
+    }
+    if (flattenShell(parseShellElements(source)).length === 0) {
+      continue;
+    }
+    if (htmlHasInlineScript(source)) {
+      htmlMode.set(path.resolve(htmlFile), "inline");
+      continue;
+    }
+    const host = files.find((file) => {
+      if (HTML_EXTENSIONS.has(path.extname(file).toLowerCase())) {
+        return false;
+      }
+      try {
+        return arcgisMapQuerySelectorPattern().test(fs.readFileSync(file, "utf8"));
+      } catch {
+        return false;
+      }
+    });
+    if (!host) {
+      htmlMode.set(path.resolve(htmlFile), "skip");
+      continue;
+    }
+    htmlMode.set(path.resolve(htmlFile), "host");
+    const shell = rewriteMapComponentShell(source, "tags-only");
+    const resolvedHost = path.resolve(host);
+    bootstrapByHost.set(resolvedHost, `${bootstrapByHost.get(resolvedHost) ?? ""}${shell.bootstrap}`);
+  }
+  return { htmlMode, bootstrapByHost };
+}
+
+function installShellBootstrap(source: string, bootstrap: string): string {
+  if (source.includes("new MapViewCompat(") || bootstrap.trim().length === 0) {
+    return source;
+  }
+  const withoutReplacedComponents = source.replace(
+    /^[ \t]*import\s+["']@arcgis\/map-components\/components\/arcgis-(?:map|zoom|legend|expand|layer-list|popup)["'];?[ \t]*\r?\n/gm,
+    "",
+  );
+  const usingView = withoutReplacedComponents.replace(arcgisMapQuerySelectorPattern(), "honuaView");
+  const sourceFile = ts.createSourceFile("shell-host.ts", usingView, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const index = findImportInsertionIndex(sourceFile);
+  const prefix = usingView.slice(0, index);
+  const suffix = usingView.slice(index);
+  const gap = prefix.length > 0 && !prefix.endsWith("\n") ? "\n" : "";
+  return `${prefix}${gap}${bootstrap}${suffix.startsWith("\n") ? "" : "\n"}${suffix}`;
+}
+
+function rewriteMapComponentShell(
+  source: string,
+  inject: "inline" | "tags-only",
+): {
   nextSource: string;
   rewrites: number;
   addedCompatImport: boolean;
+  bootstrap: string;
 } {
   const roots = parseShellElements(source);
   const flat = flattenShell(roots);
   if (flat.length === 0) {
-    return { nextSource: source, rewrites: 0, addedCompatImport: false };
+    return { nextSource: source, rewrites: 0, addedCompatImport: false, bootstrap: "" };
   }
 
   let index = 0;
@@ -1270,6 +1364,9 @@ function rewriteMapComponentShell(source: string): {
     symbols.add("geometryEngineCompat");
   }
   const bootstrap = `import { ${Array.from(symbols).sort().join(", ")} } from "@honua/sdk-esri-compat";\n${lines.join("\n")}\n`;
+  if (inject === "tags-only") {
+    return { nextSource: next, rewrites: flat.length, addedCompatImport: false, bootstrap };
+  }
   let injected = false;
   next = next.replace(/<script\b([^>]*)>/gi, (full, attrs: string) => {
     if (injected || /\ssrc\s*=/i.test(attrs)) {
@@ -1279,13 +1376,16 @@ function rewriteMapComponentShell(source: string): {
     const open = /\btype\s*=/i.test(attrs) ? full : full.replace(/<script\b/i, '<script type="module"');
     return `${open}\n${bootstrap}`;
   });
+  if (!injected) {
+    return { nextSource: source, rewrites: 0, addedCompatImport: false, bootstrap: "" };
+  }
   if (!next.includes("$arcgis") && !next.includes("@arcgis/core")) {
     const withoutCdn = removeArcGisCdnScriptTags(next);
     if (withoutCdn !== next) {
       next = withoutCdn;
     }
   }
-  return { nextSource: next, rewrites: flat.length, addedCompatImport: injected };
+  return { nextSource: next, rewrites: flat.length, addedCompatImport: true, bootstrap };
 }
 
 function codemodFile(

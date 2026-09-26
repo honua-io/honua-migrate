@@ -377,13 +377,19 @@ describe("current ArcGIS sample corpus", () => {
       "",
     ].join("\n");
     fs.writeFileSync(path.join(dir, "oauth.ts"), source, "utf8");
-    runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+    const scanReport = scanArcGisUsage(dir);
+    const codemodResult = runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+    const report = buildJsMigrationReport(dir, codemodResult, scanReport);
     const written = fs.readFileSync(path.join(dir, "oauth.ts"), "utf8");
     expect(written).toContain("identityManager.registerOAuthInfos");
     expect(written).toContain("let info: OAuthInfoCompat");
     expect(written).toContain("new OAuthInfoCompat");
     expect(written).toContain("IdentityCredentialCompat");
     expect(written).not.toContain('from "esri/');
+    expect(report.unhandledArcGisModules.map((module) => module.modulePath)).not.toContain(
+      "@arcgis/core/identity/Credential",
+    );
+    expect(report.conversion.files.find((file) => file.file === "oauth.ts")?.boundary).toBe("converted");
   });
 
   it("rewrites supported loads and the viewer shell, and holds related-record calls", () => {
@@ -455,5 +461,68 @@ describe("current ArcGIS sample corpus", () => {
     const sizePage = writtenPage("visualization-sm-size");
     expect(sizePage).toContain("new PopupCompat({ view: honuaView, container:");
     expect(sizePage).toContain('src="%CDN%"');
+  });
+
+  it("constructs the compat view from the module that queries arcgis-map", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-shell-host-"));
+    tempDirs.push(dir);
+    fs.mkdirSync(path.join(dir, "src"));
+    fs.writeFileSync(
+      path.join(dir, "index.html"),
+      [
+        "<!doctype html>",
+        '<arcgis-map item-id="abc123def456abc123def456abc12345"></arcgis-map>',
+        "<arcgis-chart></arcgis-chart>",
+        '<script type="module" src="/src/main.ts"></script>',
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(dir, "src", "main.ts"),
+      [
+        'import Point from "@arcgis/core/geometry/Point.js";',
+        'import type WebMap from "@arcgis/core/WebMap.js";',
+        'const viewElement = document.querySelector("arcgis-map");',
+        "export const point = new Point({ x: 1, y: 2 });",
+        "export const map = viewElement;",
+        "export type MapType = WebMap;",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const scanReport = scanArcGisUsage(dir);
+    const codemodResult = runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+    const report = buildJsMigrationReport(dir, codemodResult, scanReport);
+    const html = fs.readFileSync(path.join(dir, "index.html"), "utf8");
+    const main = fs.readFileSync(path.join(dir, "src", "main.ts"), "utf8");
+    expect(html).toContain('data-honua-compat="MapViewCompat"');
+    expect(html).not.toContain("<arcgis-map");
+    expect(html).toContain("<arcgis-chart");
+    expect(main).toContain("new MapViewCompat(");
+    expect(main).toContain('portalItem: { id: "abc123def456abc123def456abc12345" }');
+    expect(main).toContain("const viewElement = honuaView");
+    expect(main).toContain("import type WebMap");
+    const mainFile = report.conversion.files.find((file) => file.file === "src/main.ts");
+    expect(mainFile?.boundary).toBe("converted");
+    expect(report.unhandledArcGisModules.map((module) => module.modulePath)).toContain(
+      "@arcgis/map-components/arcgis-chart",
+    );
+  });
+
+  it("does not turn map tags into empty divs when no module queries arcgis-map", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-shell-skip-"));
+    tempDirs.push(dir);
+    const html = [
+      "<!doctype html>",
+      "<arcgis-map></arcgis-map>",
+      '<script type="module" src="/src/main.ts"></script>',
+      "",
+    ].join("\n");
+    fs.writeFileSync(path.join(dir, "index.html"), html, "utf8");
+    fs.mkdirSync(path.join(dir, "src"));
+    fs.writeFileSync(path.join(dir, "src", "main.ts"), "export const ready = true;\n", "utf8");
+    runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+    expect(fs.readFileSync(path.join(dir, "index.html"), "utf8")).toContain("<arcgis-map");
   });
 });

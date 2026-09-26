@@ -435,6 +435,7 @@ function resolveImportHitDispositions(
     const key = importSiteKey(site);
     residualCounts.set(key, (residualCounts.get(key) ?? 0) + 1);
   }
+  const originalResidualCounts = new Map(residualCounts);
   // Out-of-scope hits account for their own surviving sites first, so a
   // residual site is never charged to an in-scope hit that was rewritten.
   for (const hit of scanReport.imports) {
@@ -458,7 +459,33 @@ function resolveImportHitDispositions(
     }
     handled.add(hit);
   }
+  // Identity Credential is rewritten by deleting the import. It is not a
+  // codemod-scoped constructor, so the removed import must not stay unhandled.
+  for (const hit of scanReport.imports) {
+    if (inScopeSet.has(hit) || !hit.modulePath.endsWith("/identity/Credential")) {
+      continue;
+    }
+    if ((originalResidualCounts.get(importSiteKey(hit)) ?? 0) === 0) {
+      handled.add(hit);
+    }
+  }
   return { inScope: inScopeSet, handled };
+}
+
+function isTypeOnlyImportClause(importClause: string): boolean {
+  const clause = importClause.trim().replace(/^export\s+/, "");
+  if (clause.startsWith("type ") || clause.startsWith("type{")) {
+    return true;
+  }
+  if (clause.startsWith("{") && clause.endsWith("}")) {
+    const parts = clause
+      .slice(1, -1)
+      .split(",")
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0);
+    return parts.length > 0 && parts.every((part) => part.startsWith("type "));
+  }
+  return false;
 }
 
 interface ImportHitDispositions {
@@ -895,10 +922,20 @@ function buildFileMigrations(
     return entry;
   };
 
+  const hitsByFile = new Map<string, ArcGisImportHit[]>();
+  for (const hit of scanReport.imports) {
+    const hits = hitsByFile.get(path.resolve(hit.file)) ?? [];
+    hits.push(hit);
+    hitsByFile.set(path.resolve(hit.file), hits);
+  }
   for (const hit of scanReport.imports) {
     const entry = entryFor(hit.file);
+    const fileHits = hitsByFile.get(path.resolve(hit.file)) ?? [];
+    const valueHits = fileHits.filter((candidate) => !isTypeOnlyImportClause(candidate.importClause));
+    const typeOnlySettled =
+      isTypeOnlyImportClause(hit.importClause) && valueHits.every((candidate) => importHits.handled.has(candidate));
     entry.moduleSites += 1;
-    if (importHits.handled.has(hit)) {
+    if (importHits.handled.has(hit) || typeOnlySettled) {
       entry.handledModuleSites += 1;
     } else {
       entry.siteDiagnostics.push(describeUnhandledModuleSite(hit, importHits.inScope.has(hit), codemodResult.target));
@@ -990,6 +1027,15 @@ function describeUnhandledModuleSite(
       modulePath,
       message: `${modulePath} is an ArcGIS smart-mapping helper. Honua does not reproduce those statistics or generated renderers.`,
       action: "Build the renderer or histogram from your own feature query, or keep this call on the ArcGIS client.",
+    };
+  }
+
+  if (modulePath.endsWith("/arcgis-chart") || modulePath.includes("charts-components")) {
+    return {
+      code: "map-component-not-rewritten",
+      modulePath,
+      message: `${modulePath} is an ArcGIS Charts component. The codemod keeps @arcgis/charts-components as written.`,
+      action: "Keep this chart on ArcGIS Charts, or draw it from the feature query yourself.",
     };
   }
 
