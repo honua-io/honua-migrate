@@ -355,9 +355,9 @@ describe("current ArcGIS sample corpus", () => {
     expect(written).toContain(
       "new Promise((resolve) => { reactiveUtils.watch(() => view.extent, resolve, { once: true }); })",
     );
-    expect(written).toContain('import { init } from "esri/core/watchUtils"');
-    expect(written).toContain("new Locate(");
-    expect(written).not.toContain("LocateCompat");
+    expect(written).toContain("reactiveUtils.watch(() => locate.viewModel.state, () => {}, { initial: true })");
+    expect(written).toContain("new LocateCompat(");
+    expect(written).not.toContain("watchUtils");
     expect(written).not.toContain('whenOnce(view, "ready")');
   });
 
@@ -408,11 +408,12 @@ describe("current ArcGIS sample corpus", () => {
     expect(treesPage).toContain("FeatureLayerCompat");
     expect(treesPage).not.toContain('src="%CDN%"');
 
-    expect(counties.report.conversion.recommendedMode).toBe("assisted-conversion");
+    expect(counties.report.conversion.recommendedMode).toBe("complete-honua-conversion");
     const countyModules = counties.report.unhandledArcGisModules.map((module) => module.modulePath);
     expect(countyModules).not.toContain("@arcgis/core/layers/FeatureLayer.js");
     expect(countyModules).not.toContain("@arcgis/core/Map.js");
-    expect(countyModules).toContain("@arcgis/core/geometry/operators/centroidOperator.js");
+    expect(countyModules).not.toContain("@arcgis/core/geometry/operators/centroidOperator.js");
+    expect(writtenPage("featurelayer-query")).toContain("geometryEngineCompat.centroid");
 
     expect(related.report.conversion.recommendedMode).toBe("assisted-conversion");
     expect(related.report.conversion.recommendedMode).not.toBe("complete-honua-conversion");
@@ -524,5 +525,179 @@ describe("current ArcGIS sample corpus", () => {
     fs.writeFileSync(path.join(dir, "src", "main.ts"), "export const ready = true;\n", "utf8");
     runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
     expect(fs.readFileSync(path.join(dir, "index.html"), "utf8")).toContain("<arcgis-map");
+  });
+
+  it("rewrites a supported AMD module and leaves an unsupported one", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-amd-"));
+    tempDirs.push(dir);
+    fs.writeFileSync(
+      path.join(dir, "page.js"),
+      [
+        'require(["esri/Map", "esri/widgets/Sketch/SketchViewModel"], function (Map, SketchViewModel) {',
+        '  const map = new Map({ basemap: "streets-vector" });',
+        "  const model = new SketchViewModel({ view: map });",
+        "  return { map, model };",
+        "});",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+    const written = fs.readFileSync(path.join(dir, "page.js"), "utf8");
+    expect(written).toContain("new MapCompat(");
+    expect(written).toContain("SketchViewModel");
+    expect(written).not.toContain('"esri/Map"');
+    expect(written).toContain("MapCompat");
+  });
+
+  it("sees import-equals requires and rewrites a covered geometry call", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-import-equals-"));
+    tempDirs.push(dir);
+    fs.writeFileSync(
+      path.join(dir, "main.ts"),
+      [
+        'import EsriMap = require("esri/Map");',
+        'import geometryEngine = require("esri/geometry/geometryEngine");',
+        "export function build(geometry: object) {",
+        '  const map = new EsriMap({ basemap: "streets-vector" });',
+        '  return { map, area: geometryEngine.geodesicBuffer(geometry, 10, "meters") };',
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const scanReport = scanArcGisUsage(dir);
+    const codemodResult = runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+    const report = buildJsMigrationReport(dir, codemodResult, scanReport);
+    const written = fs.readFileSync(path.join(dir, "main.ts"), "utf8");
+    expect(scanReport.imports.map((hit) => hit.modulePath)).toEqual(
+      expect.arrayContaining(["@arcgis/core/Map", "@arcgis/core/geometry/geometryEngine"]),
+    );
+    expect(report.conversion.files.map((file) => file.file)).toContain("main.ts");
+    expect(written).toContain("new MapCompat(");
+    expect(written).toContain('geometryEngineCompat.buffer(geometry, 10, "meters")');
+  });
+
+  it("rewrites bufferOperator.execute onto geometryEngineCompat.buffer", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-buffer-op-"));
+    tempDirs.push(dir);
+    fs.writeFileSync(
+      path.join(dir, "worker.js"),
+      [
+        'import * as bufferOperator from "@arcgis/core/geometry/operators/bufferOperator.js";',
+        'import * as generalizeOperator from "@arcgis/core/geometry/operators/generalizeOperator.js";',
+        "export function run(line) {",
+        '  const buffered = bufferOperator.execute(line, 200, { unit: "meters" });',
+        '  return generalizeOperator.execute(buffered, 10, { unit: "meters" });',
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const scanReport = scanArcGisUsage(dir);
+    const codemodResult = runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+    const report = buildJsMigrationReport(dir, codemodResult, scanReport);
+    const written = fs.readFileSync(path.join(dir, "worker.js"), "utf8");
+    expect(written).toContain('geometryEngineCompat.buffer(line, 200, "meters")');
+    expect(written).toContain("generalizeOperator.execute");
+    expect(report.manualTodos.map((todo) => todo.reason)).toContain(
+      "generalizeOperator is not covered by geometryEngineCompat",
+    );
+  });
+
+  it("rewrites Portal search and a client-side FeatureLayer", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-portal-source-"));
+    tempDirs.push(dir);
+    fs.writeFileSync(
+      path.join(dir, "portal.ts"),
+      [
+        'import Portal from "@arcgis/core/portal/Portal.js";',
+        "export async function find(url: string) {",
+        "  const portal = new Portal({ url });",
+        '  return portal.search({ q: "roads" });',
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(dir, "layer.ts"),
+      [
+        'import FeatureLayer from "@arcgis/core/layers/FeatureLayer.js";',
+        "export function points(graphics: object[]) {",
+        "  return new FeatureLayer({",
+        "    source: graphics,",
+        '    objectIdField: "ObjectID",',
+        '    geometryType: "point",',
+        '    fields: [{ name: "ObjectID", type: "oid" }],',
+        "  });",
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+    expect(fs.readFileSync(path.join(dir, "portal.ts"), "utf8")).toContain("new PortalCompat({ portalUrl: url })");
+    expect(fs.readFileSync(path.join(dir, "layer.ts"), "utf8")).toContain("new FeatureLayerCompat({");
+  });
+
+  it("leaves a Graphic on Esri when it receives a symbol that stays on Esri", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-graphic-symbol-"));
+    tempDirs.push(dir);
+    fs.writeFileSync(
+      path.join(dir, "draw.ts"),
+      [
+        'import Graphic from "@arcgis/core/Graphic.js";',
+        'import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol.js";',
+        'import * as symbolUtils from "@arcgis/core/symbols/support/symbolUtils.js";',
+        "export function draw(node: HTMLElement) {",
+        '  const symbol = new SimpleMarkerSymbol({ color: "red" });',
+        "  symbolUtils.renderPreviewHTML(symbol, { node });",
+        "  return new Graphic({ geometry: { x: 1, y: 2 }, symbol });",
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+    const written = fs.readFileSync(path.join(dir, "draw.ts"), "utf8");
+    expect(written).toContain("new Graphic(");
+    expect(written).toContain("new SimpleMarkerSymbol(");
+    expect(written).not.toContain("GraphicCompat");
+  });
+
+  it("rewrites the four loader shapes in the checked-in fixture", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-loader-shapes-"));
+    tempDirs.push(dir);
+    fs.cpSync(path.join(import.meta.dirname, "fixtures", "esri-loader-shapes-app"), dir, { recursive: true });
+    const scanReport = scanArcGisUsage(dir);
+    const codemodResult = runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+    const report = buildJsMigrationReport(dir, codemodResult, scanReport);
+    const amd = fs.readFileSync(path.join(dir, "amd.html"), "utf8");
+    const equalsFile = fs.readFileSync(path.join(dir, "import-equals.ts"), "utf8");
+    const worker = fs.readFileSync(path.join(dir, "worker.js"), "utf8");
+    const html = fs.readFileSync(path.join(dir, "index.html"), "utf8");
+    const main = fs.readFileSync(path.join(dir, "src", "main.ts"), "utf8");
+
+    expect(amd).toContain("new MapCompat(");
+    expect(amd).toContain("new FeatureLayerCompat(");
+    expect(amd).toContain("SketchViewModel");
+    expect(amd).not.toContain('"esri/Map"');
+    expect(amd).not.toContain('"esri/layers/FeatureLayer"');
+    expect(equalsFile).toContain("new MapCompat(");
+    expect(equalsFile).toContain('geometryEngineCompat.buffer(geometry, 10, "meters")');
+    expect(worker).toContain('geometryEngineCompat.buffer(line, 200, "meters")');
+    expect(worker).toContain("generalizeOperator.execute");
+    expect(worker).toContain("query.executeQueryJSON");
+    expect(html).not.toContain("<arcgis-map");
+    expect(main).toContain("new MapViewCompat(");
+    expect(report.conversion.files.map((file) => file.file)).toEqual(
+      expect.arrayContaining(["amd.html", "import-equals.ts", "worker.js", "index.html"]),
+    );
+    expect(report.manualTodos.map((todo) => todo.reason)).toContain(
+      "generalizeOperator is not covered by geometryEngineCompat",
+    );
+    expect(report.unhandledArcGisModules.map((module) => module.modulePath)).toContain("@arcgis/core/rest/query.js");
+    expect(report.conversion.recommendedMode).toBe("assisted-conversion");
   });
 });

@@ -90,6 +90,8 @@ function createCodemodResult(): EsriCompatCodemodResult {
         "wms-layer": { total: 0, autoMigrated: 0, manual: 0 },
         "wfs-layer": { total: 0, autoMigrated: 0, manual: 0 },
         "imagery-layer": { total: 0, autoMigrated: 0, manual: 0 },
+        portal: { total: 0, autoMigrated: 0, manual: 0 },
+        "directions-view-model": { total: 0, autoMigrated: 0, manual: 0 },
         "geometry-engine": { total: 0, autoMigrated: 0, manual: 0 },
       },
     },
@@ -268,6 +270,8 @@ describe("buildJsMigrationReport", () => {
       "wms-layer": 0,
       "wfs-layer": 0,
       "imagery-layer": 0,
+      portal: 0,
+      "directions-view-model": 0,
       "geometry-engine": 0,
     });
     expect(report.manualTodoReasons).toEqual([

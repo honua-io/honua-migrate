@@ -7,6 +7,7 @@ import {
   type EsriCompatCodemodResult,
   type MigrationTodo,
   SUPPORTED_ARCGIS_MODULE_KIND_BY_PATH,
+  codemodDropsModulePath,
   isKindSupportedForTarget,
   isSupportedArcGisBarrelModulePath,
   resolveArcGisBarrelImportKind,
@@ -20,6 +21,7 @@ import {
   type ArcGisScanReport,
   MAP_COMPONENT_CLAUSE,
   REWRITTEN_SHELL_COMPONENT_PATHS,
+  canonicalArcGisModulePath,
   scanArcGisUsage,
   summarizeArcGisScan,
 } from "./scanner.js";
@@ -344,6 +346,8 @@ function summarizeManualTodosByKind(todos: readonly MigrationTodo[]): Record<Cod
     "wms-layer": 0,
     "wfs-layer": 0,
     "imagery-layer": 0,
+    portal: 0,
+    "directions-view-model": 0,
     "geometry-engine": 0,
   };
 
@@ -461,8 +465,23 @@ function resolveImportHitDispositions(
   }
   // Identity Credential is rewritten by deleting the import. It is not a
   // codemod-scoped constructor, so the removed import must not stay unhandled.
+  // AMD entries and rest/route or geometry-operator imports are the same shape:
+  // the codemod deletes them when it rewrites the call, and a survivor stays.
   for (const hit of scanReport.imports) {
-    if (inScopeSet.has(hit) || !hit.modulePath.endsWith("/identity/Credential")) {
+    if (inScopeSet.has(hit) || codemodResult.target !== "honua-compat") {
+      continue;
+    }
+    const style = classifyUsageStyle(hit.importClause);
+    const canonical = canonicalArcGisModulePath(hit.modulePath);
+    const kind = supportedKindForModulePath(canonical);
+    const amdMoved =
+      style === "amd-require" &&
+      kind !== undefined &&
+      isKindSupportedForTarget(kind, "honua-compat") &&
+      kind !== "geometry-engine";
+    const dropped =
+      hit.modulePath.endsWith("/identity/Credential") || amdMoved || codemodDropsModulePath(hit.modulePath);
+    if (!dropped) {
       continue;
     }
     if ((originalResidualCounts.get(importSiteKey(hit)) ?? 0) === 0) {
@@ -1029,6 +1048,33 @@ function describeUnhandledModuleSite(
       modulePath,
       message: `${modulePath} is an ArcGIS smart-mapping helper. Honua does not reproduce those statistics or generated renderers.`,
       action: "Build the renderer or histogram from your own feature query, or keep this call on the ArcGIS client.",
+    };
+  }
+
+  if (modulePath.endsWith("/rest/identify")) {
+    return {
+      code: "unsupported-module",
+      modulePath,
+      message: `${modulePath} identify(url, params) does not match IdentifyCompat.identify, which takes a view and layers.`,
+      action: "Keep this identify call on the ArcGIS client, or call IdentifyCompat.identify with a view and layers.",
+    };
+  }
+
+  if (modulePath.endsWith("/rest/query") || modulePath.endsWith("/rest/query.js")) {
+    return {
+      code: "unsupported-module",
+      modulePath,
+      message: `${modulePath} executeQueryJSON(url, params) has no compat function of that shape.`,
+      action: "Keep this query on the ArcGIS client until a url-and-params query exists on the compat layer.",
+    };
+  }
+
+  if (/\/geometry\/operators\/(?:generalize|project|overlaps|distance)Operator(?:\.js)?$/.test(modulePath)) {
+    return {
+      code: "unsupported-module",
+      modulePath,
+      message: `${modulePath} is not covered by geometryEngineCompat.`,
+      action: "Keep this geometry operator on the ArcGIS client.",
     };
   }
 

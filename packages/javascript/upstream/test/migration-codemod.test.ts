@@ -735,15 +735,23 @@ describe("runEsriCompatCodemod", () => {
     expect(nextSource).not.toContain("@arcgis/core/layers/TileLayer");
   });
 
-  it("rewrites safe RouteTask constructor and removes ArcGIS import", () => {
+  it("leaves the removed RouteTask class path and rewrites rest/route solve", () => {
     const root = makeTempProject();
-    const file = path.join(root, "route-task.ts");
+    const classFile = path.join(root, "route-task.ts");
+    const solveFile = path.join(root, "solve.ts");
+    const classSource = [
+      "import RouteTask from '@arcgis/core/rest/route/RouteTask';",
+      "const routeTask = new RouteTask({ url: routeUrl, apiKey: routeApiKey });",
+      "void routeTask;",
+    ].join("\n");
+    fs.writeFileSync(classFile, classSource, "utf8");
     fs.writeFileSync(
-      file,
+      solveFile,
       [
-        "import RouteTask from '@arcgis/core/rest/route/RouteTask';",
-        "const routeTask = new RouteTask({ url: routeUrl, apiKey: routeApiKey });",
-        "void routeTask;",
+        "import { solve } from '@arcgis/core/rest/route';",
+        "export function plan(stops: object) {",
+        "  return solve(routeUrl, { stops, returnDirections: true });",
+        "}",
       ].join("\n"),
       "utf8",
     );
@@ -754,19 +762,17 @@ describe("runEsriCompatCodemod", () => {
       compatImportPath: "@honua/sdk-esri-compat",
     });
 
+    expect(fs.readFileSync(classFile, "utf8")).toBe(classSource);
     expect(result.filesChanged).toBe(1);
-    expect(result.metrics.totalCodemodScopedCallSites).toBe(1);
-    expect(result.metrics.autoMigratedCallSites).toBe(1);
-    expect(result.metrics.manualCallSites).toBe(0);
     expect(result.metrics.byKind["route-task"]).toEqual({
       total: 1,
       autoMigrated: 1,
       manual: 0,
     });
-
-    const nextSource = fs.readFileSync(file, "utf8");
+    const nextSource = fs.readFileSync(solveFile, "utf8");
     expect(nextSource).toContain('import { RouteTaskCompat } from "@honua/sdk-esri-compat";');
-    expect(nextSource).toContain("new RouteTaskCompat({ url: routeUrl, apiKey: routeApiKey })");
+    expect(nextSource).toContain("new RouteTaskCompat({ url: routeUrl }).solve({ stops, returnDirections: true })");
+    expect(nextSource).not.toContain("@arcgis/core/rest/route");
     expect(nextSource).not.toContain("@arcgis/core/rest/route/RouteTask");
   });
 
@@ -2945,7 +2951,7 @@ describe("runEsriCompatCodemod", () => {
     const file = path.join(root, "esri-config.ts");
     fs.writeFileSync(
       file,
-      ["import esriConfig from '@arcgis/core/config';", "esriConfig.apiKey = token;"].join("\n"),
+      ["import esriConfig from '@arcgis/core/config';", "esriConfig.portalUrl = portal;"].join("\n"),
       "utf8",
     );
 

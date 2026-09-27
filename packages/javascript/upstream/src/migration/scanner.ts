@@ -416,9 +416,9 @@ function extractInlineScripts(html: string): string {
 /**
  * AMD `require([...])`/`define([...])` arrays and `$arcgis.import(...)` calls
  * load ArcGIS modules without an ESM import or CommonJS require, so the regex
- * scan in `findArcGisImports` never sees them. The codemod leaves them as
- * written, but they are still ArcGIS usage and must count in the report
- * denominator.
+ * scan in `findArcGisImports` never sees them. They still count in the report
+ * denominator. The codemod rewrites a supported AMD constructor and leaves an
+ * unsupported entry in the array.
  */
 function findModuleLoaderHits(source: string, file: string): ArcGisImportHit[] {
   if (!source.includes(AMD_ESRI_MODULE_PREFIX) && !source.includes("$arcgis")) {
@@ -565,6 +565,19 @@ function findArcGisImports(source: string, file: string): ArcGisImportHit[] {
       importClause: match.clause,
       symbols: extractImportedSymbols(match.clause),
     });
+  }
+
+  const importEqualsPattern =
+    /import\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*require\(\s*["']((?:esri\/|@arcgis\/core\/)[^"']+)["']\s*\)/g;
+  let importEqualsMatch: RegExpExecArray | null = importEqualsPattern.exec(source);
+  while (importEqualsMatch !== null) {
+    hits.push({
+      file,
+      modulePath: canonicalArcGisModulePath(importEqualsMatch[2]),
+      importClause: importEqualsMatch[1],
+      symbols: [importEqualsMatch[1]],
+    });
+    importEqualsMatch = importEqualsPattern.exec(source);
   }
 
   const sideEffectImportRegex = /import\s+["']((?:@arcgis\/core\/|esri\/)[^"']+)["'];?/g;

@@ -1,0 +1,10 @@
+<!doctype html>
+<script>
+require(["esri/Map", "esri/layers/FeatureLayer", "esri/widgets/Sketch/SketchViewModel"], function (Map, FeatureLayer, SketchViewModel) {
+  const map = new Map({ basemap: "streets-vector" });
+  const layer = new FeatureLayer({ url: "https://services.example.test/FeatureServer/0" });
+  map.add(layer);
+  const model = new SketchViewModel({ view: map });
+  return { map, layer, model };
+});
+</script>
