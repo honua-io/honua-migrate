@@ -1135,7 +1135,7 @@ function codemodHtmlFile(
   }
 
   if (nextSource.includes("@honua/sdk-esri-compat")) {
-    nextSource = nextSource.replace(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi, (full, attrs: string, body: string) => {
+    nextSource = nextSource.replace(/<script\b([^>]*)>([\s\S]*?)<\/script\b[^>]*>/gi, (full, attrs: string, body: string) => {
       if (!body.includes("@honua/sdk-esri-compat") || /\btype\s*=/i.test(attrs)) {
         return full;
       }

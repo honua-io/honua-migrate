@@ -4345,6 +4345,27 @@ describe("PR 172 review regressions", () => {
     expect(output).not.toContain("@honua/sdk-esri-compat");
   });
 
+  it("marks rewritten inline scripts as modules when the closing tag has whitespace", () => {
+    const root = makeTempProject();
+    const file = path.join(root, "index.html");
+    fs.writeFileSync(
+      file,
+      [
+        "<script>",
+        'import FeatureLayer from "@arcgis/core/layers/FeatureLayer";',
+        'const layer = new FeatureLayer({ url: "https://example.test/FeatureServer/0" });',
+        "</script >",
+      ].join("\n"),
+    );
+
+    runEsriCompatCodemod({ rootDir: root, write: true });
+
+    expect(fs.readFileSync(file, "utf8")).toContain(
+      '<script type="module">import { FeatureLayerCompat } from "@honua/sdk-esri-compat";',
+    );
+    expect(fs.readFileSync(file, "utf8")).toContain("</script>");
+  });
+
   it("updates ancestor manifest when scanning src", () => {
     const root = makeTempProject();
     const src = path.join(root, "src");
