@@ -31,9 +31,10 @@ The `codemod` report's `readiness` is one of:
 
 - `moduleSites` counts every ArcGIS module reference. `moduleSitesByStyle`
   splits it into static and dynamic ESM imports, CommonJS `require`, AMD
-  `require`/`define` arrays, and `$arcgis.import` calls, and
-  `handledModuleSites` plus `unsupportedModuleSites` add up to it. The codemod
-  leaves AMD and `$arcgis.import` loads as written.
+  `require`/`define` arrays, `$arcgis.import` calls, and map components
+  (`<arcgis-*>` elements, plus component API calls in a file that loads no
+  ArcGIS module). `handledModuleSites` plus `unsupportedModuleSites` add up to
+  it. The codemod rewrites `$arcgis.import` of a module it already knows, including inside an HTML script. AMD loads, unsupported `$arcgis.import` specifiers, and map components stay as written.
 - `codemodScopedCallSites` is `automaticCallSites` plus `manualCallSites`.
 - `widgetRuntimeRequirements` says, per widget, whether its sites move onto a
   Honua compat widget (`honua`) or still need the classic ArcGIS widget runtime
@@ -79,13 +80,94 @@ a team can ship converted files first. Each held site carries a `code`, a
 | --- | --- |
 | `manual-call-site` | A codemod-scoped call the codemod will not guess at; carries `line` and `column`. |
 | `import-left-in-place` | The module is in codemod scope, but the import is type-only, used only in type positions, or still needed by a manual call site. |
-| `module-loader-not-rewritten` | An AMD `require`/`define` array or a `$arcgis.import(...)` call. |
+| `module-loader-not-rewritten` | An AMD `require`/`define` entry, or a `$arcgis.import(...)` call, that the codemod did not rewrite. Supported AMD constructors are rewritten; an unsupported entry stays in the array. |
+| `map-component-not-rewritten` | An `<arcgis-*>` element, or a component API call such as `queryRelatedFeatures` in a file that does not load an ArcGIS module. |
 | `widget-on-arcgis-runtime` | A widget or widget support module, such as a view model, outside codemod scope; the action names its Honua disposition. |
 | `unsupported-module` | No mapping for the target, a side-effect import, or a re-export. |
 | `held-file` | A read, parse or write error; the file's module sites count as unhandled. |
 
 The `codemod` command prints the same plan as `conversion=`,
 `conversionModes:` and `fileDiagnostics:`.
+
+## Last mile
+
+After `--write`, finish the app from the report. Do not scan the source again
+to invent a new plan.
+
+- `keep-esri-client`: stop. The codemod rewrote nothing, or the scan is
+  `blocked`. Leave the source as written.
+- `complete-honua-conversion`: the source imports nothing from ArcGIS. Remove
+  `residualArcGisDependencies` and typecheck.
+- `assisted-conversion`: edit `mixed` files and `manualTodos`. A `converted`
+  file is done. A `kept` file was left because a binding could not move; do
+  not rewrite one constructor in it. An `import type` left behind does not
+  make the file mixed once every value import moved. Retype it, then delete it.
+  `<arcgis-chart>` stays on ArcGIS Charts.
+
+When the page's only script tag has a `src`, the codemod writes
+`new MapViewCompat` into the module that calls `querySelector("arcgis-map")`.
+The HTML tags become `div`s that constructor mounts. A page with no such
+module keeps the `<arcgis-*>` tags.
+
+`TODO(honua-migrate)[kind]:` names a property the codemod deleted so the
+constructor could move. Restore that behavior on the compat object, or delete
+the option. Do not put the call back on an Esri class.
+
+A rewritten value stays on one runtime. The codemod leaves a constructor on
+Esri when that value is passed to a call that is still imported from `esri/`
+or `@arcgis/core`. `new Locator({ url })` becomes `new LocatorCompat({ url })`,
+and a `Point` passed only to that locator moves with it. A `Locator` constructed
+with any option besides `url`, and a `Point` passed to that locator, stay on
+Esri. The locator manual todo means the constructor is already `LocatorCompat`.
+Set `provider` on that instance before `addressToLocations`. Do not move the
+call back to `Locator`. Sign-in is rewritten together: `OAuthInfoCompat` is
+registered on `identityManager`, and `Credential` is the
+`IdentityCredentialCompat` type.
+
+`import esri = __esri` is a type alias. Replace `esri.X` with the compat type
+only after the value import of `X` was rewritten. Leave the alias until the
+last type use is gone.
+
+The codemod writes these replacements. Do not write them again:
+
+| Held call | Replacement |
+| --- | --- |
+| `whenOnce(view, "ready")` | `view.when()` |
+| `once(view, "extent")` | `new Promise((resolve) => { reactiveUtils.watch(() => view.extent, resolve, { once: true }); })` |
+| `whenTrueOnce(view, "stationary")` | `reactiveUtils.whenOnce(() => view.stationary)` |
+| `whenFalseOnce(target, "prop")` | `reactiveUtils.whenOnce(() => !target.prop)` |
+| `import { geodesicLength } from "esri/geometry/geometryEngine"` | `geometryEngineCompat.geodesicLength` |
+| `new Point({ longitude, latitude })` | `new PointCompat({ x: longitude, y: latitude })` |
+| `new Locator({ url })` | `new LocatorCompat({ url })` and `TODO(honua-migrate)[locator]: set locator.provider before calling addressToLocations` |
+| `addressToLocations(url, params)` from `@arcgis/core/rest/locator` | `new LocatorCompat({ url }).addressToLocations(params)` and the same provider TODO |
+| `geometryEngine.geodesicBuffer(geometry, distance, unit)` | `geometryEngineCompat.buffer(geometry, distance, unit)` |
+| `import EsriMap = require("esri/Map")` | `new MapCompat(...)`; the import-equals line is removed when nothing else uses it |
+| `require(["esri/Map"], function (Map) { new Map(...) })` | `new MapCompat(...)` plus an `@honua/sdk-esri-compat` import. An unsupported entry stays in the array |
+| `bufferOperator.execute(geometry, distance, { unit })` | `geometryEngineCompat.buffer(geometry, distance, unit)`. `generalizeOperator`, `projectOperator`, `overlapsOperator`, and `distanceOperator` stay, with a manual todo |
+| `$arcgis.import` of `centroidOperator` | an object whose `execute(geometry)` calls `geometryEngineCompat.centroid` |
+| `solve(url, { stops, returnDirections })` from `@arcgis/core/rest/route` | `new RouteTaskCompat({ url }).solve({ stops, returnDirections })` |
+| `new Portal({ url })` used for `search`, `getItem`, or `openFeatureLayer` | `new PortalCompat({ portalUrl })` |
+| `new FeatureLayer({ source, fields, objectIdField, geometryType })` | `new FeatureLayerCompat` with those properties |
+| `new DirectionsViewModel({ view })` | `new DirectionsViewModelCompat({ view })`. `selectedTravelMode` stays a TODO |
+
+`init(locate, "viewModel.state", callback)` becomes
+`reactiveUtils.watch(() => locate.viewModel.state, callback, { initial: true })`,
+and `Locate` moves to `LocateCompat`. Any other `init` call stays, and so does
+the value it watches. A `Graphic` that receives a symbol still imported from
+`@arcgis/core` stays `new Graphic`.
+
+A file that rewrites `Locator` declares `@honua/sdk-esri-compat` at
+`^0.1.9-beta.0`, the first published release that exports `LocatorCompat`.
+Other rewritten files stay on `^0.1.2-beta.0`.
+
+Do not invent a mapping for a kept module. Smart-mapping `size` and
+`histogram` stay kept. `executeQueryJSON(url, params)` and
+`identify(url, params)` stay kept; the report names the shape the compat
+classes do not accept. `PortalQueryParams` stays. The report already names
+them.
+
+Typecheck once, then edit only the lines in that error list. Stop when the
+remaining errors are the kept modules from `unhandledArcGisModules`.
 
 ## Running the reviewed migration pipeline
 

@@ -110,7 +110,7 @@ const MAP_ONLY_SOURCE =
 // - src/editing.ts: the dynamic Print import is rewritten. Editor and
 //   FeatureTable are in scope, but both also name the return type, so their
 //   imports stay.
-// - src/legacy-amd.js: five modules in AMD require/define arrays, left as written.
+// - src/legacy-amd.js: five supported AMD constructors, rewritten.
 // - src/cdn-map-components.js: four `$arcgis.import` modules, left as written.
 const WIDGET_CLIFF_FILES = {
   "src/cdn-map-components.js": {
@@ -128,11 +128,11 @@ const WIDGET_CLIFF_FILES = {
     codes: ["import-left-in-place", "import-left-in-place"],
   },
   "src/legacy-amd.js": {
-    boundary: "kept",
+    boundary: "converted",
     moduleSites: 5,
-    handledModuleSites: 0,
+    handledModuleSites: 5,
     manualCallSites: 0,
-    codes: Array(5).fill("module-loader-not-rewritten"),
+    codes: [],
   },
   "src/main.ts": {
     boundary: "mixed",
@@ -154,7 +154,7 @@ describe("JS conversion plan", () => {
     const { conversion, usageInventory } = report;
 
     expect(summarizeFiles(report)).toEqual(WIDGET_CLIFF_FILES);
-    expect(conversion.fileBoundaries).toEqual({ converted: 0, mixed: 2, kept: 2, held: 0 });
+    expect(conversion.fileBoundaries).toEqual({ converted: 1, mixed: 2, kept: 1, held: 0 });
     expect(conversion.recommendedMode).toBe("assisted-conversion");
     expect(modeAvailability(report)).toEqual({
       "keep-esri-client": true,
@@ -181,11 +181,6 @@ describe("JS conversion plan", () => {
       "src/cdn-map-components.js esri/widgets/Sketch",
       "src/editing.ts @arcgis/core/widgets/Editor",
       "src/editing.ts @arcgis/core/widgets/FeatureTable",
-      "src/legacy-amd.js esri/Map",
-      "src/legacy-amd.js esri/views/MapView",
-      "src/legacy-amd.js esri/widgets/BasemapGallery",
-      "src/legacy-amd.js esri/widgets/Directions",
-      "src/legacy-amd.js esri/widgets/TimeSlider",
       "src/main.ts @arcgis/core/widgets/Search/SearchViewModel",
     ]);
     for (const diagnostic of conversion.files.flatMap((file) => file.diagnostics)) {
@@ -196,7 +191,7 @@ describe("JS conversion plan", () => {
     expect(searchViewModel?.action).toContain(getWidgetDisposition("Search")?.target);
 
     expect(modeDetail(report, "complete-honua-conversion")).toBe(
-      "Not available: 12 ArcGIS module sites left in place; 9 widget sites on the classic ArcGIS widget runtime.",
+      "Not available: 7 ArcGIS module sites left in place; 6 widget sites on the classic ArcGIS widget runtime.",
     );
 
     // Kept files, and every file in a dry run, are byte-identical afterwards.
@@ -340,16 +335,11 @@ describe("JS conversion plan", () => {
 
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain("writeMode=dry-run");
-    expect(result.stdout).toContain("conversion=recommended:assisted-conversion,converted:0,mixed:2,kept:2,held:0\n");
+    expect(result.stdout).toContain("conversion=recommended:assisted-conversion,converted:1,mixed:2,kept:1,held:0\n");
     expect(result.stdout).toContain(
-      "- complete-honua-conversion unavailable: Not available: 12 ArcGIS module sites left in place; 9 widget sites on the classic ArcGIS widget runtime.\n",
+      "- complete-honua-conversion unavailable: Not available: 7 ArcGIS module sites left in place; 6 widget sites on the classic ArcGIS widget runtime.\n",
     );
-    expect(result.stdout).toContain(
-      [
-        "- src/legacy-amd.js [kept] handled 0/5 module sites, 0 manual call sites",
-        "  - module-loader-not-rewritten esri/Map: esri/Map is loaded through an AMD require/define array, which the codemod leaves as written. Action: Keep this file on the ArcGIS JS client, or rewrite the load as an @arcgis/core ESM import and rerun the codemod.",
-      ].join("\n"),
-    );
+    expect(result.stdout).not.toContain("esri/Map [amd-require]");
   }, 240_000);
 
   it("recommends no mode when the scan discovers no ArcGIS usage", () => {

@@ -128,4 +128,103 @@ describe("migration cli content-webmap", () => {
     expect(report.manualInterventionNeeded).toBe(false);
     expect(report.warningCodes).toEqual({});
   }, 30_000);
+
+  it("writes the report when the web map has warnings", () => {
+    ensureBuiltCliArtifacts();
+    const root = makeTempDir();
+    const inputPath = path.join(root, "csv-webmap.json");
+    const outputPath = path.join(root, "csv-webmap.honua.json");
+    const reportPath = path.join(root, "csv-webmap.report.json");
+    fs.writeFileSync(
+      inputPath,
+      `${JSON.stringify(
+        {
+          operationalLayers: [
+            {
+              id: "notes",
+              title: "Notes",
+              layerType: "CSV",
+              url: "https://example.com/notes.csv",
+            },
+          ],
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+
+    const result = runCli(
+      ["content-webmap", "--input", inputPath, "--output", outputPath, "--report", reportPath],
+      getProjectRoot(),
+    );
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain("manualIntervention=yes");
+    expect(fs.existsSync(outputPath)).toBe(true);
+    const report = JSON.parse(fs.readFileSync(reportPath, "utf8")) as {
+      warningCount: number;
+      manualInterventionNeeded: boolean;
+      complete: boolean;
+      warningCodes: Record<string, number>;
+    };
+    expect(report.warningCount).toBeGreaterThan(0);
+    expect(report.manualInterventionNeeded).toBe(true);
+    expect(report.complete).toBe(false);
+    expect(report.warningCodes["unsupported-layer-type"]).toBe(1);
+  }, 30_000);
+
+  it("stays incomplete when a related table or field configuration is dropped", () => {
+    ensureBuiltCliArtifacts();
+    const root = makeTempDir();
+    const inputPath = path.join(root, "related-webmap.json");
+    const outputPath = path.join(root, "related-webmap.honua.json");
+    const reportPath = path.join(root, "related-webmap.report.json");
+    fs.writeFileSync(
+      inputPath,
+      `${JSON.stringify({
+        operationalLayers: [
+          {
+            id: "hex",
+            title: "Hexes",
+            layerType: "ArcGISFeatureLayer",
+            url: "https://services.example.com/Cities/FeatureServer/0",
+            layerDefinition: {
+              fieldConfigurations: [{ name: "Join_ID" }],
+              drawingInfo: {
+                renderer: { type: "simple", symbol: { type: "esriSFS", color: [0, 0, 0, 255] } },
+              },
+            },
+          },
+        ],
+        tables: [
+          {
+            id: "cities",
+            title: "Cities",
+            url: "https://services.example.com/Cities/FeatureServer/1",
+          },
+        ],
+      })}\n`,
+      "utf8",
+    );
+
+    const result = runCli(
+      ["content-webmap", "--input", inputPath, "--output", outputPath, "--exclude-basemap", "--report", reportPath],
+      getProjectRoot(),
+    );
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain("omittedTables=1");
+    expect(result.stdout).toContain("complete=no");
+    const report = JSON.parse(fs.readFileSync(reportPath, "utf8")) as {
+      complete: boolean;
+      manualInterventionNeeded: boolean;
+      omittedTables: Array<{ id: string; url?: string }>;
+    };
+    expect(report.complete).toBe(false);
+    expect(report.manualInterventionNeeded).toBe(true);
+    expect(report.omittedTables).toEqual([
+      { id: "cities", title: "Cities", url: "https://services.example.com/Cities/FeatureServer/1" },
+    ]);
+  }, 30_000);
 });

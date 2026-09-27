@@ -1,10 +1,6 @@
-import RouteTask from "@arcgis/core/rest/route/RouteTask";
+import { solve } from "@arcgis/core/rest/route";
 
-const routeTask = new RouteTask({
-  url: "https://example.test/rest/services/network/RouteServer",
-});
-
-const result = await routeTask.solve({
+const result = await solve("https://example.test/rest/services/network/RouteServer", {
   stops: {
     features: [
       { geometry: { x: -157.8583, y: 21.3069 }, attributes: { Name: "Start" } },

@@ -146,6 +146,7 @@ describe("arcgis migration integration", () => {
       "home-widget": 0,
       "basemap-toggle-widget": 0,
       "locate-widget": 0,
+      locator: 0,
       "scale-bar-widget": 0,
       "search-widget": 0,
       "basemap-layer-list-widget": 0,
@@ -177,6 +178,8 @@ describe("arcgis migration integration", () => {
       "wms-layer": 0,
       "wfs-layer": 0,
       "imagery-layer": 0,
+      portal: 0,
+      "directions-view-model": 0,
       "geometry-engine": 0,
     });
     expect(report.manualTodoReasons).toHaveLength(0);
@@ -454,8 +457,10 @@ describe("arcgis migration integration", () => {
 
     const migratedMain = fs.readFileSync(path.join(workingCopy, "src", "main.ts"), "utf8");
     expect(migratedMain).toContain('import { RouteTaskCompat } from "@honua/sdk-esri-compat";');
-    expect(migratedMain).toContain("const routeTask = new RouteTaskCompat({");
-    expect(migratedMain).not.toContain("@arcgis/core/rest/route/RouteTask");
+    expect(migratedMain).toContain(
+      'new RouteTaskCompat({ url: "https://example.test/rest/services/network/RouteServer" }).solve(',
+    );
+    expect(migratedMain).not.toContain("@arcgis/core/rest/route");
   });
 
   it("migrates reactive-utils fixture with ready gating", () => {
@@ -732,39 +737,18 @@ describe("arcgis migration integration", () => {
     const { workingCopy, scanReport, report, codemodResult } = runFixtureMigration("esri-config-app");
 
     expect(scanReport.flags).toEqual(["auth-or-request-customization-detected"]);
-    expect(codemodResult.filesChanged).toBe(1);
-    expect(codemodResult.metrics.totalCodemodScopedCallSites).toBe(1);
-    expect(codemodResult.metrics.autoMigratedCallSites).toBe(1);
+    expect(codemodResult.filesChanged).toBe(0);
+    expect(codemodResult.metrics.totalCodemodScopedCallSites).toBe(0);
+    expect(codemodResult.metrics.autoMigratedCallSites).toBe(0);
     expect(codemodResult.metrics.manualCallSites).toBe(0);
-    expect(codemodResult.metrics.byKind["esri-config"]).toEqual({
-      total: 1,
-      autoMigrated: 1,
-      manual: 0,
-    });
-    expect(report.unhandledArcGisModules).toEqual([]);
-    expect(report.readiness).toBe("ready");
-    expect(report.gates).toEqual([
-      {
-        gate: "no-manual-todos",
-        passed: true,
-        detail: "all codemod-scoped call sites auto-migrated",
-      },
-      {
-        gate: "no-unhandled-modules",
-        passed: true,
-        detail: "all discovered ArcGIS modules are in codemod scope",
-      },
-      {
-        gate: "no-blocking-flags",
-        passed: true,
-        detail: "no blocking migration flags detected",
-      },
-    ]);
+    expect(report.unhandledArcGisModules.map((module) => module.modulePath)).toContain("@arcgis/core/config");
+    expect(report.readiness).toBe("assisted");
+    expect(report.conversion.recommendedMode).toBe("keep-esri-client");
 
     const migratedMain = fs.readFileSync(path.join(workingCopy, "src", "main.ts"), "utf8");
-    expect(migratedMain).toContain('import { esriConfig } from "@honua/sdk-esri-compat";');
-    expect(migratedMain).toContain("esriConfig.request.interceptors.push({");
-    expect(migratedMain).not.toContain("@arcgis/core/config");
+    expect(migratedMain).toContain('import esriConfig from "@arcgis/core/config";');
+    expect(migratedMain).toContain('esriConfig.apiKey = "demo-key";');
+    expect(migratedMain).not.toContain("@honua/sdk-esri-compat");
   });
 
   it("migrates esri-request fixture with ready gating", () => {

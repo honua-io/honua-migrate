@@ -304,11 +304,13 @@ function prepareJsMigration(options: JsMigrationPlanOptions): PreparedJsMigratio
       }
     }
   }
-  const sourceChanges = [...outputs].map(([file, contents]) => ({
-    file,
-    beforeSha256: sha256(snapshot.get(file) ?? Buffer.alloc(0)),
-    afterSha256: sha256(contents),
-  }));
+  const sourceChanges = [...outputs]
+    .filter(([file]) => file !== MANIFEST)
+    .map(([file, contents]) => ({
+      file,
+      beforeSha256: sha256(snapshot.get(file) ?? Buffer.alloc(0)),
+      afterSha256: sha256(contents),
+    }));
 
   const holds: JsPlanHold[] = [];
   const dependencyChanges: JsDependencyChange[] = [];
