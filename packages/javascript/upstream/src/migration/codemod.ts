@@ -1135,15 +1135,18 @@ function codemodHtmlFile(
   }
 
   if (nextSource.includes("@honua/sdk-esri-compat")) {
-    nextSource = nextSource.replace(/<script\b([^>]*)>([\s\S]*?)<\/script\b[^>]*>/gi, (full, attrs: string, body: string) => {
-      if (!body.includes("@honua/sdk-esri-compat") || /\btype\s*=/i.test(attrs)) {
-        return full;
-      }
-      if (/\b(?:require|define)\s*\(/.test(body)) {
-        return full;
-      }
-      return `<script type="module"${attrs}>${body}</script>`;
-    });
+    nextSource = nextSource.replace(
+      /<script\b([^>]*)>([\s\S]*?)<\/script\b[^>]*>/gi,
+      (full, attrs: string, body: string) => {
+        if (!body.includes("@honua/sdk-esri-compat") || /\btype\s*=/i.test(attrs)) {
+          return full;
+        }
+        if (/\b(?:require|define)\s*\(/.test(body)) {
+          return full;
+        }
+        return `<script type="module"${attrs}>${body}</script>`;
+      },
+    );
   }
 
   return {
