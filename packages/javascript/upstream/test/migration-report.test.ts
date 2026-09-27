@@ -58,6 +58,7 @@ function createCodemodResult(): EsriCompatCodemodResult {
         "home-widget": { total: 0, autoMigrated: 0, manual: 0 },
         "basemap-toggle-widget": { total: 0, autoMigrated: 0, manual: 0 },
         "locate-widget": { total: 0, autoMigrated: 0, manual: 0 },
+        locator: { total: 0, autoMigrated: 0, manual: 0 },
         "scale-bar-widget": { total: 0, autoMigrated: 0, manual: 0 },
         "search-widget": { total: 0, autoMigrated: 0, manual: 0 },
         "basemap-layer-list-widget": { total: 0, autoMigrated: 0, manual: 0 },
@@ -89,6 +90,8 @@ function createCodemodResult(): EsriCompatCodemodResult {
         "wms-layer": { total: 0, autoMigrated: 0, manual: 0 },
         "wfs-layer": { total: 0, autoMigrated: 0, manual: 0 },
         "imagery-layer": { total: 0, autoMigrated: 0, manual: 0 },
+        portal: { total: 0, autoMigrated: 0, manual: 0 },
+        "directions-view-model": { total: 0, autoMigrated: 0, manual: 0 },
         "geometry-engine": { total: 0, autoMigrated: 0, manual: 0 },
       },
     },
@@ -235,6 +238,7 @@ describe("buildJsMigrationReport", () => {
       "home-widget": 0,
       "basemap-toggle-widget": 0,
       "locate-widget": 0,
+      locator: 0,
       "scale-bar-widget": 0,
       "search-widget": 0,
       "basemap-layer-list-widget": 0,
@@ -266,6 +270,8 @@ describe("buildJsMigrationReport", () => {
       "wms-layer": 0,
       "wfs-layer": 0,
       "imagery-layer": 0,
+      portal: 0,
+      "directions-view-model": 0,
       "geometry-engine": 0,
     });
     expect(report.manualTodoReasons).toEqual([

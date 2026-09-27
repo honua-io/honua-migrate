@@ -798,7 +798,7 @@ function runContentWebMap(args: ParsedArgs): void {
     targetUrlPrefix: args.contentTargetUrlPrefix,
     result,
   };
-  const report = buildContentWebMapReport(inputPath, outputPath, rewrittenUrlCount, result);
+  const report = buildContentWebMapReport(inputPath, outputPath, rewrittenUrlCount, webMap, result);
   const outputs = [jsonOutput(outputPath, outputDocument)];
   if (reportPath) {
     outputs.push(jsonOutput(reportPath, report));
@@ -811,7 +811,9 @@ function runContentWebMap(args: ParsedArgs): void {
       `layers=${report.layerCount}`,
       `warnings=${report.warningCount}`,
       `rewrittenUrls=${report.rewrittenUrlCount}`,
+      `omittedTables=${report.omittedTables.length}`,
       `manualIntervention=${report.manualInterventionNeeded ? "yes" : "no"}`,
+      `complete=${report.complete ? "yes" : "no"}`,
     ].join(" "),
   );
   process.stdout.write("\n");
@@ -848,6 +850,17 @@ function rewriteWebMapUrls(
     }
   }
 
+  const tables = (webMap as WebMapJson & { tables?: Array<{ url?: string }> }).tables;
+  if (Array.isArray(tables)) {
+    for (const table of tables) {
+      const nextUrl = rewrite(table.url);
+      if (nextUrl) {
+        table.url = nextUrl;
+        rewrittenUrlCount += 1;
+      }
+    }
+  }
+
   for (const baseMapLayer of webMap.baseMap?.baseMapLayers ?? []) {
     const nextUrl = rewrite(baseMapLayer.url);
     if (nextUrl) {
@@ -859,10 +872,44 @@ function rewriteWebMapUrls(
   return { webMap, rewrittenUrlCount };
 }
 
+interface OmittedWebMapTable {
+  id: string;
+  title: string;
+  url?: string;
+}
+
+function omittedWebMapTables(input: WebMapJson, representedSourceIds: ReadonlySet<string>): OmittedWebMapTable[] {
+  const tables = (input as WebMapJson & { tables?: unknown }).tables;
+  if (!Array.isArray(tables)) {
+    return [];
+  }
+  const omitted: OmittedWebMapTable[] = [];
+  for (const table of tables) {
+    if (typeof table !== "object" || table === null) {
+      continue;
+    }
+    const record = table as { id?: unknown; title?: unknown; url?: unknown };
+    const id = typeof record.id === "string" ? record.id : "";
+    if (!id || representedSourceIds.has(id)) {
+      continue;
+    }
+    const omittedTable: OmittedWebMapTable = {
+      id,
+      title: typeof record.title === "string" ? record.title : id,
+    };
+    if (typeof record.url === "string" && record.url.length > 0) {
+      omittedTable.url = record.url;
+    }
+    omitted.push(omittedTable);
+  }
+  return omitted;
+}
+
 function buildContentWebMapReport(
   inputPath: string,
   outputPath: string,
   rewrittenUrlCount: number,
+  input: WebMapJson,
   result: ReturnType<typeof parseWebMap>,
 ): {
   inputPath: string;
@@ -873,39 +920,47 @@ function buildContentWebMapReport(
   warningCount: number;
   rewrittenUrlCount: number;
   warningCodes: Record<string, number>;
+  omittedTables: OmittedWebMapTable[];
   manualInterventionNeeded: boolean;
+  complete: boolean;
 } {
+  const manualInterventionWarningCodes = new Set([
+    "unsupported-renderer",
+    "unsupported-layer-type",
+    "unsupported-feature-collection",
+    "unsupported-arcade-expression",
+    "unsupported-3d-property",
+    "complex-arcade",
+    "complex-label-expression",
+  ]);
   const warningCodes: Record<string, number> = {};
   for (const warning of result.warnings) {
     warningCodes[warning.code] = (warningCodes[warning.code] ?? 0) + 1;
   }
-
-  const manualInterventionNeeded = result.warnings.some((warning) =>
-    MANUAL_INTERVENTION_WARNING_CODES.has(warning.code),
+  const representedSourceIds = new Set(Object.keys(result.style.sources));
+  const omittedTables = omittedWebMapTables(input, representedSourceIds);
+  const losesFieldConfiguration = result.warnings.some(
+    (warning) => warning.code === "unknown-property" && warning.context?.property === "fieldConfigurations",
   );
+  const manualInterventionNeeded =
+    omittedTables.length > 0 ||
+    losesFieldConfiguration ||
+    result.warnings.some((warning) => manualInterventionWarningCodes.has(warning.code));
 
   return {
     inputPath,
     outputPath,
     generatedAt: new Date().toISOString(),
-    sourceCount: Object.keys(result.style.sources).length,
+    sourceCount: representedSourceIds.size,
     layerCount: result.style.layers.length,
     warningCount: result.warnings.length,
     rewrittenUrlCount,
     warningCodes,
+    omittedTables,
     manualInterventionNeeded,
+    complete: !manualInterventionNeeded,
   };
 }
-
-const MANUAL_INTERVENTION_WARNING_CODES = new Set([
-  "unsupported-renderer",
-  "unsupported-layer-type",
-  "unsupported-feature-collection",
-  "unsupported-arcade-expression",
-  "unsupported-3d-property",
-  "complex-arcade",
-  "complex-label-expression",
-]);
 
 function runFixtures(args: ParsedArgs): void {
   const outputPlan = preflightOutputPlan({ files: args.reportPath ? [args.reportPath] : [], force: args.force });
@@ -1161,6 +1216,9 @@ function runCodemod(args: ParsedArgs): void {
       `target=${args.codemodTarget}`,
       `readiness=${report.readiness}`,
       `byKind=${formatByKindMetrics(codemodResult.metrics.byKind)}`,
+      ...(scanReport.portalItemIds && scanReport.portalItemIds.length > 0
+        ? [`portalItemIds=${scanReport.portalItemIds.join(",")}`]
+        : []),
     ].join(" "),
   );
   process.stdout.write("\n");

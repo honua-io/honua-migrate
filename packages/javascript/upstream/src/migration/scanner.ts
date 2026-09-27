@@ -2,7 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 
-const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
+const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".html", ".htm"]);
+const HTML_EXTENSIONS = new Set([".html", ".htm"]);
 const SKIP_DIRS = new Set(["node_modules", "dist", ".git"]);
 const PACKAGE_MANIFEST = "package.json";
 
@@ -10,6 +11,25 @@ const PACKAGE_MANIFEST = "package.json";
 export const AMD_REQUIRE_IMPORT_CLAUSE = "amd-require(...)";
 /** `importClause` marker for modules loaded through the ArcGIS CDN `$arcgis.import(...)` helper. */
 export const ARCGIS_IMPORT_CLAUSE = "$arcgis.import(...)";
+/** `importClause` marker for an `<arcgis-*>` element or a component API call with no ArcGIS module load. */
+export const MAP_COMPONENT_CLAUSE = "map-component";
+/**
+ * Shell tags and lifecycle calls the codemod rewrites onto compat classes.
+ * Other component calls, including `queryRelatedFeatures` and `arcgisViewClick`, stay held.
+ */
+export const REWRITTEN_SHELL_COMPONENT_PATHS = new Set([
+  "@arcgis/map-components/arcgis-map",
+  "@arcgis/map-components/arcgis-zoom",
+  "@arcgis/map-components/arcgis-legend",
+  "@arcgis/map-components/arcgis-expand",
+  "@arcgis/map-components/arcgis-layer-list",
+  "@arcgis/map-components/viewOnReady",
+  "@arcgis/map-components/whenLayerView",
+  "@arcgis/map-components/arcgis-popup",
+  "@arcgis/map-components/arcgis-cdn",
+]);
+
+const MAP_COMPONENT_METHODS = ["queryRelatedFeatures", "queryObjectIds", "whenLayerView", "viewOnReady"] as const;
 
 const AMD_ESRI_MODULE_PREFIX = "esri/";
 const ARCGIS_CORE_MODULE_PREFIX = "@arcgis/core/";
@@ -52,6 +72,8 @@ export interface ArcGisScanReport {
   arcgisDependencies?: ArcGisDependencyHit[];
   symbolUsageCounts: Record<string, number>;
   flags: string[];
+  /** Portal item ids declared on `<arcgis-map item-id>`. Present only when found. */
+  portalItemIds?: string[];
 }
 
 /**
@@ -61,7 +83,14 @@ export interface ArcGisScanReport {
  * codemod runs it over its own output to report what it left behind.
  */
 export function findArcGisModuleSites(source: string, file: string): ArcGisImportHit[] {
-  return [...findArcGisImports(source, file), ...findModuleLoaderHits(source, file)];
+  const imports = findArcGisImports(source, file);
+  const loaders = findModuleLoaderHits(source, file);
+  return [
+    ...imports,
+    ...loaders,
+    ...findMapComponentHits(source, file, imports.length === 0 && loaders.length === 0),
+    ...findArcGisRuntimeScriptHits(source, file),
+  ];
 }
 
 export function scanArcGisUsage(rootDir: string): ArcGisScanReport {
@@ -70,12 +99,14 @@ export function scanArcGisUsage(rootDir: string): ArcGisScanReport {
   const esriLeafletImports: ArcGisImportHit[] = [];
   const flags = new Set<string>();
   const symbolUsageCounts: Record<string, number> = {};
+  const portalItemIds = new Set<string>();
 
   for (const file of files) {
     const source = fs.readFileSync(file, "utf8");
-    const loaderHits = findModuleLoaderHits(source, file);
-    if (source.includes("@arcgis/core/") || loaderHits.length > 0) {
-      addFileLevelFlags(source, flags);
+    const scriptSource = HTML_EXTENSIONS.has(path.extname(file)) ? extractInlineScripts(source) : source;
+    const loaderHits = findModuleLoaderHits(scriptSource, file);
+    if (scriptSource.includes("@arcgis/core/") || loaderHits.length > 0) {
+      addFileLevelFlags(scriptSource, flags);
     }
     if (loaderHits.some((item) => item.importClause === AMD_REQUIRE_IMPORT_CLAUSE)) {
       flags.add("amd-modules-detected");
@@ -84,7 +115,19 @@ export function scanArcGisUsage(rootDir: string): ArcGisScanReport {
       flags.add("arcgis-import-detected");
     }
 
-    const fileImports = [...findArcGisImports(source, file), ...loaderHits];
+    const moduleHits = [...findArcGisImports(scriptSource, file), ...loaderHits];
+    const componentHits = findMapComponentHits(
+      HTML_EXTENSIONS.has(path.extname(file)) ? source : scriptSource,
+      file,
+      moduleHits.length === 0,
+    );
+    if (componentHits.length > 0) {
+      flags.add("map-components-detected");
+    }
+    for (const portalItemId of findArcGisMapItemIds(source)) {
+      portalItemIds.add(portalItemId);
+    }
+    const fileImports = [...moduleHits, ...componentHits, ...findArcGisRuntimeScriptHits(source, file)];
     if (fileImports.some((item) => item.importClause.startsWith("export "))) {
       flags.add("arcgis-reexports-detected");
     }
@@ -124,6 +167,7 @@ export function scanArcGisUsage(rootDir: string): ArcGisScanReport {
     arcgisDependencies: dependencyScan.dependencies,
     symbolUsageCounts,
     flags: Array.from(flags).sort(),
+    ...(portalItemIds.size > 0 ? { portalItemIds: Array.from(portalItemIds).sort() } : {}),
   };
 }
 
@@ -262,11 +306,119 @@ function scriptKindForFile(file: string): ts.ScriptKind {
 }
 
 /**
+ * `<arcgis-*>` elements, and component API calls in a file that never loads an
+ * ArcGIS module. Current Maps SDK samples are HTML components plus an inline
+ * script; counting only ESM imports reports that page as having no ArcGIS usage.
+ * Calls are skipped when the file already has module sites, so a FeatureLayer
+ * import that also calls `queryRelatedFeatures` is not counted twice.
+ */
+function findArcGisRuntimeScriptHits(source: string, file: string): ArcGisImportHit[] {
+  const hits: ArcGisImportHit[] = [];
+  const pattern = /<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi;
+  let match: RegExpExecArray | null = pattern.exec(source);
+  while (match !== null) {
+    const src = match[1];
+    if (src.includes("%CDN%") || /(?:https?:)?\/\/js\.arcgis\.com(?:[/?#"'\s]|$)/i.test(src)) {
+      hits.push({
+        file,
+        modulePath: "@arcgis/map-components/arcgis-cdn",
+        importClause: MAP_COMPONENT_CLAUSE,
+        symbols: [],
+      });
+    }
+    match = pattern.exec(source);
+  }
+  return hits;
+}
+
+function findArcGisMapItemIds(source: string): string[] {
+  const ids: string[] = [];
+  const patterns = [
+    /<arcgis-map\b[^>]*\bitem-id\s*=\s*["']([A-Za-z0-9]+)["']/gi,
+    /portalItem\s*:\s*\{[^}]*\bid\s*:\s*["']([A-Za-z0-9]+)["']/gi,
+  ];
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null = pattern.exec(source);
+    while (match !== null) {
+      ids.push(match[1]);
+      match = pattern.exec(source);
+    }
+  }
+  return ids;
+}
+
+function findMapComponentHits(source: string, file: string, includeCalls: boolean): ArcGisImportHit[] {
+  const hits: ArcGisImportHit[] = [];
+  const tagPattern = /<arcgis-([a-z0-9]+(?:-[a-z0-9]+)*)\b/gi;
+  let tagMatch: RegExpExecArray | null = tagPattern.exec(source);
+  while (tagMatch !== null) {
+    hits.push({
+      file,
+      modulePath: `@arcgis/map-components/arcgis-${tagMatch[1].toLowerCase()}`,
+      importClause: MAP_COMPONENT_CLAUSE,
+      symbols: [],
+    });
+    tagMatch = tagPattern.exec(source);
+  }
+
+  if (!includeCalls) {
+    return hits;
+  }
+
+  for (const name of MAP_COMPONENT_METHODS) {
+    // A rewritten page calls whenLayerView on a MapViewCompat instance. That is
+    // the compat view API, not an unrewritten component call.
+    if (name === "whenLayerView" && source.includes("new MapViewCompat(")) {
+      continue;
+    }
+    const callPattern = new RegExp(`\\.${name}\\s*\\(`, "g");
+    let callMatch: RegExpExecArray | null = callPattern.exec(source);
+    while (callMatch !== null) {
+      hits.push({
+        file,
+        modulePath: `@arcgis/map-components/${name}`,
+        importClause: MAP_COMPONENT_CLAUSE,
+        symbols: [],
+      });
+      callMatch = callPattern.exec(source);
+    }
+  }
+
+  const eventPattern = /["']arcgisViewClick["']/g;
+  let eventMatch: RegExpExecArray | null = eventPattern.exec(source);
+  while (eventMatch !== null) {
+    hits.push({
+      file,
+      modulePath: "@arcgis/map-components/arcgisViewClick",
+      importClause: MAP_COMPONENT_CLAUSE,
+      symbols: [],
+    });
+    eventMatch = eventPattern.exec(source);
+  }
+
+  return hits;
+}
+
+/** Inline scripts only. A `src` script has no local body for the module scanners. */
+function extractInlineScripts(html: string): string {
+  const bodies: string[] = [];
+  const scriptPattern = /<script\b([^>]*)>([\s\S]*?)<\/script\b[^>]*>/gi;
+  let match: RegExpExecArray | null = scriptPattern.exec(html);
+  while (match !== null) {
+    if (!/\ssrc\s*=/i.test(match[1])) {
+      bodies.push(match[2]);
+    }
+    match = scriptPattern.exec(html);
+  }
+  return bodies.join("\n");
+}
+
+/**
  * AMD `require([...])`/`define([...])` arrays and `$arcgis.import(...)` calls
  * load ArcGIS modules without an ESM import or CommonJS require, so the regex
- * scan in `findArcGisImports` never sees them. The codemod leaves them as
- * written, but they are still ArcGIS usage and must count in the report
- * denominator.
+ * scan in `findArcGisImports` never sees them. They still count in the report
+ * denominator. The codemod rewrites a supported AMD constructor and leaves an
+ * unsupported entry in the array.
  */
 function findModuleLoaderHits(source: string, file: string): ArcGisImportHit[] {
   if (!source.includes(AMD_ESRI_MODULE_PREFIX) && !source.includes("$arcgis")) {
@@ -323,7 +475,20 @@ function findModuleLoaderHits(source: string, file: string): ArcGisImportHit[] {
   return hits;
 }
 
-const FROM_ARCGIS_MODULE = /\sfrom\s+["'](@arcgis\/core\/[^"']+)["'];?/g;
+const FROM_ARCGIS_MODULE = /\sfrom\s+["']((?:@arcgis\/core\/|esri\/)[^"']+)["'];?/g;
+
+/** Webpack and AMD apps import `esri/Map`. The codemod's module map is `@arcgis/core/Map`. */
+export function canonicalArcGisModulePath(modulePath: string): string {
+  if (modulePath.startsWith("@arcgis/core/") || modulePath === "@arcgis/core") {
+    return modulePath;
+  }
+  if (modulePath === "esri" || modulePath.startsWith("esri/")) {
+    const withoutJs = modulePath.endsWith(".js") ? modulePath.slice(0, -3) : modulePath;
+    const rest = withoutJs === "esri" ? "" : withoutJs.slice("esri/".length);
+    return rest ? `@arcgis/core/${rest}` : "@arcgis/core";
+  }
+  return modulePath;
+}
 
 /**
  * `<keyword> <clause> from "@arcgis/core/..."` sites, in source order, with the
@@ -396,18 +561,31 @@ function findArcGisImports(source: string, file: string): ArcGisImportHit[] {
   for (const match of findFromClauses(source, "import")) {
     hits.push({
       file,
-      modulePath: match.modulePath,
+      modulePath: canonicalArcGisModulePath(match.modulePath),
       importClause: match.clause,
       symbols: extractImportedSymbols(match.clause),
     });
   }
 
-  const sideEffectImportRegex = /import\s+["'](@arcgis\/core\/[^"']+)["'];?/g;
+  const importEqualsPattern =
+    /import\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*require\(\s*["']((?:esri\/|@arcgis\/core\/)[^"']+)["']\s*\)/g;
+  let importEqualsMatch: RegExpExecArray | null = importEqualsPattern.exec(source);
+  while (importEqualsMatch !== null) {
+    hits.push({
+      file,
+      modulePath: canonicalArcGisModulePath(importEqualsMatch[2]),
+      importClause: importEqualsMatch[1],
+      symbols: [importEqualsMatch[1]],
+    });
+    importEqualsMatch = importEqualsPattern.exec(source);
+  }
+
+  const sideEffectImportRegex = /import\s+["']((?:@arcgis\/core\/|esri\/)[^"']+)["'];?/g;
   let sideEffectImportMatch: RegExpExecArray | null = sideEffectImportRegex.exec(source);
   while (sideEffectImportMatch !== null) {
     hits.push({
       file,
-      modulePath: sideEffectImportMatch[1],
+      modulePath: canonicalArcGisModulePath(sideEffectImportMatch[1]),
       importClause: "side-effect-import",
       symbols: [],
     });
@@ -417,7 +595,7 @@ function findArcGisImports(source: string, file: string): ArcGisImportHit[] {
   for (const match of findFromClauses(source, "export")) {
     hits.push({
       file,
-      modulePath: match.modulePath,
+      modulePath: canonicalArcGisModulePath(match.modulePath),
       importClause: `export ${match.clause}`,
       symbols: extractImportedSymbols(match.clause),
     });

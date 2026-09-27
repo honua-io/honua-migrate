@@ -735,15 +735,23 @@ describe("runEsriCompatCodemod", () => {
     expect(nextSource).not.toContain("@arcgis/core/layers/TileLayer");
   });
 
-  it("rewrites safe RouteTask constructor and removes ArcGIS import", () => {
+  it("rewrites the RouteTask class path and rest/route solve", () => {
     const root = makeTempProject();
-    const file = path.join(root, "route-task.ts");
+    const classFile = path.join(root, "route-task.ts");
+    const solveFile = path.join(root, "solve.ts");
+    const classSource = [
+      "import RouteTask from '@arcgis/core/rest/route/RouteTask';",
+      "const routeTask = new RouteTask({ url: routeUrl, apiKey: routeApiKey });",
+      "void routeTask;",
+    ].join("\n");
+    fs.writeFileSync(classFile, classSource, "utf8");
     fs.writeFileSync(
-      file,
+      solveFile,
       [
-        "import RouteTask from '@arcgis/core/rest/route/RouteTask';",
-        "const routeTask = new RouteTask({ url: routeUrl, apiKey: routeApiKey });",
-        "void routeTask;",
+        "import { solve } from '@arcgis/core/rest/route';",
+        "export function plan(stops: object) {",
+        "  return solve(routeUrl, { stops, returnDirections: true });",
+        "}",
       ].join("\n"),
       "utf8",
     );
@@ -754,19 +762,20 @@ describe("runEsriCompatCodemod", () => {
       compatImportPath: "@honua/sdk-esri-compat",
     });
 
-    expect(result.filesChanged).toBe(1);
-    expect(result.metrics.totalCodemodScopedCallSites).toBe(1);
-    expect(result.metrics.autoMigratedCallSites).toBe(1);
-    expect(result.metrics.manualCallSites).toBe(0);
+    const classNext = fs.readFileSync(classFile, "utf8");
+    expect(classNext).toContain('import { RouteTaskCompat } from "@honua/sdk-esri-compat";');
+    expect(classNext).toContain("new RouteTaskCompat({ url: routeUrl, apiKey: routeApiKey })");
+    expect(classNext).not.toContain("@arcgis/core/rest/route/RouteTask");
+    expect(result.filesChanged).toBe(2);
     expect(result.metrics.byKind["route-task"]).toEqual({
-      total: 1,
-      autoMigrated: 1,
+      total: 2,
+      autoMigrated: 2,
       manual: 0,
     });
-
-    const nextSource = fs.readFileSync(file, "utf8");
+    const nextSource = fs.readFileSync(solveFile, "utf8");
     expect(nextSource).toContain('import { RouteTaskCompat } from "@honua/sdk-esri-compat";');
-    expect(nextSource).toContain("new RouteTaskCompat({ url: routeUrl, apiKey: routeApiKey })");
+    expect(nextSource).toContain("new RouteTaskCompat({ url: routeUrl }).solve({ stops, returnDirections: true })");
+    expect(nextSource).not.toContain("@arcgis/core/rest/route");
     expect(nextSource).not.toContain("@arcgis/core/rest/route/RouteTask");
   });
 
@@ -1814,11 +1823,31 @@ describe("runEsriCompatCodemod", () => {
     expect(result.metrics.totalCodemodScopedCallSites).toBe(5);
     expect(result.metrics.autoMigratedCallSites).toBe(5);
     expect(result.metrics.manualCallSites).toBe(0);
-    expect(result.metrics.byKind["feature-layer"]).toMatchObject({ total: 1, autoMigrated: 1, manual: 0 });
-    expect(result.metrics.byKind["map-image-layer"]).toMatchObject({ total: 1, autoMigrated: 1, manual: 0 });
-    expect(result.metrics.byKind["tile-layer"]).toMatchObject({ total: 1, autoMigrated: 1, manual: 0 });
-    expect(result.metrics.byKind.map).toMatchObject({ total: 1, autoMigrated: 1, manual: 0 });
-    expect(result.metrics.byKind["map-view"]).toMatchObject({ total: 1, autoMigrated: 1, manual: 0 });
+    expect(result.metrics.byKind["feature-layer"]).toMatchObject({
+      total: 1,
+      autoMigrated: 1,
+      manual: 0,
+    });
+    expect(result.metrics.byKind["map-image-layer"]).toMatchObject({
+      total: 1,
+      autoMigrated: 1,
+      manual: 0,
+    });
+    expect(result.metrics.byKind["tile-layer"]).toMatchObject({
+      total: 1,
+      autoMigrated: 1,
+      manual: 0,
+    });
+    expect(result.metrics.byKind.map).toMatchObject({
+      total: 1,
+      autoMigrated: 1,
+      manual: 0,
+    });
+    expect(result.metrics.byKind["map-view"]).toMatchObject({
+      total: 1,
+      autoMigrated: 1,
+      manual: 0,
+    });
 
     const nextSource = fs.readFileSync(file, "utf8");
     expect(nextSource).toContain('import * as maplibregl from "maplibre-gl";');
@@ -1899,7 +1928,11 @@ describe("runEsriCompatCodemod", () => {
     });
 
     expect(result.filesChanged).toBe(1);
-    expect(result.metrics.byKind["web-map"]).toMatchObject({ total: 1, autoMigrated: 1, manual: 0 });
+    expect(result.metrics.byKind["web-map"]).toMatchObject({
+      total: 1,
+      autoMigrated: 1,
+      manual: 0,
+    });
     expect(result.metrics.manualCallSites).toBe(0);
     expect(result.manualTodos).toEqual([]);
 
@@ -1969,7 +2002,11 @@ describe("runEsriCompatCodemod", () => {
       annotateTodos: true,
     });
 
-    expect(result.metrics.byKind["web-map"]).toMatchObject({ total: 1, autoMigrated: 0, manual: 1 });
+    expect(result.metrics.byKind["web-map"]).toMatchObject({
+      total: 1,
+      autoMigrated: 0,
+      manual: 1,
+    });
     expect(result.metrics.manualCallSites).toBe(1);
     expect(result.manualTodos).toEqual([
       expect.objectContaining({
@@ -2945,7 +2982,7 @@ describe("runEsriCompatCodemod", () => {
     const file = path.join(root, "esri-config.ts");
     fs.writeFileSync(
       file,
-      ["import esriConfig from '@arcgis/core/config';", "esriConfig.apiKey = token;"].join("\n"),
+      ["import esriConfig from '@arcgis/core/config';", "esriConfig.portalUrl = portal;"].join("\n"),
       "utf8",
     );
 
@@ -4312,5 +4349,90 @@ describe("runEsriCompatCodemod", () => {
         }),
       ]),
     );
+  });
+});
+
+describe("PR 172 review regressions", () => {
+  it("preserves external-only shells without a bootstrap host", () => {
+    const root = makeTempProject();
+    const file = path.join(root, "index.html");
+    const source = '<arcgis-map></arcgis-map><script type="module" src="main.js"></script>';
+    fs.writeFileSync(file, source);
+    runEsriCompatCodemod({ rootDir: root, write: true });
+    expect(fs.readFileSync(file, "utf8")).toBe(source);
+  });
+
+  it.each([false, true])("uses selected shell package (external host: %s)", (external) => {
+    const root = makeTempProject();
+    const file = path.join(root, "index.html");
+    const script = external
+      ? '<script type="module" src="main.js"></script>'
+      : '<script type="module">console.log("ready");</script>';
+    fs.writeFileSync(file, `<arcgis-map></arcgis-map>${script}`);
+    if (external) fs.writeFileSync(path.join(root, "main.js"), 'const view = document.querySelector("arcgis-map");');
+    runEsriCompatCodemod({
+      rootDir: root,
+      write: true,
+      compatImportPath: "@private/compat",
+    });
+    const output = fs.readFileSync(external ? path.join(root, "main.js") : file, "utf8");
+    expect(output).toContain('from "@private/compat"');
+    expect(output).toContain("new MapViewCompat(");
+    expect(output).not.toContain("@honua/sdk-esri-compat");
+  });
+
+  it("marks rewritten inline scripts as modules when the closing tag has whitespace", () => {
+    const root = makeTempProject();
+    const file = path.join(root, "index.html");
+    fs.writeFileSync(
+      file,
+      [
+        "<script>",
+        'import FeatureLayer from "@arcgis/core/layers/FeatureLayer";',
+        'const layer = new FeatureLayer({ url: "https://example.test/FeatureServer/0" });',
+        "</script >",
+      ].join("\n"),
+    );
+
+    runEsriCompatCodemod({ rootDir: root, write: true });
+
+    expect(fs.readFileSync(file, "utf8")).toContain(
+      '<script type="module">import { FeatureLayerCompat } from "@honua/sdk-esri-compat";',
+    );
+    expect(fs.readFileSync(file, "utf8")).toContain("</script>");
+  });
+
+  it("updates ancestor manifest when scanning src", () => {
+    const root = makeTempProject();
+    const src = path.join(root, "src");
+    fs.mkdirSync(src);
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        dependencies: { "@honua/sdk-esri-compat": "^0.1.2-beta.0" },
+      }),
+    );
+    fs.writeFileSync(
+      path.join(src, "main.ts"),
+      'import Locator from "esri/tasks/Locator";\nconst locator = new Locator({ url: geocodeURL });',
+    );
+    runEsriCompatCodemod({ rootDir: src, write: true });
+    expect(fs.readFileSync(path.join(src, "main.ts"), "utf8")).toContain("new LocatorCompat(");
+    expect(
+      JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).dependencies["@honua/sdk-esri-compat"],
+    ).toBe("^0.1.9-beta.0");
+    expect(fs.existsSync(path.join(src, "package.json"))).toBe(false);
+  });
+
+  it.each(["Credential", "MyCredential"])("preserves binding %s, keys, shorthand and shadowing", (binding) => {
+    const root = makeTempProject();
+    const file = path.join(root, "identity.js");
+    const body = `const data = { ${binding} };\nresponse.${binding};\nconst explicit = { ${binding}: 42 };\nfunction shadow(${binding}) { return { ${binding} }; }\nvoid ${binding};\n`;
+    fs.writeFileSync(file, `import ${binding} from "esri/identity/Credential";\n${body}`);
+    runEsriCompatCodemod({ rootDir: root, write: true });
+    const output = fs.readFileSync(file, "utf8");
+    expect(output).toContain(`IdentityCredentialCompat as ${binding}`);
+    expect(output).toContain(body);
+    expect(output).not.toContain('from "esri/identity/Credential"');
   });
 });

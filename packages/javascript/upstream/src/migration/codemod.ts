@@ -4,9 +4,11 @@ import { type WebMapMapLibreManualGap, webmapJsonToMapLibreStyle } from "@honua/
 import type { WebMapJson } from "@honua/sdk/webmap";
 import ts from "typescript";
 
-import { type ArcGisImportHit, findArcGisModuleSites } from "./scanner.js";
+import { removeArcGisCdnScriptTags } from "./html.js";
+import { type ArcGisImportHit, canonicalArcGisModulePath, findArcGisModuleSites } from "./scanner.js";
 
-const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
+const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".html", ".htm"]);
+const HTML_EXTENSIONS = new Set([".html", ".htm"]);
 const SKIP_DIRS = new Set(["node_modules", "dist", ".git"]);
 const DEFAULT_COMPAT_IMPORT_PATH = "@honua/sdk-esri-compat";
 const ESRI_LEAFLET_IMPORT_PATH = "esri-leaflet";
@@ -15,6 +17,9 @@ const HONUA_MAP_IMPORT_PATH = "@honua/sdk-js/map";
 const MAPLIBRE_IMPORT_PATH = "maplibre-gl";
 const MAPLIBRE_NAMESPACE = "maplibregl";
 const TODO_MARKER = "TODO(honua-migrate)";
+const DEFAULT_COMPAT_DEPENDENCY_RANGE = "^0.1.2-beta.0";
+/** First published `@honua/sdk-esri-compat` release that exports `LocatorCompat`. */
+const LOCATOR_COMPAT_DEPENDENCY_RANGE = "^0.1.9-beta.0";
 const CJS_REQUIRE_MANUAL_REASON =
   "CommonJS require constructors are not auto-migrated; convert the module to ESM and rerun.";
 const ESRI_LEAFLET_UNSUPPORTED_CONSTRUCTOR_REASON =
@@ -43,6 +48,7 @@ const GEOMETRY_ENGINE_IMPORT_UNSUPPORTED_REASON =
 // (geodesic densify, offset, cut, generalize, relate, ?) keeps a manual TODO.
 const GEOMETRY_ENGINE_COVERED_OPS: ReadonlySet<string> = new Set([
   "buffer",
+  "geodesicBuffer",
   "intersect",
   "union",
   "difference",
@@ -54,6 +60,16 @@ const GEOMETRY_ENGINE_COVERED_OPS: ReadonlySet<string> = new Set([
   "convexHull",
   "contains",
   "intersects",
+]);
+/** `geometryEngine.geodesicBuffer` is the call `buffer` already implements. */
+const GEOMETRY_ENGINE_COMPAT_METHOD: Readonly<Record<string, string>> = {
+  geodesicBuffer: "buffer",
+};
+const LOCATOR_REST_FUNCTIONS: ReadonlySet<string> = new Set([
+  "addressToLocations",
+  "addressesToLocations",
+  "locationToAddress",
+  "suggestLocations",
 ]);
 function geometryEngineUncoveredOpReason(op: string): string {
   return `geometryEngine.${op} is not covered by the geometryEngineCompat shim; requires manual migration.`;
@@ -132,6 +148,7 @@ const ESRI_LEAFLET_COMPAT_FALLBACK_KINDS = new Set<CodemodConstructorKind>([
   "home-widget",
   "basemap-toggle-widget",
   "locate-widget",
+  "locator",
   "scale-bar-widget",
   "basemap-gallery-widget",
   "expand-widget",
@@ -171,6 +188,8 @@ const ESRI_LEAFLET_COMPAT_FALLBACK_KINDS = new Set<CodemodConstructorKind>([
   "wms-layer",
   "wfs-layer",
   "imagery-layer",
+  "portal",
+  "directions-view-model",
   "geometry-engine",
 ]);
 
@@ -219,7 +238,9 @@ export type CodemodConstructorKind =
   | "print-widget"
   | "home-widget"
   | "basemap-toggle-widget"
+  | "identity-manager"
   | "locate-widget"
+  | "locator"
   | "scale-bar-widget"
   | "search-widget"
   | "basemap-layer-list-widget"
@@ -251,6 +272,8 @@ export type CodemodConstructorKind =
   | "wms-layer"
   | "wfs-layer"
   | "imagery-layer"
+  | "portal"
+  | "directions-view-model"
   | "geometry-engine";
 
 interface ConstructorRewriteSpec {
@@ -379,7 +402,27 @@ const REWRITE_SPECS: readonly ConstructorRewriteSpec[] = [
   {
     kind: "route-task",
     compatSymbol: "RouteTaskCompat",
-    arcGisModules: new Set(["@arcgis/core/rest/route/RouteTask", "@arcgis/core/rest/route/RouteTask.js"]),
+    // 4.34 also exports solve() from rest/route.js. Checked-in samples and
+    // older apps still construct rest/route/RouteTask and tasks/RouteTask.
+    arcGisModules: new Set([
+      "@arcgis/core/rest/route/RouteTask",
+      "@arcgis/core/rest/route/RouteTask.js",
+      "@arcgis/core/tasks/RouteTask",
+      "@arcgis/core/tasks/RouteTask.js",
+    ]),
+  },
+  {
+    kind: "portal",
+    compatSymbol: "PortalCompat",
+    arcGisModules: new Set(["@arcgis/core/portal/Portal", "@arcgis/core/portal/Portal.js"]),
+  },
+  {
+    kind: "directions-view-model",
+    compatSymbol: "DirectionsViewModelCompat",
+    arcGisModules: new Set([
+      "@arcgis/core/widgets/Directions/DirectionsViewModel",
+      "@arcgis/core/widgets/Directions/DirectionsViewModel.js",
+    ]),
   },
   {
     kind: "basemap",
@@ -480,6 +523,16 @@ const REWRITE_SPECS: readonly ConstructorRewriteSpec[] = [
     kind: "locate-widget",
     compatSymbol: "LocateCompat",
     arcGisModules: new Set(["@arcgis/core/widgets/Locate", "@arcgis/core/widgets/Locate.js"]),
+  },
+  {
+    kind: "locator",
+    compatSymbol: "LocatorCompat",
+    arcGisModules: new Set([
+      "@arcgis/core/tasks/Locator",
+      "@arcgis/core/tasks/Locator.js",
+      "@arcgis/core/rest/locator",
+      "@arcgis/core/rest/locator.js",
+    ]),
   },
   {
     kind: "scale-bar-widget",
@@ -789,6 +842,7 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
   const compatImportPath = options.compatImportPath ?? DEFAULT_COMPAT_IMPORT_PATH;
   const annotateTodos = options.annotateTodos ?? false;
   const target = options.target ?? "honua-compat";
+  const shellPlan = target === "honua-compat" ? planMapComponentShells(files, compatImportPath) : undefined;
 
   const metrics: CodemodMetrics = {
     totalCodemodScopedCallSites: 0,
@@ -814,17 +868,33 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
       continue;
     }
 
+    if (/^\s*declare\s+module\s+["'][^"']+["']\s*;\s*$/.test(source)) {
+      continue;
+    }
+
     let fileResult: ReturnType<typeof codemodFile>;
     try {
-      fileResult = codemodFile(
-        file,
-        source,
-        compatImportPath,
-        annotateTodos,
-        target,
-        localArcGisReExports,
-        sourceFilesSet,
-      );
+      fileResult = HTML_EXTENSIONS.has(path.extname(file).toLowerCase())
+        ? codemodHtmlFile(
+            file,
+            source,
+            compatImportPath,
+            annotateTodos,
+            target,
+            localArcGisReExports,
+            sourceFilesSet,
+            shellPlan?.htmlMode.get(path.resolve(file)) ?? "inline",
+          )
+        : codemodFile(file, source, compatImportPath, annotateTodos, target, localArcGisReExports, sourceFilesSet);
+      const hostBootstrap = shellPlan?.bootstrapByHost.get(path.resolve(file));
+      if (hostBootstrap) {
+        fileResult = {
+          ...fileResult,
+          nextSource: installShellBootstrap(fileResult.nextSource, hostBootstrap),
+          addedCompatImport: true,
+          rewrittenConstructors: fileResult.rewrittenConstructors + 1,
+        };
+      }
     } catch (error) {
       errors.push({
         file,
@@ -898,6 +968,12 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
     residualArcGisModuleSites.push(...findArcGisModuleSites(fileResult.nextSource, file));
   }
 
+  if (options.write && fileResults.some((item) => item.addedCompatImport)) {
+    const compatRange =
+      metrics.byKind.locator.autoMigrated > 0 ? LOCATOR_COMPAT_DEPENDENCY_RANGE : DEFAULT_COMPAT_DEPENDENCY_RANGE;
+    ensureCompatPackageDependency(rootDir, compatImportPath, compatRange);
+  }
+
   return {
     rootDir,
     target,
@@ -920,6 +996,76 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
   };
 }
 
+function rewriteRewrittenEsriNamespaceTypes(sourceFile: ts.SourceFile, compatSymbols: ReadonlySet<string>): TextEdit[] {
+  const compatByEsriName = new Map<string, string>();
+  for (const spec of REWRITE_SPECS) {
+    if (!compatSymbols.has(spec.compatSymbol)) {
+      continue;
+    }
+    for (const modulePath of spec.arcGisModules) {
+      const leaf = modulePath.split("/").pop()?.replace(/\.js$/, "");
+      if (leaf && !compatByEsriName.has(leaf)) {
+        compatByEsriName.set(leaf, spec.compatSymbol);
+      }
+    }
+  }
+  if (compatByEsriName.size === 0) {
+    return [];
+  }
+  const edits: TextEdit[] = [];
+  walk(sourceFile, (node) => {
+    if (
+      !ts.isQualifiedName(node) ||
+      !ts.isIdentifier(node.left) ||
+      node.left.text !== "esri" ||
+      !ts.isIdentifier(node.right)
+    ) {
+      return;
+    }
+    const compat = compatByEsriName.get(node.right.text);
+    if (!compat) {
+      return;
+    }
+    edits.push({
+      start: node.getStart(sourceFile),
+      end: node.getEnd(),
+      text: compat,
+    });
+  });
+  return edits;
+}
+
+function ensureCompatPackageDependency(rootDir: string, importPath: string, range: string): void {
+  let manifestDir = path.resolve(rootDir);
+  while (!fs.existsSync(path.join(manifestDir, "package.json"))) {
+    const parent = path.dirname(manifestDir);
+    if (parent === manifestDir) return;
+    manifestDir = parent;
+  }
+  const manifestPath = path.join(manifestDir, "package.json");
+  let manifest: {
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+  };
+  try {
+    manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  } catch {
+    return;
+  }
+  if (manifest.devDependencies?.[importPath] && !manifest.dependencies?.[importPath]) {
+    return;
+  }
+  const current = manifest.dependencies?.[importPath];
+  if (current === range || (current && current !== DEFAULT_COMPAT_DEPENDENCY_RANGE)) {
+    return;
+  }
+  manifest.dependencies = {
+    ...(manifest.dependencies ?? {}),
+    [importPath]: range,
+  };
+  fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+}
+
 function assertParsableSource(file: string, source: string): void {
   const parseProbe = ts.transpileModule(source, {
     fileName: file,
@@ -938,6 +1084,425 @@ function assertParsableSource(file: string, source: string): void {
 
   const message = ts.flattenDiagnosticMessageText(syntaxError.messageText, "\n");
   throw new Error(`Unable to parse source file: ${message}`);
+}
+
+function codemodHtmlFile(
+  file: string,
+  source: string,
+  compatImportPath: string,
+  annotateTodos: boolean,
+  target: CodemodTarget,
+  localArcGisReExports: ReadonlyMap<string, Readonly<Record<string, CodemodConstructorKind>>>,
+  sourceFilesSet: ReadonlySet<string>,
+  shellMode: MapComponentShellMode = "inline",
+): ReturnType<typeof codemodFile> {
+  const scriptPattern = /<script\b([^>]*)>([\s\S]*?)<\/script\b[^>]*>/gi;
+  const scripts: Array<{ bodyStart: number; bodyEnd: number; body: string }> = [];
+  let match: RegExpExecArray | null = scriptPattern.exec(source);
+  while (match !== null) {
+    if (!/\ssrc\s*=/i.test(match[1])) {
+      const bodyStart = match.index + match[0].indexOf(">") + 1;
+      scripts.push({
+        bodyStart,
+        bodyEnd: bodyStart + match[2].length,
+        body: match[2],
+      });
+    }
+    match = scriptPattern.exec(source);
+  }
+
+  let nextSource = source;
+  let rewrittenImports = 0;
+  let rewrittenConstructors = 0;
+  let rewrittenDynamicImports = 0;
+  let rewrittenEventNames = 0;
+  const rewrittenKinds: CodemodConstructorKind[] = [];
+  let addedCompatImport = false;
+  let removedArcGisImports = 0;
+  let annotatedTodoComments = 0;
+  const manualTodos: MigrationTodo[] = [];
+
+  for (const script of scripts.reverse()) {
+    const result = codemodFile(
+      `${file}.inline.js`,
+      script.body,
+      compatImportPath,
+      annotateTodos,
+      target,
+      localArcGisReExports,
+      sourceFilesSet,
+    );
+    if (result.nextSource !== script.body) {
+      nextSource = `${nextSource.slice(0, script.bodyStart)}${result.nextSource}${nextSource.slice(script.bodyEnd)}`;
+    }
+    rewrittenImports += result.rewrittenImports;
+    rewrittenConstructors += result.rewrittenConstructors;
+    rewrittenDynamicImports += result.rewrittenDynamicImports;
+    rewrittenEventNames += result.rewrittenEventNames;
+    rewrittenKinds.push(...result.rewrittenKinds);
+    addedCompatImport = addedCompatImport || result.addedCompatImport;
+    removedArcGisImports += result.removedArcGisImports;
+    annotatedTodoComments += result.annotatedTodoComments;
+    manualTodos.push(...result.manualTodos);
+  }
+
+  if (target === "honua-compat" && shellMode !== "skip") {
+    const shell = rewriteMapComponentShell(nextSource, shellMode === "host" ? "tags-only" : "inline", compatImportPath);
+    nextSource = shell.nextSource;
+    rewrittenConstructors += shell.rewrites;
+    addedCompatImport = addedCompatImport || shell.addedCompatImport;
+  }
+
+  if (nextSource.includes("@honua/sdk-esri-compat")) {
+    nextSource = nextSource.replace(
+      /<script\b([^>]*)>([\s\S]*?)<\/script\b[^>]*>/gi,
+      (full, attrs: string, body: string) => {
+        if (!body.includes("@honua/sdk-esri-compat") || /\btype\s*=/i.test(attrs)) {
+          return full;
+        }
+        if (/\b(?:require|define)\s*\(/.test(body)) {
+          return full;
+        }
+        return `<script type="module"${attrs}>${body}</script>`;
+      },
+    );
+  }
+
+  return {
+    nextSource,
+    rewrittenImports,
+    rewrittenConstructors,
+    rewrittenDynamicImports,
+    rewrittenEventNames,
+    rewrittenKinds,
+    addedCompatImport,
+    removedArcGisImports,
+    annotatedTodoComments,
+    manualTodos: manualTodos.sort(compareTodos),
+  };
+}
+
+const SHELL_COMPONENT_SYMBOLS: Readonly<Record<string, string>> = {
+  "arcgis-map": "MapViewCompat",
+  "arcgis-zoom": "ZoomCompat",
+  "arcgis-legend": "LegendCompat",
+  "arcgis-expand": "ExpandCompat",
+  "arcgis-layer-list": "LayerListCompat",
+  "arcgis-popup": "PopupCompat",
+};
+
+interface ShellElement {
+  tag: string;
+  symbol: string;
+  id: string;
+  itemId?: string;
+  basemap?: string;
+  children: ShellElement[];
+}
+
+function parseShellElements(source: string): ShellElement[] {
+  const pattern =
+    /<(\/?)(arcgis-map|arcgis-zoom|arcgis-legend|arcgis-expand|arcgis-layer-list|arcgis-popup)\b([^>]*)>/gi;
+  const roots: ShellElement[] = [];
+  const stack: ShellElement[] = [];
+  let generated = 0;
+  let match: RegExpExecArray | null = pattern.exec(source);
+  while (match !== null) {
+    const tag = match[2].toLowerCase();
+    if (match[1] === "/") {
+      if (stack.length > 0 && stack[stack.length - 1]?.tag === tag) {
+        stack.pop();
+      }
+      match = pattern.exec(source);
+      continue;
+    }
+    const existingId = /\sid\s*=\s*["']([^"']+)["']/i.exec(match[3])?.[1];
+    const id =
+      existingId ?? (tag === "arcgis-map" ? "honua-map" : `honua-${tag.slice("arcgis-".length)}-${++generated}`);
+    const element: ShellElement = {
+      tag,
+      symbol: SHELL_COMPONENT_SYMBOLS[tag] ?? tag,
+      id,
+      itemId: /\bitem-id\s*=\s*["']([A-Za-z0-9]+)["']/i.exec(match[3])?.[1],
+      basemap: /\bbasemap\s*=\s*["']([^"']+)["']/i.exec(match[3])?.[1],
+      children: [],
+    };
+    const parent = stack[stack.length - 1];
+    if (parent) {
+      parent.children.push(element);
+    } else {
+      roots.push(element);
+    }
+    stack.push(element);
+    match = pattern.exec(source);
+  }
+  return roots;
+}
+
+function flattenShell(elements: readonly ShellElement[]): ShellElement[] {
+  const flat: ShellElement[] = [];
+  for (const element of elements) {
+    flat.push(element, ...flattenShell(element.children));
+  }
+  return flat;
+}
+
+function mapConstructorForShell(element: ShellElement): {
+  symbol: "WebMapCompat" | "MapCompat";
+  expression: string;
+} {
+  if (element.itemId) {
+    return {
+      symbol: "WebMapCompat",
+      expression: `new WebMapCompat({ portalItem: { id: ${JSON.stringify(element.itemId)} } })`,
+    };
+  }
+  if (element.basemap) {
+    return {
+      symbol: "MapCompat",
+      expression: `new MapCompat({ basemap: ${JSON.stringify(element.basemap)} })`,
+    };
+  }
+  return { symbol: "MapCompat", expression: "new MapCompat()" };
+}
+
+function emitShellConstructors(
+  element: ShellElement,
+  lines: string[],
+  symbols: Set<string>,
+  usedNames: Set<string>,
+  bind: boolean,
+): string {
+  if (element.tag === "arcgis-map") {
+    symbols.add("MapViewCompat");
+    const mapForView = mapConstructorForShell(element);
+    symbols.add(mapForView.symbol);
+    lines.push(
+      `const honuaView = new MapViewCompat({ container: document.getElementById("${element.id}"), map: ${mapForView.expression} });`,
+    );
+    for (const child of element.children) {
+      emitShellConstructors(child, lines, symbols, usedNames, false);
+    }
+    lines.push("void honuaView.when();");
+    return "honuaView";
+  }
+  const childNames = element.children.map((child) => emitShellConstructors(child, lines, symbols, usedNames, true));
+  symbols.add(element.symbol);
+  let varName = `honua${element.symbol.replace(/Compat$/, "")}`;
+  let suffix = 2;
+  while (usedNames.has(varName)) {
+    varName = `honua${element.symbol.replace(/Compat$/, "")}${suffix++}`;
+  }
+  usedNames.add(varName);
+  const content = childNames[0] ? `, content: ${childNames[0]}` : "";
+  const expression = `new ${element.symbol}({ view: honuaView, container: document.getElementById("${element.id}")${content} })`;
+  if (!bind) {
+    lines.push(`${expression};`);
+    return "";
+  }
+  lines.push(`const ${varName} = ${expression};`);
+  return varName;
+}
+
+type MapComponentShellMode = "inline" | "host" | "skip";
+
+function htmlHasInlineScript(source: string): boolean {
+  return /<script\b(?![^>]*\bsrc\s*=)[^>]*>/i.test(source);
+}
+
+function rewriteArcGisViewReadyListeners(sourceFile: ts.SourceFile): TextEdit[] {
+  const edits: TextEdit[] = [];
+  walk(sourceFile, (node) => {
+    if (!ts.isCallExpression(node) || node.arguments.length < 2) {
+      return;
+    }
+    const expression = node.expression;
+    if (!ts.isPropertyAccessExpression(expression) || expression.name.text !== "addEventListener") {
+      return;
+    }
+    const eventName = node.arguments[0];
+    if (!eventName || !ts.isStringLiteral(eventName) || eventName.text !== "arcgisViewReadyChange") {
+      return;
+    }
+    const receiver = expression.expression;
+    const callback = node.arguments[1];
+    if (!callback) {
+      return;
+    }
+    const optional = expression.questionDotToken ? "?." : ".";
+    edits.push({
+      start: node.getStart(sourceFile),
+      end: node.getEnd(),
+      text: `${receiver.getText(sourceFile)}${optional}when(${callback.getText(sourceFile)})`,
+    });
+  });
+  return edits;
+}
+
+function arcgisMapQuerySelectorPattern(): RegExp {
+  return /document\.querySelector(?:<[^>]+>)?\(\s*(["'])arcgis-map\1\s*\)/g;
+}
+
+function planMapComponentShells(
+  files: readonly string[],
+  compatImportPath: string,
+): {
+  htmlMode: Map<string, MapComponentShellMode>;
+  bootstrapByHost: Map<string, string>;
+} {
+  const htmlMode = new Map<string, MapComponentShellMode>();
+  const bootstrapByHost = new Map<string, string>();
+  const htmlFiles = files.filter((file) => HTML_EXTENSIONS.has(path.extname(file).toLowerCase()));
+  for (const htmlFile of htmlFiles) {
+    let source: string;
+    try {
+      source = fs.readFileSync(htmlFile, "utf8");
+    } catch {
+      continue;
+    }
+    if (flattenShell(parseShellElements(source)).length === 0) {
+      continue;
+    }
+    if (htmlHasInlineScript(source)) {
+      htmlMode.set(path.resolve(htmlFile), "inline");
+      continue;
+    }
+    const host = files.find((file) => {
+      if (HTML_EXTENSIONS.has(path.extname(file).toLowerCase())) {
+        return false;
+      }
+      try {
+        return arcgisMapQuerySelectorPattern().test(fs.readFileSync(file, "utf8"));
+      } catch {
+        return false;
+      }
+    });
+    if (!host) {
+      htmlMode.set(path.resolve(htmlFile), "skip");
+      continue;
+    }
+    htmlMode.set(path.resolve(htmlFile), "host");
+    const shell = rewriteMapComponentShell(source, "tags-only", compatImportPath);
+    const resolvedHost = path.resolve(host);
+    bootstrapByHost.set(resolvedHost, `${bootstrapByHost.get(resolvedHost) ?? ""}${shell.bootstrap}`);
+  }
+  return { htmlMode, bootstrapByHost };
+}
+
+function installShellBootstrap(source: string, bootstrap: string): string {
+  if (source.includes("new MapViewCompat(") || bootstrap.trim().length === 0) {
+    return source;
+  }
+  const withoutReplacedComponents = source.replace(
+    /^[ \t]*import\s+["']@arcgis\/map-components\/components\/arcgis-(?:map|zoom|legend|expand|layer-list|popup)["'];?[ \t]*\r?\n/gm,
+    "",
+  );
+  const usingView = withoutReplacedComponents.replace(arcgisMapQuerySelectorPattern(), "honuaView");
+  const sourceFile = ts.createSourceFile("shell-host.ts", usingView, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const index = findImportInsertionIndex(sourceFile);
+  const prefix = usingView.slice(0, index);
+  const suffix = usingView.slice(index);
+  const gap = prefix.length > 0 && !prefix.endsWith("\n") ? "\n" : "";
+  return `${prefix}${gap}${bootstrap}${suffix.startsWith("\n") ? "" : "\n"}${suffix}`;
+}
+
+function rewriteMapComponentShell(
+  source: string,
+  inject: "inline" | "tags-only",
+  compatImportPath: string,
+): {
+  nextSource: string;
+  rewrites: number;
+  addedCompatImport: boolean;
+  bootstrap: string;
+} {
+  const roots = parseShellElements(source);
+  const flat = flattenShell(roots);
+  if (flat.length === 0) {
+    return {
+      nextSource: source,
+      rewrites: 0,
+      addedCompatImport: false,
+      bootstrap: "",
+    };
+  }
+
+  let index = 0;
+  let next = source.replace(
+    /<(arcgis-map|arcgis-zoom|arcgis-legend|arcgis-expand|arcgis-layer-list|arcgis-popup)\b([^>]*)>/gi,
+    (_full, rawTag: string, attrs: string) => {
+      const element = flat[index++];
+      const symbol = SHELL_COMPONENT_SYMBOLS[rawTag.toLowerCase()] ?? rawTag;
+      const id = element?.id ?? `honua-${rawTag.toLowerCase()}`;
+      const withoutId = attrs.replace(/\s+id\s*=\s*(["'])[\s\S]*?\1/i, "");
+      return `<div id="${id}" data-honua-compat="${symbol}"${withoutId}>`;
+    },
+  );
+  next = next.replace(
+    /<\/(?:arcgis-map|arcgis-zoom|arcgis-legend|arcgis-expand|arcgis-layer-list|arcgis-popup)>/gi,
+    "</div>",
+  );
+
+  const map = flat.find((element) => element.tag === "arcgis-map");
+  const mapId = map?.id ?? "honua-map";
+  const declaration = /const\s+(\w+)\s*=\s*document\.querySelector\(\s*(["'])arcgis-map\2\s*\)\s*;/;
+  const viewName = next.match(declaration)?.[1];
+  if (viewName) {
+    next = next.replace(declaration, `const ${viewName} = document.getElementById("${mapId}");`);
+    const ident = viewName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    next = next.replace(new RegExp(`\\b${ident}\\.viewOnReady\\s*\\(\\s*\\)`, "g"), "honuaView.when()");
+    next = next.replace(new RegExp(`\\b${ident}\\.whenLayerView\\s*\\(`, "g"), "honuaView.whenLayerView(");
+    next = next.replace(new RegExp(`\\b${ident}\\.goTo\\s*\\(`, "g"), "honuaView.goTo(");
+    next = next.replace(new RegExp(`\\b${ident}\\.map\\b`, "g"), "honuaView.map");
+  }
+
+  const lines: string[] = [];
+  const symbols = new Set<string>();
+  const usedNames = new Set<string>(["honuaView"]);
+  for (const root of roots) {
+    emitShellConstructors(root, lines, symbols, usedNames, true);
+  }
+  if (next.includes("geometryEngineCompat.")) {
+    symbols.add("geometryEngineCompat");
+  }
+  const bootstrap = `import { ${Array.from(symbols).sort().join(", ")} } from ${JSON.stringify(compatImportPath)};\n${lines.join("\n")}\n`;
+  if (inject === "tags-only") {
+    return {
+      nextSource: next,
+      rewrites: flat.length,
+      addedCompatImport: false,
+      bootstrap,
+    };
+  }
+  let injected = false;
+  next = next.replace(/<script\b([^>]*)>/gi, (full, attrs: string) => {
+    if (injected || /\ssrc\s*=/i.test(attrs)) {
+      return full;
+    }
+    injected = true;
+    const open = /\btype\s*=/i.test(attrs) ? full : full.replace(/<script\b/i, '<script type="module"');
+    return `${open}\n${bootstrap}`;
+  });
+  if (!injected) {
+    return {
+      nextSource: source,
+      rewrites: 0,
+      addedCompatImport: false,
+      bootstrap: "",
+    };
+  }
+  if (!next.includes("$arcgis") && !next.includes("@arcgis/core")) {
+    const withoutCdn = removeArcGisCdnScriptTags(next);
+    if (withoutCdn !== next) {
+      next = withoutCdn;
+    }
+  }
+  return {
+    nextSource: next,
+    rewrites: flat.length,
+    addedCompatImport: true,
+    bootstrap,
+  };
 }
 
 function codemodFile(
@@ -962,6 +1527,10 @@ function codemodFile(
 } {
   assertParsableSource(file, source);
   const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
+  const localsPinnedByWatchUtilsInit = localsPassedToWatchUtilsInit(sourceFile);
+  const classesPassedToEsri = classesPassedToUnrewrittenEsri(sourceFile);
+  const constructedClasses = collectConstructedClassNames(sourceFile);
+  const withheldLocators = locatorClassNamesWithheld(sourceFile);
   const imports = collectSupportedImports(sourceFile, file, localArcGisReExports, sourceFilesSet);
 
   const importsByLocalName = new Map<string, ArcGisImportBinding>();
@@ -1018,6 +1587,20 @@ function codemodFile(
   manualTodos.push(...identityManagerImportRewrite.manualTodos);
   todoCommentEdits.push(...identityManagerImportRewrite.todoCommentEdits);
 
+  const identityRewrite = rewriteIdentityCalls({
+    source,
+    sourceFile,
+    file,
+    compatImportPath,
+    annotateTodos,
+    target,
+  });
+  importEdits.push(...identityRewrite.edits);
+  rewrittenKinds.push(...identityRewrite.rewrittenKinds);
+  for (const symbol of identityRewrite.compatSymbols) {
+    requiredCompatSymbols.add(symbol);
+  }
+
   const esriConfigImportRewrite = rewriteEsriConfigImports({
     source,
     sourceFile,
@@ -1030,6 +1613,22 @@ function codemodFile(
   rewrittenKinds.push(...esriConfigImportRewrite.rewrittenKinds);
   manualTodos.push(...esriConfigImportRewrite.manualTodos);
   todoCommentEdits.push(...esriConfigImportRewrite.todoCommentEdits);
+
+  const watchUtilsRewrite = rewriteWatchUtilsCalls({
+    source,
+    sourceFile,
+    file,
+    compatImportPath,
+    annotateTodos,
+    target,
+  });
+  importEdits.push(...watchUtilsRewrite.edits);
+  rewrittenKinds.push(...watchUtilsRewrite.rewrittenKinds);
+  manualTodos.push(...watchUtilsRewrite.manualTodos);
+  todoCommentEdits.push(...watchUtilsRewrite.todoCommentEdits);
+  for (const symbol of watchUtilsRewrite.compatSymbols) {
+    requiredCompatSymbols.add(symbol);
+  }
 
   const reactiveUtilsImportRewrite = rewriteReactiveUtilsImports({
     source,
@@ -1057,6 +1656,35 @@ function codemodFile(
   manualTodos.push(...geometryEngineImportRewrite.manualTodos);
   todoCommentEdits.push(...geometryEngineImportRewrite.todoCommentEdits);
 
+  const locatorRestRewrite = rewriteRestLocatorCalls({
+    source,
+    sourceFile,
+    file,
+    annotateTodos,
+    target,
+  });
+  importEdits.push(...locatorRestRewrite.edits);
+  rewrittenKinds.push(...locatorRestRewrite.rewrittenKinds);
+  manualTodos.push(...locatorRestRewrite.manualTodos);
+  todoCommentEdits.push(...locatorRestRewrite.todoCommentEdits);
+  for (const symbol of locatorRestRewrite.compatSymbols) {
+    requiredCompatSymbols.add(symbol);
+  }
+
+  const loaderRewrite = rewriteLegacyModuleLoaders({
+    source,
+    sourceFile,
+    file,
+    target,
+  });
+  importEdits.push(...loaderRewrite.edits);
+  rewrittenKinds.push(...loaderRewrite.rewrittenKinds);
+  manualTodos.push(...loaderRewrite.manualTodos);
+  todoCommentEdits.push(...loaderRewrite.todoCommentEdits);
+  for (const symbol of loaderRewrite.compatSymbols) {
+    requiredCompatSymbols.add(symbol);
+  }
+
   // Flag call sites of uncovered geometryEngine ops (covered ops resolve to the
   // rewritten geometryEngineCompat import and need no TODO). Only when the
   // import was actually rewritten to the compat shim (honua targets).
@@ -1072,7 +1700,25 @@ function codemodFile(
     });
   }
 
+  if (target === "honua-compat") {
+    eventNameEdits.push(...rewriteArcGisViewReadyListeners(sourceFile));
+  }
+
   walk(sourceFile, (node) => {
+    const dollarImport = arcGisDollarImportRewrite(node, sourceFile, compatImportPath, target);
+    if (dollarImport) {
+      dynamicImportEdits.push({
+        start: dollarImport.start,
+        end: dollarImport.end,
+        text: dollarImport.text,
+      });
+      rewrittenKinds.push(...dollarImport.kinds);
+      if (dollarImport.text.includes("geometryEngineCompat.")) {
+        requiredCompatSymbols.add("geometryEngineCompat");
+      }
+      return;
+    }
+
     if (isArcGisDynamicImportCall(node)) {
       const firstArg = node.arguments[0];
       if (!ts.isStringLiteral(firstArg)) {
@@ -1352,6 +1998,59 @@ function codemodFile(
       return;
     }
 
+    if (localsPinnedByWatchUtilsInit.has(importBinding.localName) || classesPassedToEsri.has(importBinding.localName)) {
+      return;
+    }
+
+    if (
+      importBinding.kind === "graphic" &&
+      newExpressionUsesPinnedClass(node, constructedClasses, classesPassedToEsri)
+    ) {
+      return;
+    }
+
+    if (importBinding.kind === "portal" && portalInstanceUsesUnsupportedMethod(sourceFile, node)) {
+      const nodeStart = node.getStart(sourceFile);
+      const location = sourceFile.getLineAndCharacterOfPosition(nodeStart);
+      manualTodos.push({
+        kind: "portal",
+        file,
+        line: location.line + 1,
+        column: location.character + 1,
+        reason: "PortalCompat implements search, getItem, and openFeatureLayer. This Portal call uses another method.",
+        difficulty: "moderate",
+      });
+      return;
+    }
+
+    if (importBinding.kind === "locator" && withheldLocators.has(importBinding.localName)) {
+      const withheld = isSafeLocatorCompatCall(node);
+      const reason = withheld.ok
+        ? "Another Locator in this file is not constructed with only url, so this Locator stays on Esri."
+        : withheld.reason;
+      const nodeStart = node.getStart(sourceFile);
+      const location = sourceFile.getLineAndCharacterOfPosition(nodeStart);
+      manualTodos.push({
+        kind: "locator",
+        file,
+        line: location.line + 1,
+        column: location.character + 1,
+        reason,
+        difficulty: "moderate",
+      });
+      if (annotateTodos) {
+        const lineStart = findLineStartOffset(source, nodeStart);
+        if (shouldInsertTodoComment(source, lineStart, nodeStart)) {
+          todoCommentEdits.push({
+            start: lineStart,
+            end: lineStart,
+            text: `// ${TODO_MARKER}[locator]: ${reason}\n`,
+          });
+        }
+      }
+      return;
+    }
+
     const safeCheck = isSafeConstructorCall(importBinding.kind, node, target);
     if (safeCheck.ok) {
       if (target === "honua-compat") {
@@ -1362,6 +2061,54 @@ function codemodFile(
           end: rewriteTarget.end,
           text: spec.compatSymbol,
         });
+        if (importBinding.kind === "point-geometry") {
+          constructorEdits.push(...renamePointCoordinateProperties(node, sourceFile));
+        }
+        if (importBinding.kind === "portal") {
+          constructorEdits.push(...renameObjectProperty(node, sourceFile, "url", "portalUrl"));
+        }
+        if (importBinding.kind === "directions-view-model" && source.includes("selectedTravelMode")) {
+          const nodeStart = node.getStart(sourceFile);
+          const lineStart = findLineStartOffset(source, nodeStart);
+          todoCommentEdits.push({
+            start: lineStart,
+            end: lineStart,
+            text: `// ${TODO_MARKER}[directions-view-model]: selectedTravelMode stays unset until a route provider reports travel modes\n`,
+          });
+          const location = sourceFile.getLineAndCharacterOfPosition(nodeStart);
+          manualTodos.push({
+            kind: "directions-view-model",
+            file,
+            line: location.line + 1,
+            column: location.character + 1,
+            reason: "selectedTravelMode stays unset until a route provider reports travel modes",
+            difficulty: "moderate",
+          });
+        }
+        if (importBinding.kind === "map-view") {
+          constructorEdits.push(...removeObjectProperties(node, sourceFile, source, new Set(["ui"])));
+        }
+        if (importBinding.kind === "locate-widget") {
+          constructorEdits.push(...removeObjectProperties(node, sourceFile, source, new Set(["scale"])));
+        }
+        if (importBinding.kind === "locator") {
+          const nodeStart = node.getStart(sourceFile);
+          const lineStart = findLineStartOffset(source, nodeStart);
+          todoCommentEdits.push({
+            start: lineStart,
+            end: lineStart,
+            text: `// ${TODO_MARKER}[locator]: set locator.provider before calling addressToLocations\n`,
+          });
+          const location = sourceFile.getLineAndCharacterOfPosition(nodeStart);
+          manualTodos.push({
+            kind: "locator",
+            file,
+            line: location.line + 1,
+            column: location.character + 1,
+            reason: "set locator.provider before calling addressToLocations",
+            difficulty: "moderate",
+          });
+        }
         if (importBinding.kind === "query") {
           // Deep-transform Query options into the Honua QueryFeaturesRequest
           // shape (renames + geometry split + outStatistics normalization).
@@ -1532,15 +2279,20 @@ function codemodFile(
     };
   }
 
+  const esriTypeEdits = rewriteRewrittenEsriNamespaceTypes(sourceFile, requiredCompatSymbols);
   let transformed = applyTextEdits(source, [
     ...importEdits,
     ...constructorEdits,
     ...dynamicImportEdits,
     ...eventNameEdits,
     ...todoCommentEdits,
+    ...esriTypeEdits,
   ]);
   const removedArcGisImports = removeUnusedArcGisImports(file, transformed);
   transformed = removedArcGisImports.nextSource;
+  if (!/\besri\./.test(transformed)) {
+    transformed = transformed.replace(/^[ \t]*import\s+esri\s*=\s*__esri\s*;?[ \t]*\r?\n/m, "");
+  }
 
   let addedCompatImport = false;
   const compatSymbols = Array.from(requiredCompatSymbols).sort();
@@ -1571,6 +2323,26 @@ function codemodFile(
     );
     transformed = esriLeafletImportResult.nextSource;
     addedCompatImport = addedCompatImport || esriLeafletImportResult.changed;
+  }
+
+  // OAuthInfoCompat cannot be registered with the Esri IdentityManager. Leave the
+  // whole file on the Esri client until Credential and IdentityManager move too.
+  if (
+    transformed.includes("OAuthInfoCompat") &&
+    /from\s+["']esri\/identity\/(?:IdentityManager|Credential)["']/.test(transformed)
+  ) {
+    return {
+      nextSource: source,
+      rewrittenImports: 0,
+      rewrittenConstructors: 0,
+      rewrittenDynamicImports: 0,
+      rewrittenEventNames: 0,
+      rewrittenKinds: [],
+      addedCompatImport: false,
+      removedArcGisImports: 0,
+      annotatedTodoComments: 0,
+      manualTodos: [],
+    };
   }
 
   return {
@@ -1623,6 +2395,371 @@ function pushImportManualTodo(
       text: `// ${TODO_MARKER}[${kind}]: ${reason}\n`,
     });
   }
+}
+
+function calleeRootName(expression: ts.Expression): string | undefined {
+  let current = expression;
+  while (ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current)) {
+    current = current.expression;
+  }
+  return ts.isIdentifier(current) ? current.text : undefined;
+}
+
+function locatorClassNamesWithheld(sourceFile: ts.SourceFile): Set<string> {
+  const locatorNames = new Set<string>();
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
+      continue;
+    }
+    const canonical = canonicalArcGisModulePath(statement.moduleSpecifier.text);
+    const spec = MODULE_TO_SPEC.get(canonical) ?? MODULE_TO_SPEC.get(`${canonical}.js`);
+    if (spec?.kind !== "locator" || !statement.importClause?.name) {
+      continue;
+    }
+    locatorNames.add(statement.importClause.name.text);
+  }
+  const withheld = new Set<string>();
+  if (locatorNames.size === 0) {
+    return withheld;
+  }
+  walk(sourceFile, (node) => {
+    if (!ts.isNewExpression(node) || !ts.isIdentifier(node.expression) || !locatorNames.has(node.expression.text)) {
+      return;
+    }
+    if (!isSafeLocatorCompatCall(node).ok) {
+      withheld.add(node.expression.text);
+    }
+  });
+  return withheld;
+}
+
+function classesPassedToUnrewrittenEsri(sourceFile: ts.SourceFile): Set<string> {
+  const unrewritten = new Set<string>();
+  for (const name of locatorClassNamesWithheld(sourceFile)) {
+    unrewritten.add(name);
+  }
+  for (const name of restLocatorLocalsWithheld(sourceFile)) {
+    unrewritten.add(name);
+  }
+  const rewritableOperators = rewritableGeometryOperatorLocals(sourceFile);
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
+      continue;
+    }
+    const canonical = canonicalArcGisModulePath(statement.moduleSpecifier.text);
+    if (!canonical.startsWith("@arcgis/core")) {
+      continue;
+    }
+    if (MODULE_TO_SPEC.get(canonical) ?? MODULE_TO_SPEC.get(`${canonical}.js`) ?? isIdentityModule(canonical)) {
+      continue;
+    }
+    const clause = statement.importClause;
+    if (!clause) {
+      continue;
+    }
+    if (clause.name) {
+      unrewritten.add(clause.name.text);
+    }
+    const named = clause.namedBindings;
+    if (named && ts.isNamespaceImport(named)) {
+      if (!rewritableOperators.has(named.name.text)) {
+        unrewritten.add(named.name.text);
+      }
+    } else if (named && ts.isNamedImports(named)) {
+      for (const element of named.elements) {
+        unrewritten.add(element.name.text);
+      }
+    }
+  }
+  const constructedClass = new Map<string, string>();
+  walk(sourceFile, (node) => {
+    if (!ts.isVariableDeclaration(node) || !ts.isIdentifier(node.name) || !node.initializer) {
+      return;
+    }
+    if (ts.isNewExpression(node.initializer) && ts.isIdentifier(node.initializer.expression)) {
+      constructedClass.set(node.name.text, node.initializer.expression.text);
+    }
+  });
+  const tainted = new Set<string>(unrewritten);
+  for (const [localName, className] of constructedClass) {
+    if (unrewritten.has(className)) {
+      tainted.add(localName);
+    }
+  }
+  const pinned = new Set<string>();
+  const pinFromArguments = (args: readonly ts.Expression[]) => {
+    for (const arg of args) {
+      walk(arg, (inner) => {
+        if (ts.isNewExpression(inner) && ts.isIdentifier(inner.expression)) {
+          pinned.add(inner.expression.text);
+        }
+        if (ts.isIdentifier(inner)) {
+          const className = constructedClass.get(inner.text);
+          if (className) {
+            pinned.add(className);
+          }
+        }
+      });
+    }
+  };
+  walk(sourceFile, (node) => {
+    if (!ts.isCallExpression(node)) {
+      return;
+    }
+    if (rewrittenWatchUtilsCall(sourceFile, node)) {
+      return;
+    }
+    const root = calleeRootName(node.expression);
+    if (!root || !tainted.has(root)) {
+      return;
+    }
+    pinFromArguments(node.arguments);
+  });
+  return pinned;
+}
+
+function rewrittenWatchUtilsCall(sourceFile: ts.SourceFile, node: ts.CallExpression): boolean {
+  if (!ts.isIdentifier(node.expression)) {
+    return false;
+  }
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
+      continue;
+    }
+    if (!isWatchUtilsModule(statement.moduleSpecifier.text)) {
+      continue;
+    }
+    const named = statement.importClause?.namedBindings;
+    if (!named || !ts.isNamedImports(named)) {
+      continue;
+    }
+    for (const element of named.elements) {
+      if (element.name.text !== node.expression.text) {
+        continue;
+      }
+      const importedName = element.propertyName?.text ?? element.name.text;
+      return watchUtilsCallReplacement(node, importedName) !== undefined;
+    }
+  }
+  return false;
+}
+
+function isWatchUtilsModule(modulePath: string): boolean {
+  const canonical = canonicalArcGisModulePath(modulePath);
+  return canonical === "@arcgis/core/core/watchUtils" || canonical.endsWith("/core/watchUtils");
+}
+
+function localsPassedToWatchUtilsInit(sourceFile: ts.SourceFile): Set<string> {
+  const initNames = new Set<string>();
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
+      continue;
+    }
+    if (!isWatchUtilsModule(statement.moduleSpecifier.text)) {
+      continue;
+    }
+    const named = statement.importClause?.namedBindings;
+    if (!named || !ts.isNamedImports(named)) {
+      continue;
+    }
+    for (const element of named.elements) {
+      const importedName = element.propertyName?.text ?? element.name.text;
+      if (importedName === "init") {
+        initNames.add(element.name.text);
+      }
+    }
+  }
+  const constructedClassByLocal = new Map<string, string>();
+  walk(sourceFile, (node) => {
+    if (!ts.isVariableDeclaration(node) || !ts.isIdentifier(node.name) || !node.initializer) {
+      return;
+    }
+    if (!ts.isNewExpression(node.initializer) || !ts.isIdentifier(node.initializer.expression)) {
+      return;
+    }
+    constructedClassByLocal.set(node.name.text, node.initializer.expression.text);
+  });
+  const pinned = new Set<string>();
+  if (initNames.size === 0) {
+    return pinned;
+  }
+  walk(sourceFile, (node) => {
+    if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression) || !initNames.has(node.expression.text)) {
+      return;
+    }
+    const target = node.arguments[0];
+    if (!target || !ts.isIdentifier(target)) {
+      return;
+    }
+    const className = constructedClassByLocal.get(target.text);
+    const property = node.arguments[1];
+    if (className && !(ts.isStringLiteral(property) && property.text === "viewModel.state")) {
+      pinned.add(className);
+    }
+  });
+  return pinned;
+}
+
+function rewriteWatchUtilsCalls(options: {
+  source: string;
+  sourceFile: ts.SourceFile;
+  file: string;
+  compatImportPath: string;
+  annotateTodos: boolean;
+  target: CodemodTarget;
+}): {
+  edits: TextEdit[];
+  rewrittenKinds: CodemodConstructorKind[];
+  manualTodos: MigrationTodo[];
+  todoCommentEdits: TextEdit[];
+  compatSymbols: string[];
+} {
+  const edits: TextEdit[] = [];
+  const rewrittenKinds: CodemodConstructorKind[] = [];
+  const manualTodos: MigrationTodo[] = [];
+  const todoCommentEdits: TextEdit[] = [];
+  const compatSymbols: string[] = [];
+  if (options.target !== "honua-compat") {
+    return {
+      edits,
+      rewrittenKinds,
+      manualTodos,
+      todoCommentEdits,
+      compatSymbols,
+    };
+  }
+
+  for (const statement of options.sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
+      continue;
+    }
+    if (!isWatchUtilsModule(statement.moduleSpecifier.text)) {
+      continue;
+    }
+    const named = statement.importClause?.namedBindings;
+    if (!named || !ts.isNamedImports(named)) {
+      continue;
+    }
+    const localToImported = new Map<string, string>();
+    for (const element of named.elements) {
+      localToImported.set(element.name.text, element.propertyName?.text ?? element.name.text);
+    }
+    const kept = new Set<string>();
+    let rewroteCall = false;
+    walk(options.sourceFile, (node) => {
+      if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) {
+        return;
+      }
+      const importedName = localToImported.get(node.expression.text);
+      if (!importedName) {
+        return;
+      }
+      const replacement = watchUtilsCallReplacement(node, importedName);
+      if (!replacement) {
+        kept.add(node.expression.text);
+        if (importedName === "init") {
+          const nodeStart = node.getStart(options.sourceFile);
+          const location = options.sourceFile.getLineAndCharacterOfPosition(nodeStart);
+          manualTodos.push({
+            kind: "reactive-utils",
+            file: options.file,
+            line: location.line + 1,
+            column: location.character + 1,
+            reason: "watchUtils.init is rewritten only when it watches viewModel.state.",
+            difficulty: "moderate",
+          });
+          if (options.annotateTodos) {
+            const lineStart = findLineStartOffset(options.source, nodeStart);
+            if (shouldInsertTodoComment(options.source, lineStart, nodeStart)) {
+              todoCommentEdits.push({
+                start: lineStart,
+                end: lineStart,
+                text: `// ${TODO_MARKER}[reactive-utils]: watchUtils.init is rewritten only when it watches viewModel.state.\n`,
+              });
+            }
+          }
+        }
+        return;
+      }
+      edits.push({
+        start: node.getStart(options.sourceFile),
+        end: node.getEnd(),
+        text: replacement,
+      });
+      rewroteCall = true;
+      if (replacement.includes("reactiveUtils.")) {
+        compatSymbols.push("reactiveUtils");
+      }
+      rewrittenKinds.push("reactive-utils");
+    });
+    const keptSpecifiers = named.elements
+      .filter((element) => kept.has(element.name.text))
+      .map((element) => element.getText(options.sourceFile));
+    if (keptSpecifiers.length === 0) {
+      const bounds = expandToFullLine(options.source, statement.getStart(options.sourceFile), statement.getEnd());
+      edits.push({ start: bounds.start, end: bounds.end, text: "" });
+    } else if (rewroteCall) {
+      const quote = statement.moduleSpecifier.getText(options.sourceFile).startsWith("'") ? "'" : '"';
+      edits.push({
+        start: statement.getStart(options.sourceFile),
+        end: statement.getEnd(),
+        text: `import { ${keptSpecifiers.join(", ")} } from ${quote}${statement.moduleSpecifier.text}${quote};`,
+      });
+    }
+  }
+
+  return {
+    edits,
+    rewrittenKinds,
+    manualTodos,
+    todoCommentEdits,
+    compatSymbols: Array.from(new Set(compatSymbols)),
+  };
+}
+
+function watchUtilsCallReplacement(node: ts.CallExpression, importedName: string): string | undefined {
+  if (node.arguments.length < 2) {
+    return undefined;
+  }
+  if (importedName === "init") {
+    const target = node.arguments[0];
+    const property = node.arguments[1];
+    const callback = node.arguments[2];
+    if (
+      target &&
+      property &&
+      callback &&
+      ts.isIdentifier(target) &&
+      ts.isStringLiteral(property) &&
+      property.text === "viewModel.state"
+    ) {
+      return `reactiveUtils.watch(() => ${target.text}.viewModel.state, ${callback.getText(node.getSourceFile())}, { initial: true })`;
+    }
+    return undefined;
+  }
+  const target = node.arguments[0];
+  const property = node.arguments[1];
+  if (!target || !property || !ts.isIdentifier(target) || !ts.isStringLiteral(property)) {
+    return undefined;
+  }
+  if (!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(property.text)) {
+    return undefined;
+  }
+  const targetText = target.text;
+  const propertyText = property.text;
+  if (importedName === "whenOnce" && propertyText === "ready") {
+    return `${targetText}.when()`;
+  }
+  if (importedName === "whenOnce" || importedName === "whenTrueOnce") {
+    return `reactiveUtils.whenOnce(() => ${targetText}.${propertyText})`;
+  }
+  if (importedName === "whenFalseOnce") {
+    return `reactiveUtils.whenOnce(() => !${targetText}.${propertyText})`;
+  }
+  if (importedName === "once") {
+    return `new Promise((resolve) => { reactiveUtils.watch(() => ${targetText}.${propertyText}, resolve, { once: true }); })`;
+  }
+  return undefined;
 }
 
 function rewriteReactiveUtilsImports(options: {
@@ -1734,7 +2871,11 @@ function rewriteGeometryEngineImports(options: {
     if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
       continue;
     }
-    if (MODULE_TO_SPEC.get(statement.moduleSpecifier.text)?.kind !== "geometry-engine") {
+    const geometryModulePath = canonicalArcGisModulePath(statement.moduleSpecifier.text);
+    if (
+      (MODULE_TO_SPEC.get(geometryModulePath) ?? MODULE_TO_SPEC.get(`${geometryModulePath}.js`))?.kind !==
+      "geometry-engine"
+    ) {
       continue;
     }
 
@@ -1788,6 +2929,8 @@ function rewriteGeometryEngineImports(options: {
       end: statement.getEnd(),
       text: replacement,
     });
+    edits.push(...rewriteNamedGeometryEngineCalls(options.sourceFile, statement));
+    edits.push(...rewriteGeodesicBufferPropertyAccess(options.sourceFile, statement));
     rewrittenKinds.push("geometry-engine");
   }
 
@@ -1819,13 +2962,14 @@ function buildGeometryEngineCompatImport(
   if (namedBindings && ts.isNamespaceImport(namedBindings)) {
     specifiers.push(renderImportSpecifier(compatSymbol, namedBindings.name.text));
   } else if (namedBindings && ts.isNamedImports(namedBindings)) {
-    for (const element of namedBindings.elements) {
-      const importedName = element.propertyName?.text ?? element.name.text;
-      const localName = element.name.text;
-      if (importedName === "default" || importedName === compatSymbol) {
-        specifiers.push(renderImportSpecifier(compatSymbol, localName));
-        continue;
+    const namedOps = namedBindings.elements.map((element) => element.propertyName?.text ?? element.name.text);
+    if (
+      namedOps.every((name) => name === "default" || name === compatSymbol || GEOMETRY_ENGINE_COVERED_OPS.has(name))
+    ) {
+      if (!specifiers.includes(compatSymbol)) {
+        specifiers.push(compatSymbol);
       }
+    } else {
       return undefined;
     }
   }
@@ -1838,11 +2982,942 @@ function buildGeometryEngineCompatImport(
   return `import { ${uniqueSpecifiers.join(", ")} } from "${compatImportPath}";`;
 }
 
+function rewriteNamedGeometryEngineCalls(sourceFile: ts.SourceFile, statement: ts.ImportDeclaration): TextEdit[] {
+  const namedBindings = statement.importClause?.namedBindings;
+  if (!namedBindings || !ts.isNamedImports(namedBindings)) {
+    return [];
+  }
+  const localToOp = new Map<string, string>();
+  for (const element of namedBindings.elements) {
+    const importedName = element.propertyName?.text ?? element.name.text;
+    if (GEOMETRY_ENGINE_COVERED_OPS.has(importedName)) {
+      localToOp.set(element.name.text, importedName);
+    }
+  }
+  if (localToOp.size === 0) {
+    return [];
+  }
+  const edits: TextEdit[] = [];
+  walk(sourceFile, (node) => {
+    if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) {
+      return;
+    }
+    const op = localToOp.get(node.expression.text);
+    if (!op) {
+      return;
+    }
+    edits.push({
+      start: node.expression.getStart(sourceFile),
+      end: node.expression.getEnd(),
+      text: `geometryEngineCompat.${geometryEngineCompatMethod(op)}`,
+    });
+  });
+  return edits;
+}
+
 /**
  * Collect the local identifier names that resolve to a geometryEngine import
  * binding (default or namespace import). Used to scope the uncovered-op scan to
  * genuine `<geometryEngine>.<op>()` call sites.
  */
+function geometryEngineCompatMethod(op: string): string {
+  return GEOMETRY_ENGINE_COMPAT_METHOD[op] ?? op;
+}
+
+function rewriteGeodesicBufferPropertyAccess(sourceFile: ts.SourceFile, statement: ts.ImportDeclaration): TextEdit[] {
+  const locals = new Set<string>();
+  if (statement.importClause?.name) {
+    locals.add(statement.importClause.name.text);
+  }
+  const named = statement.importClause?.namedBindings;
+  if (named && ts.isNamespaceImport(named)) {
+    locals.add(named.name.text);
+  }
+  if (locals.size === 0) {
+    return [];
+  }
+  const edits: TextEdit[] = [];
+  walk(sourceFile, (node) => {
+    if (!ts.isPropertyAccessExpression(node) || node.name.text !== "geodesicBuffer") {
+      return;
+    }
+    if (!ts.isIdentifier(node.expression) || !locals.has(node.expression.text)) {
+      return;
+    }
+    edits.push({
+      start: node.name.getStart(sourceFile),
+      end: node.name.getEnd(),
+      text: "buffer",
+    });
+  });
+  return edits;
+}
+
+const GEOMETRY_OPERATOR_CALLS: Readonly<
+  Record<
+    string,
+    {
+      method: string;
+      shape: "distance" | "unary" | "predicate" | "union" | "measure";
+    }
+  >
+> = {
+  bufferOperator: { method: "buffer", shape: "distance" },
+  lengthOperator: { method: "planarLength", shape: "measure" },
+  geodeticLengthOperator: { method: "geodesicLength", shape: "measure" },
+  areaOperator: { method: "planarArea", shape: "measure" },
+  geodeticAreaOperator: { method: "geodesicArea", shape: "measure" },
+  containsOperator: { method: "contains", shape: "predicate" },
+  intersectsOperator: { method: "intersects", shape: "predicate" },
+  differenceOperator: { method: "difference", shape: "predicate" },
+  unionOperator: { method: "union", shape: "union" },
+  convexHullOperator: { method: "convexHull", shape: "unary" },
+  simplifyOperator: { method: "simplify", shape: "unary" },
+  centroidOperator: { method: "centroid", shape: "unary" },
+};
+
+const UNMAPPED_GEOMETRY_OPERATORS = new Set([
+  "generalizeOperator",
+  "projectOperator",
+  "overlapsOperator",
+  "distanceOperator",
+]);
+
+const PORTAL_METHODS = new Set(["search", "getItem", "openFeatureLayer", "load", "when"]);
+
+function isSafePortalCompatCall(node: ts.NewExpression): { ok: true } | { ok: false; reason: string } {
+  const args = node.arguments;
+  if (!args || args.length === 0) {
+    return { ok: true };
+  }
+  if (args.length !== 1 || !ts.isObjectLiteralExpression(args[0])) {
+    return {
+      ok: false,
+      reason: "Portal constructor is not a single object literal.",
+    };
+  }
+  const unsupported = collectUnsupportedPropertyNames(args[0], new Set(["url", "token", "apiKey"]));
+  if (unsupported.length > 0) {
+    return {
+      ok: false,
+      reason: `Portal options include unsupported properties: ${unsupported.join(", ")}.`,
+    };
+  }
+  return { ok: true };
+}
+
+function isSafeDirectionsViewModelCompatCall(node: ts.NewExpression): { ok: true } | { ok: false; reason: string } {
+  const args = node.arguments;
+  if (!args || args.length === 0) {
+    return { ok: true };
+  }
+  if (args.length !== 1 || !ts.isObjectLiteralExpression(args[0])) {
+    return {
+      ok: false,
+      reason: "DirectionsViewModel constructor is not a single object literal.",
+    };
+  }
+  const unsupported = collectUnsupportedPropertyNames(args[0], new Set(["view"]));
+  if (unsupported.length > 0) {
+    return {
+      ok: false,
+      reason: `DirectionsViewModel options include unsupported properties: ${unsupported.join(", ")}.`,
+    };
+  }
+  return { ok: true };
+}
+
+function collectConstructedClassNames(sourceFile: ts.SourceFile): Map<string, string> {
+  const constructed = new Map<string, string>();
+  walk(sourceFile, (node) => {
+    if (!ts.isVariableDeclaration(node) || !ts.isIdentifier(node.name) || !node.initializer) {
+      return;
+    }
+    if (ts.isNewExpression(node.initializer) && ts.isIdentifier(node.initializer.expression)) {
+      constructed.set(node.name.text, node.initializer.expression.text);
+    }
+  });
+  return constructed;
+}
+
+function newExpressionUsesPinnedClass(
+  node: ts.NewExpression,
+  constructed: ReadonlyMap<string, string>,
+  pinnedClasses: ReadonlySet<string>,
+): boolean {
+  let used = false;
+  const visit = (current: ts.Node): void => {
+    if (used) {
+      return;
+    }
+    if (ts.isIdentifier(current)) {
+      const className = constructed.get(current.text);
+      if (className && pinnedClasses.has(className)) {
+        used = true;
+      }
+    }
+    ts.forEachChild(current, visit);
+  };
+  for (const argument of node.arguments ?? []) {
+    visit(argument);
+  }
+  return used;
+}
+
+function renameObjectProperty(node: ts.NewExpression, sourceFile: ts.SourceFile, from: string, to: string): TextEdit[] {
+  const arg = node.arguments?.[0];
+  if (!arg || !ts.isObjectLiteralExpression(arg)) {
+    return [];
+  }
+  const edits: TextEdit[] = [];
+  for (const property of arg.properties) {
+    if (ts.isShorthandPropertyAssignment(property) && property.name.text === from) {
+      edits.push({
+        start: property.getStart(sourceFile),
+        end: property.getEnd(),
+        text: `${to}: ${property.name.text}`,
+      });
+      continue;
+    }
+    if (!ts.isPropertyAssignment(property) || getObjectPropertyName(property) !== from) {
+      continue;
+    }
+    if (ts.isIdentifier(property.name)) {
+      edits.push({
+        start: property.name.getStart(sourceFile),
+        end: property.name.getEnd(),
+        text: to,
+      });
+    }
+  }
+  return edits;
+}
+
+function portalInstanceUsesUnsupportedMethod(sourceFile: ts.SourceFile, node: ts.NewExpression): boolean {
+  const parent = node.parent;
+  const localName =
+    ts.isVariableDeclaration(parent) && ts.isIdentifier(parent.name)
+      ? parent.name.text
+      : ts.isBinaryExpression(parent) && ts.isIdentifier(parent.left)
+        ? parent.left.text
+        : undefined;
+  if (!localName) {
+    return false;
+  }
+  let unsupported = false;
+  walk(sourceFile, (current) => {
+    if (
+      ts.isPropertyAccessExpression(current) &&
+      ts.isIdentifier(current.expression) &&
+      current.expression.text === localName &&
+      !PORTAL_METHODS.has(current.name.text)
+    ) {
+      unsupported = true;
+    }
+  });
+  return unsupported;
+}
+
+export function codemodDropsModulePath(modulePath: string): boolean {
+  const canonical = canonicalArcGisModulePath(modulePath).replace(/\.js$/, "");
+  if (canonical === "@arcgis/core/rest/route") {
+    return true;
+  }
+  const operator = operatorNameFromModule(canonical);
+  return operator !== undefined && GEOMETRY_OPERATOR_CALLS[operator] !== undefined;
+}
+
+function operatorNameFromModule(modulePath: string): string | undefined {
+  const canonical = canonicalArcGisModulePath(modulePath).replace(/\.js$/, "");
+  const marker = "/geometry/operators/";
+  const index = canonical.indexOf(marker);
+  if (index < 0) {
+    return undefined;
+  }
+  return canonical.slice(index + marker.length);
+}
+
+function measureUnitText(argument: ts.Expression | undefined, sourceFile: ts.SourceFile): string | undefined {
+  if (!argument) {
+    return "";
+  }
+  if (!ts.isObjectLiteralExpression(argument)) {
+    return undefined;
+  }
+  const names = argument.properties.map((property) => getObjectPropertyName(property));
+  if (names.some((name) => name !== "unit")) {
+    return undefined;
+  }
+  const unit = argument.properties.find(
+    (property) => ts.isPropertyAssignment(property) && getObjectPropertyName(property) === "unit",
+  );
+  if (!unit || !ts.isPropertyAssignment(unit)) {
+    return "";
+  }
+  return unit.initializer.getText(sourceFile);
+}
+
+function rewriteLegacyModuleLoaders(options: {
+  source: string;
+  sourceFile: ts.SourceFile;
+  file: string;
+  target: CodemodTarget;
+}): {
+  edits: TextEdit[];
+  rewrittenKinds: CodemodConstructorKind[];
+  manualTodos: MigrationTodo[];
+  todoCommentEdits: TextEdit[];
+  compatSymbols: string[];
+} {
+  const edits: TextEdit[] = [];
+  const rewrittenKinds: CodemodConstructorKind[] = [];
+  const manualTodos: MigrationTodo[] = [];
+  const todoCommentEdits: TextEdit[] = [];
+  const compatSymbols: string[] = [];
+  if (options.target !== "honua-compat") {
+    return {
+      edits,
+      rewrittenKinds,
+      manualTodos,
+      todoCommentEdits,
+      compatSymbols,
+    };
+  }
+  rewriteImportEqualsGeometry(options, edits, compatSymbols, rewrittenKinds);
+  rewriteGeometryOperators(options, edits, manualTodos, compatSymbols, rewrittenKinds);
+  rewriteRestRouteSolve(options, edits, compatSymbols, rewrittenKinds);
+  rewriteAmdFactories(options, edits, compatSymbols, rewrittenKinds);
+  return {
+    edits,
+    rewrittenKinds,
+    manualTodos,
+    todoCommentEdits,
+    compatSymbols,
+  };
+}
+
+function rewriteImportEqualsGeometry(
+  options: { sourceFile: ts.SourceFile },
+  edits: TextEdit[],
+  compatSymbols: string[],
+  rewrittenKinds: CodemodConstructorKind[],
+): void {
+  for (const statement of options.sourceFile.statements) {
+    if (!ts.isImportEqualsDeclaration(statement) || !ts.isExternalModuleReference(statement.moduleReference)) {
+      continue;
+    }
+    const expression = statement.moduleReference.expression;
+    if (!ts.isStringLiteral(expression) || !ts.isIdentifier(statement.name)) {
+      continue;
+    }
+    const modulePath = canonicalArcGisModulePath(expression.text);
+    const spec = MODULE_TO_SPEC.get(modulePath) ?? MODULE_TO_SPEC.get(`${modulePath}.js`);
+    if (spec?.kind !== "geometry-engine") {
+      continue;
+    }
+    const localName = statement.name.text;
+    let rewrote = false;
+    walk(options.sourceFile, (node) => {
+      if (!ts.isCallExpression(node) || !ts.isPropertyAccessExpression(node.expression)) {
+        return;
+      }
+      if (!ts.isIdentifier(node.expression.expression) || node.expression.expression.text !== localName) {
+        return;
+      }
+      const op = node.expression.name.text;
+      if (!GEOMETRY_ENGINE_COVERED_OPS.has(op)) {
+        return;
+      }
+      edits.push({
+        start: node.expression.getStart(options.sourceFile),
+        end: node.expression.getEnd(),
+        text: `geometryEngineCompat.${geometryEngineCompatMethod(op)}`,
+      });
+      rewrote = true;
+    });
+    if (rewrote) {
+      compatSymbols.push("geometryEngineCompat");
+      rewrittenKinds.push("geometry-engine");
+    }
+  }
+}
+
+interface GeometryOperatorRewritePlan {
+  localName: string;
+  operator: string;
+  statement: ts.ImportDeclaration;
+  blocked: boolean;
+  callEdits: TextEdit[];
+}
+
+function geometryOperatorCallEdits(
+  call: ts.CallExpression,
+  mapped: {
+    method: string;
+    shape: "distance" | "unary" | "predicate" | "union" | "measure";
+  },
+  sourceFile: ts.SourceFile,
+): TextEdit[] | undefined {
+  const args = call.arguments;
+  const callee = call.expression;
+  const calleeEdit = (method: string): TextEdit => ({
+    start: callee.getStart(sourceFile),
+    end: callee.getEnd(),
+    text: `geometryEngineCompat.${method}`,
+  });
+  if (mapped.shape === "distance" && args.length === 2) {
+    return [calleeEdit("buffer")];
+  }
+  if (mapped.shape === "distance" && args.length === 3) {
+    const unit = measureUnitText(args[2], sourceFile);
+    if (unit === undefined) {
+      return undefined;
+    }
+    const edits = [calleeEdit("buffer")];
+    if (unit === "") {
+      edits.push({ start: args[1].getEnd(), end: args[2].getEnd(), text: "" });
+    } else {
+      edits.push({
+        start: args[2].getStart(sourceFile),
+        end: args[2].getEnd(),
+        text: unit,
+      });
+    }
+    return edits;
+  }
+  if (mapped.shape === "unary" && args.length === 1) {
+    return [calleeEdit(mapped.method)];
+  }
+  if (mapped.shape === "predicate" && args.length === 2) {
+    return [calleeEdit(mapped.method)];
+  }
+  if (mapped.shape === "union" && args.length === 2) {
+    return [
+      calleeEdit("union"),
+      {
+        start: args[0].getStart(sourceFile),
+        end: args[0].getStart(sourceFile),
+        text: "[",
+      },
+      { start: args[1].getEnd(), end: args[1].getEnd(), text: "]" },
+    ];
+  }
+  if (mapped.shape === "measure" && (args.length === 1 || args.length === 2)) {
+    const unit = args.length === 2 ? measureUnitText(args[1], sourceFile) : "";
+    if (unit === undefined) {
+      return undefined;
+    }
+    const edits = [calleeEdit(mapped.method)];
+    if (args.length === 2 && unit === "") {
+      edits.push({ start: args[0].getEnd(), end: args[1].getEnd(), text: "" });
+    } else if (args.length === 2) {
+      edits.push({
+        start: args[1].getStart(sourceFile),
+        end: args[1].getEnd(),
+        text: unit,
+      });
+    }
+    return edits;
+  }
+  return undefined;
+}
+
+function geometryOperatorRewritePlans(sourceFile: ts.SourceFile): GeometryOperatorRewritePlan[] {
+  const plans: GeometryOperatorRewritePlan[] = [];
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
+      continue;
+    }
+    const operator = operatorNameFromModule(statement.moduleSpecifier.text);
+    const named = statement.importClause?.namedBindings;
+    if (!operator || !named || !ts.isNamespaceImport(named)) {
+      continue;
+    }
+    const localName = named.name.text;
+    const mapped = GEOMETRY_OPERATOR_CALLS[operator];
+    if (!mapped) {
+      plans.push({
+        localName,
+        operator,
+        statement,
+        blocked: true,
+        callEdits: [],
+      });
+      continue;
+    }
+    let blocked = false;
+    const callEdits: TextEdit[] = [];
+    walk(sourceFile, (node) => {
+      if (!ts.isIdentifier(node) || node.text !== localName || ts.isNamespaceImport(node.parent)) {
+        return;
+      }
+      if (isPropertyAccessName(node)) {
+        return;
+      }
+      const access = ts.isPropertyAccessExpression(node.parent) ? node.parent : undefined;
+      const call = access && ts.isCallExpression(access.parent) ? access.parent : undefined;
+      if (!access || !call || access.name.text !== "execute" || call.expression !== access) {
+        blocked = true;
+        return;
+      }
+      const edits = geometryOperatorCallEdits(call, mapped, sourceFile);
+      if (!edits) {
+        blocked = true;
+        return;
+      }
+      callEdits.push(...edits);
+    });
+    plans.push({ localName, operator, statement, blocked, callEdits });
+  }
+  return plans;
+}
+
+function rewritableGeometryOperatorLocals(sourceFile: ts.SourceFile): Set<string> {
+  return new Set(
+    geometryOperatorRewritePlans(sourceFile)
+      .filter((plan) => !plan.blocked && plan.callEdits.length > 0)
+      .map((plan) => plan.localName),
+  );
+}
+
+function rewriteGeometryOperators(
+  options: { source: string; sourceFile: ts.SourceFile; file: string },
+  edits: TextEdit[],
+  manualTodos: MigrationTodo[],
+  compatSymbols: string[],
+  rewrittenKinds: CodemodConstructorKind[],
+): void {
+  for (const plan of geometryOperatorRewritePlans(options.sourceFile)) {
+    if (UNMAPPED_GEOMETRY_OPERATORS.has(plan.operator)) {
+      const location = options.sourceFile.getLineAndCharacterOfPosition(plan.statement.getStart(options.sourceFile));
+      manualTodos.push({
+        kind: "geometry-engine",
+        file: options.file,
+        line: location.line + 1,
+        column: location.character + 1,
+        reason: `${plan.operator} is not covered by geometryEngineCompat`,
+        difficulty: "moderate",
+      });
+    }
+    if (plan.blocked || plan.callEdits.length === 0) {
+      continue;
+    }
+    edits.push(...plan.callEdits);
+    const bounds = expandToFullLine(
+      options.source,
+      plan.statement.getStart(options.sourceFile),
+      plan.statement.getEnd(),
+    );
+    edits.push({ start: bounds.start, end: bounds.end, text: "" });
+    compatSymbols.push("geometryEngineCompat");
+    rewrittenKinds.push("geometry-engine");
+  }
+}
+
+function routeSolveCallMatches(node: ts.CallExpression): boolean {
+  if (node.arguments.length !== 2 || !ts.isObjectLiteralExpression(node.arguments[1])) {
+    return false;
+  }
+  const names = node.arguments[1].properties.map((property) => getObjectPropertyName(property));
+  return names.every((name) => name === "stops" || name === "returnDirections");
+}
+
+function rewriteRestRouteSolve(
+  options: { source: string; sourceFile: ts.SourceFile },
+  edits: TextEdit[],
+  compatSymbols: string[],
+  rewrittenKinds: CodemodConstructorKind[],
+): void {
+  const imports: ts.ImportDeclaration[] = [];
+  const functionLocals = new Set<string>();
+  for (const statement of options.sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
+      continue;
+    }
+    const canonical = canonicalArcGisModulePath(statement.moduleSpecifier.text).replace(/\.js$/, "");
+    if (canonical !== "@arcgis/core/rest/route") {
+      continue;
+    }
+    const named = statement.importClause?.namedBindings;
+    if (!named || !ts.isNamedImports(named)) {
+      continue;
+    }
+    imports.push(statement);
+    for (const element of named.elements) {
+      const imported = element.propertyName?.text ?? element.name.text;
+      if (imported === "solve") {
+        functionLocals.add(element.name.text);
+      }
+    }
+  }
+  if (functionLocals.size === 0) {
+    return;
+  }
+  const calls: ts.CallExpression[] = [];
+  const blocked = new Set<string>();
+  walk(options.sourceFile, (node) => {
+    if (!ts.isIdentifier(node) || !functionLocals.has(node.text) || ts.isImportSpecifier(node.parent)) {
+      return;
+    }
+    if (isPropertyAccessName(node)) {
+      return;
+    }
+    const call = ts.isCallExpression(node.parent) && node.parent.expression === node ? node.parent : undefined;
+    if (!call || !routeSolveCallMatches(call)) {
+      blocked.add(node.text);
+      return;
+    }
+    calls.push(call);
+  });
+  const rewritten = new Set<string>();
+  for (const call of calls) {
+    if (!ts.isIdentifier(call.expression) || blocked.has(call.expression.text)) {
+      continue;
+    }
+    const params = call.arguments[1];
+    const url = call.arguments[0];
+    if (!params || !url) {
+      continue;
+    }
+    edits.push({
+      start: call.expression.getStart(options.sourceFile),
+      end: params.getStart(options.sourceFile),
+      text: `new RouteTaskCompat({ url: ${url.getText(options.sourceFile)} }).solve(`,
+    });
+    compatSymbols.push("RouteTaskCompat");
+    rewrittenKinds.push("route-task");
+    rewritten.add(call.expression.text);
+  }
+  for (const statement of imports) {
+    const named = statement.importClause?.namedBindings;
+    if (!named || !ts.isNamedImports(named)) {
+      continue;
+    }
+    const kept: string[] = [];
+    let dropped = false;
+    for (const element of named.elements) {
+      if (rewritten.has(element.name.text) && !blocked.has(element.name.text)) {
+        dropped = true;
+        continue;
+      }
+      kept.push(element.getText(options.sourceFile));
+    }
+    if (!dropped) {
+      continue;
+    }
+    if (kept.length === 0) {
+      const bounds = expandToFullLine(options.source, statement.getStart(options.sourceFile), statement.getEnd());
+      edits.push({ start: bounds.start, end: bounds.end, text: "" });
+      continue;
+    }
+    if (!ts.isStringLiteral(statement.moduleSpecifier)) {
+      continue;
+    }
+    const specifier = statement.moduleSpecifier;
+    const quote = specifier.getText(options.sourceFile).startsWith("'") ? "'" : '"';
+    edits.push({
+      start: statement.getStart(options.sourceFile),
+      end: statement.getEnd(),
+      text: `import { ${kept.join(", ")} } from ${quote}${specifier.text}${quote};`,
+    });
+  }
+}
+
+function rewriteAmdFactories(
+  options: { sourceFile: ts.SourceFile },
+  edits: TextEdit[],
+  compatSymbols: string[],
+  rewrittenKinds: CodemodConstructorKind[],
+): void {
+  walk(options.sourceFile, (node) => {
+    if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) {
+      return;
+    }
+    if (node.expression.text !== "require" && node.expression.text !== "define") {
+      return;
+    }
+    const args = node.arguments;
+    const array =
+      node.expression.text === "define" &&
+      args.length >= 3 &&
+      ts.isStringLiteral(args[0]) &&
+      ts.isArrayLiteralExpression(args[1])
+        ? args[1]
+        : ts.isArrayLiteralExpression(args[0])
+          ? args[0]
+          : undefined;
+    const factory = args[args.length - 1];
+    if (!array || (!ts.isFunctionExpression(factory) && !ts.isArrowFunction(factory)) || !ts.isBlock(factory.body)) {
+      return;
+    }
+    const parameters = factory.parameters;
+    let body = factory.body.getText(options.sourceFile).slice(1, -1);
+    const keptModules: string[] = [];
+    const keptParams: string[] = [];
+    let changed = false;
+    array.elements.forEach((element, index) => {
+      const param = parameters[index];
+      const paramName = param && ts.isIdentifier(param.name) ? param.name.text : undefined;
+      if (!ts.isStringLiteral(element) || !paramName) {
+        keptModules.push(element.getText(options.sourceFile));
+        if (paramName) {
+          keptParams.push(paramName);
+        }
+        return;
+      }
+      const modulePath = canonicalArcGisModulePath(element.text);
+      const spec = MODULE_TO_SPEC.get(modulePath) ?? MODULE_TO_SPEC.get(`${modulePath}.js`);
+      if (!spec || !isKindSupportedForTarget(spec.kind, "honua-compat") || spec.kind === "geometry-engine") {
+        if (spec?.kind === "geometry-engine") {
+          const pattern = new RegExp(`\\b${paramName}\\.(\\w+)\\b`, "g");
+          body = body.replace(pattern, (full, op: string) => {
+            if (!GEOMETRY_ENGINE_COVERED_OPS.has(op)) {
+              return full;
+            }
+            changed = true;
+            compatSymbols.push("geometryEngineCompat");
+            return `geometryEngineCompat.${geometryEngineCompatMethod(op)}`;
+          });
+        }
+        keptModules.push(element.getText(options.sourceFile));
+        keptParams.push(param.getText(options.sourceFile));
+        return;
+      }
+      const constructors: ts.NewExpression[] = [];
+      walk(factory.body, (inner) => {
+        if (ts.isNewExpression(inner) && ts.isIdentifier(inner.expression) && inner.expression.text === paramName) {
+          constructors.push(inner);
+        }
+      });
+      if (
+        constructors.length === 0 ||
+        constructors.some((constructed) => !isSafeConstructorCall(spec.kind, constructed, "honua-compat").ok)
+      ) {
+        keptModules.push(element.getText(options.sourceFile));
+        keptParams.push(param.getText(options.sourceFile));
+        return;
+      }
+      body = body.replace(new RegExp(`\\bnew\\s+${paramName}\\b`, "g"), `new ${spec.compatSymbol}`);
+      compatSymbols.push(spec.compatSymbol);
+      rewrittenKinds.push(spec.kind);
+      changed = true;
+    });
+    if (!changed) {
+      return;
+    }
+    const inlined = keptModules.length === 0;
+    const replacement = inlined
+      ? body.trim()
+      : `${node.expression.text}([${keptModules.join(", ")}], function (${keptParams.join(", ")}) {${body}})`;
+    const host = ts.isExpressionStatement(node.parent) ? node.parent : node;
+    edits.push({
+      start: host.getStart(options.sourceFile),
+      end: host.getEnd(),
+      text: host !== node && !inlined ? `${replacement};` : replacement,
+    });
+  });
+}
+
+function isRestLocatorModule(modulePath: string): boolean {
+  const canonical = canonicalArcGisModulePath(modulePath).replace(/\.js$/, "");
+  return canonical === "@arcgis/core/rest/locator";
+}
+
+function restLocatorFunctionLocals(sourceFile: ts.SourceFile): Map<string, string> {
+  const locals = new Map<string, string>();
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
+      continue;
+    }
+    if (!isRestLocatorModule(statement.moduleSpecifier.text)) {
+      continue;
+    }
+    const named = statement.importClause?.namedBindings;
+    if (!named || !ts.isNamedImports(named)) {
+      continue;
+    }
+    for (const element of named.elements) {
+      const importedName = element.propertyName?.text ?? element.name.text;
+      if (LOCATOR_REST_FUNCTIONS.has(importedName)) {
+        locals.set(element.name.text, importedName);
+      }
+    }
+  }
+  return locals;
+}
+
+function restLocatorNamespaceLocals(sourceFile: ts.SourceFile): Set<string> {
+  const locals = new Set<string>();
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
+      continue;
+    }
+    if (!isRestLocatorModule(statement.moduleSpecifier.text)) {
+      continue;
+    }
+    const named = statement.importClause?.namedBindings;
+    if (named && ts.isNamespaceImport(named)) {
+      locals.add(named.name.text);
+    }
+  }
+  return locals;
+}
+
+function locatorRestCallFunctionName(
+  node: ts.CallExpression,
+  functionLocals: ReadonlyMap<string, string>,
+  namespaceLocals: ReadonlySet<string>,
+): string | undefined {
+  const callee = node.expression;
+  if (ts.isIdentifier(callee)) {
+    return functionLocals.get(callee.text);
+  }
+  if (
+    ts.isPropertyAccessExpression(callee) &&
+    ts.isIdentifier(callee.expression) &&
+    namespaceLocals.has(callee.expression.text) &&
+    LOCATOR_REST_FUNCTIONS.has(callee.name.text)
+  ) {
+    return callee.name.text;
+  }
+  return undefined;
+}
+
+/**
+ * A rest locator function stays on Esri unless every use is `fn(url, params)`.
+ * The class method takes the parameters only; the URL becomes `LocatorCompat`'s
+ * `url`. A third `requestOptions` argument, or passing the function itself
+ * around, is left as an Esri call so a Point inside it is not rewritten.
+ */
+function restLocatorLocalsWithheld(sourceFile: ts.SourceFile): Set<string> {
+  const functionLocals = restLocatorFunctionLocals(sourceFile);
+  const namespaceLocals = restLocatorNamespaceLocals(sourceFile);
+  const withheld = new Set<string>();
+  if (functionLocals.size === 0 && namespaceLocals.size === 0) {
+    return withheld;
+  }
+  walk(sourceFile, (node) => {
+    if (!ts.isIdentifier(node)) {
+      return;
+    }
+    const functionName = functionLocals.get(node.text);
+    const isNamespace = namespaceLocals.has(node.text);
+    if (!functionName && !isNamespace) {
+      return;
+    }
+    if (ts.isImportSpecifier(node.parent) || ts.isNamespaceImport(node.parent)) {
+      return;
+    }
+    const call = ts.isCallExpression(node.parent)
+      ? node.parent
+      : ts.isPropertyAccessExpression(node.parent) && ts.isCallExpression(node.parent.parent)
+        ? node.parent.parent
+        : undefined;
+    const calledName = call ? locatorRestCallFunctionName(call, functionLocals, namespaceLocals) : undefined;
+    if (
+      call &&
+      calledName &&
+      call.arguments.length === 2 &&
+      call.expression === (ts.isCallExpression(node.parent) ? node : node.parent)
+    ) {
+      return;
+    }
+    withheld.add(node.text);
+  });
+  return withheld;
+}
+
+function rewriteRestLocatorCalls(options: {
+  source: string;
+  sourceFile: ts.SourceFile;
+  file: string;
+  annotateTodos: boolean;
+  target: CodemodTarget;
+}): {
+  edits: TextEdit[];
+  rewrittenKinds: CodemodConstructorKind[];
+  manualTodos: MigrationTodo[];
+  todoCommentEdits: TextEdit[];
+  compatSymbols: string[];
+} {
+  const edits: TextEdit[] = [];
+  const rewrittenKinds: CodemodConstructorKind[] = [];
+  const manualTodos: MigrationTodo[] = [];
+  const todoCommentEdits: TextEdit[] = [];
+  const compatSymbols: string[] = [];
+  if (options.target !== "honua-compat") {
+    return {
+      edits,
+      rewrittenKinds,
+      manualTodos,
+      todoCommentEdits,
+      compatSymbols,
+    };
+  }
+  const functionLocals = restLocatorFunctionLocals(options.sourceFile);
+  const namespaceLocals = restLocatorNamespaceLocals(options.sourceFile);
+  const withheld = restLocatorLocalsWithheld(options.sourceFile);
+  if (functionLocals.size === 0 && namespaceLocals.size === 0) {
+    return {
+      edits,
+      rewrittenKinds,
+      manualTodos,
+      todoCommentEdits,
+      compatSymbols,
+    };
+  }
+  walk(options.sourceFile, (node) => {
+    if (!ts.isCallExpression(node) || node.arguments.length !== 2) {
+      return;
+    }
+    const functionName = locatorRestCallFunctionName(node, functionLocals, namespaceLocals);
+    if (!functionName) {
+      return;
+    }
+    const root = ts.isIdentifier(node.expression)
+      ? node.expression.text
+      : ts.isPropertyAccessExpression(node.expression) && ts.isIdentifier(node.expression.expression)
+        ? node.expression.expression.text
+        : undefined;
+    if (!root || withheld.has(root)) {
+      return;
+    }
+    const [urlArg, paramsArg] = node.arguments;
+    // Keep the parameter argument in place so a Point constructed inside it can
+    // still be rewritten. Only the URL moves onto LocatorCompat.
+    edits.push({
+      start: node.expression.getStart(options.sourceFile),
+      end: paramsArg.getStart(options.sourceFile),
+      text: `new LocatorCompat({ url: ${urlArg.getText(options.sourceFile)} }).${functionName}(`,
+    });
+    rewrittenKinds.push("locator");
+    compatSymbols.push("LocatorCompat");
+    const nodeStart = node.getStart(options.sourceFile);
+    const lineStart = findLineStartOffset(options.source, nodeStart);
+    todoCommentEdits.push({
+      start: lineStart,
+      end: lineStart,
+      text: `// ${TODO_MARKER}[locator]: set locator.provider before calling addressToLocations\n`,
+    });
+    const location = options.sourceFile.getLineAndCharacterOfPosition(nodeStart);
+    manualTodos.push({
+      kind: "locator",
+      file: options.file,
+      line: location.line + 1,
+      column: location.character + 1,
+      reason: "set locator.provider before calling addressToLocations",
+      difficulty: "moderate",
+    });
+  });
+  return {
+    edits,
+    rewrittenKinds,
+    manualTodos,
+    todoCommentEdits,
+    compatSymbols,
+  };
+}
+
 function collectGeometryEngineLocalNames(sourceFile: ts.SourceFile): Set<string> {
   const names = new Set<string>();
   for (const statement of sourceFile.statements) {
@@ -2201,7 +4276,13 @@ function rewriteEsriConfigImports(options: {
     if (!statement.importClause) {
       continue;
     }
-    if (MODULE_TO_SPEC.get(statement.moduleSpecifier.text)?.kind !== "esri-config") {
+    const configModulePath = canonicalArcGisModulePath(statement.moduleSpecifier.text);
+    if (
+      (MODULE_TO_SPEC.get(configModulePath) ?? MODULE_TO_SPEC.get(`${configModulePath}.js`))?.kind !== "esri-config"
+    ) {
+      continue;
+    }
+    if (esriConfigKeepsArcGisRuntime(options.sourceFile, statement)) {
       continue;
     }
 
@@ -2248,6 +4329,7 @@ function rewriteEsriConfigImports(options: {
       end: statement.getEnd(),
       text: replacement,
     });
+    edits.push(...removeEsriWorkerLoaderAssignments(options.sourceFile, options.source, statement));
     rewrittenKinds.push("esri-config");
   }
 
@@ -2257,6 +4339,185 @@ function rewriteEsriConfigImports(options: {
     manualTodos,
     todoCommentEdits,
   };
+}
+
+function isIdentityModule(modulePath: string): boolean {
+  return (
+    modulePath.endsWith("/identity/IdentityManager") ||
+    modulePath.endsWith("/identity/OAuthInfo") ||
+    modulePath.endsWith("/identity/Credential")
+  );
+}
+
+function rewriteIdentityCalls(options: {
+  source: string;
+  sourceFile: ts.SourceFile;
+  file: string;
+  compatImportPath: string;
+  annotateTodos: boolean;
+  target: CodemodTarget;
+}): {
+  edits: TextEdit[];
+  rewrittenKinds: CodemodConstructorKind[];
+  compatSymbols: string[];
+} {
+  const edits: TextEdit[] = [];
+  const rewrittenKinds: CodemodConstructorKind[] = [];
+  const compatSymbols = new Set<string>();
+  if (options.target !== "honua-compat") {
+    return { edits, rewrittenKinds, compatSymbols: [] };
+  }
+  for (const statement of options.sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
+      continue;
+    }
+    const canonical = canonicalArcGisModulePath(statement.moduleSpecifier.text);
+    if (!isIdentityModule(canonical)) {
+      continue;
+    }
+    // rewriteIdentityManagerImports preserves the local binding by aliasing
+    // the compat export, so no call-site edit or second compat import is
+    // needed for IdentityManager.
+    const hasDedicatedIdentityImportRewrite =
+      statement.moduleSpecifier.text.startsWith("@arcgis/core/") && canonical.endsWith("/identity/IdentityManager");
+    if (hasDedicatedIdentityImportRewrite) {
+      continue;
+    }
+    const localName = statement.importClause?.name?.text;
+    if (!localName) {
+      continue;
+    }
+    if (canonical.endsWith("/OAuthInfo")) {
+      walk(options.sourceFile, (node) => {
+        if (!ts.isIdentifier(node) || node.text !== localName) {
+          return;
+        }
+        if (!ts.isTypeReferenceNode(node.parent) || node.parent.typeName !== node) {
+          return;
+        }
+        edits.push({
+          start: node.getStart(options.sourceFile),
+          end: node.getEnd(),
+          text: "OAuthInfoCompat",
+        });
+      });
+      compatSymbols.add("OAuthInfoCompat");
+    } else if (canonical.endsWith("/IdentityManager")) {
+      walk(options.sourceFile, (node) => {
+        if (
+          !ts.isPropertyAccessExpression(node) ||
+          !ts.isIdentifier(node.expression) ||
+          node.expression.text !== localName
+        ) {
+          return;
+        }
+        edits.push({
+          start: node.expression.getStart(options.sourceFile),
+          end: node.expression.getEnd(),
+          text: "identityManager",
+        });
+      });
+      compatSymbols.add("identityManager");
+    } else if (canonical.endsWith("/Credential")) {
+      // Keep the local binding intact, including shorthand keys and shadowed names.
+      edits.push({
+        start: statement.getStart(options.sourceFile),
+        end: statement.getEnd(),
+        text: `import ${statement.importClause?.isTypeOnly ? "type " : ""}{ IdentityCredentialCompat as ${localName} } from ${JSON.stringify(options.compatImportPath)};`,
+      });
+      rewrittenKinds.push("identity-manager");
+      continue;
+    }
+    // IdentityManager's import is rewritten by rewriteIdentityManagerImports;
+    // adding a full-line delete here would overlap that replacement. OAuthInfo
+    // and Credential imports still need removal here because they have no
+    // dedicated import rewrite.
+    if (!hasDedicatedIdentityImportRewrite) {
+      const bounds = expandToFullLine(options.source, statement.getStart(options.sourceFile), statement.getEnd());
+      edits.push({ start: bounds.start, end: bounds.end, text: "" });
+    }
+    if (canonical.endsWith("/identity/Credential")) {
+      rewrittenKinds.push("identity-manager");
+    }
+  }
+  return { edits, rewrittenKinds, compatSymbols: Array.from(compatSymbols) };
+}
+
+function esriConfigKeepsArcGisRuntime(sourceFile: ts.SourceFile, configImport: ts.ImportDeclaration): boolean {
+  const localName = configImport.importClause?.name?.text;
+  if (!localName) {
+    return false;
+  }
+  let keep = false;
+  walk(sourceFile, (node) => {
+    if (
+      !ts.isPropertyAccessExpression(node) ||
+      !ts.isIdentifier(node.expression) ||
+      node.expression.text !== localName
+    ) {
+      return;
+    }
+    if (node.name.text === "apiKey" || node.name.text === "interceptors") {
+      keep = true;
+    }
+    if (
+      node.name.text === "request" &&
+      node.parent &&
+      ts.isPropertyAccessExpression(node.parent) &&
+      node.parent.name.text === "interceptors"
+    ) {
+      keep = true;
+    }
+  });
+  return keep;
+}
+
+function removeEsriWorkerLoaderAssignments(
+  sourceFile: ts.SourceFile,
+  source: string,
+  configImport: ts.ImportDeclaration,
+): TextEdit[] {
+  if (!/(?:https?:)?\/\/js\.arcgis\.com(?:[/?#"'\s]|$)/i.test(source)) {
+    return [];
+  }
+  const localName = configImport.importClause?.name?.text;
+  if (!localName) {
+    return [];
+  }
+  const edits: TextEdit[] = [];
+  let noted = false;
+  walk(sourceFile, (node) => {
+    if (!ts.isBinaryExpression(node) || node.operatorToken.kind !== ts.SyntaxKind.EqualsToken) {
+      return;
+    }
+    if (!ts.isPropertyAccessExpression(node.left)) {
+      return;
+    }
+    const property = node.left.name.text;
+    if (property !== "loaderUrl" && property !== "loaderScript" && property !== "loaderConfig") {
+      return;
+    }
+    let workers: ts.Expression = node.left.expression;
+    while (
+      ts.isParenthesizedExpression(workers) ||
+      ts.isAsExpression(workers) ||
+      ts.isTypeAssertionExpression(workers)
+    ) {
+      workers = workers.expression;
+    }
+    if (!ts.isPropertyAccessExpression(workers) || workers.name.text !== "workers") {
+      return;
+    }
+    const statement = node.parent;
+    if (!statement || !ts.isExpressionStatement(statement)) {
+      return;
+    }
+    const bounds = expandToFullLine(source, statement.getStart(sourceFile), statement.getEnd());
+    const note = noted ? "" : `/* ${TODO_MARKER}[esri-config]: removed a js.arcgis.com worker loader assignment */\n`;
+    noted = true;
+    edits.push({ start: bounds.start, end: bounds.end, text: note });
+  });
+  return edits;
 }
 
 function buildEsriConfigCompatImport(
@@ -2684,6 +4945,7 @@ function createEmptyByKindMetrics(): CodemodMetricsByKind {
     "home-widget": { total: 0, autoMigrated: 0, manual: 0 },
     "basemap-toggle-widget": { total: 0, autoMigrated: 0, manual: 0 },
     "locate-widget": { total: 0, autoMigrated: 0, manual: 0 },
+    locator: { total: 0, autoMigrated: 0, manual: 0 },
     "scale-bar-widget": { total: 0, autoMigrated: 0, manual: 0 },
     "search-widget": { total: 0, autoMigrated: 0, manual: 0 },
     "basemap-layer-list-widget": { total: 0, autoMigrated: 0, manual: 0 },
@@ -2715,6 +4977,8 @@ function createEmptyByKindMetrics(): CodemodMetricsByKind {
     "wms-layer": { total: 0, autoMigrated: 0, manual: 0 },
     "wfs-layer": { total: 0, autoMigrated: 0, manual: 0 },
     "imagery-layer": { total: 0, autoMigrated: 0, manual: 0 },
+    portal: { total: 0, autoMigrated: 0, manual: 0 },
+    "directions-view-model": { total: 0, autoMigrated: 0, manual: 0 },
     "geometry-engine": { total: 0, autoMigrated: 0, manual: 0 },
   };
 }
@@ -2732,9 +4996,10 @@ function collectSupportedImports(
       continue;
     }
 
-    const modulePath = statement.moduleSpecifier.text;
-    const normalizedModulePath = normalizeArcGisModulePath(modulePath);
-    const spec = MODULE_TO_SPEC.get(modulePath) ?? MODULE_TO_SPEC.get(normalizedModulePath);
+    const rawModulePath = statement.moduleSpecifier.text;
+    const modulePath = canonicalArcGisModulePath(rawModulePath);
+    const normalizedModulePath = modulePath;
+    const spec = MODULE_TO_SPEC.get(modulePath) ?? MODULE_TO_SPEC.get(`${modulePath}.js`);
 
     const importClause = statement.importClause;
     if (!importClause) {
@@ -2780,8 +5045,8 @@ function collectSupportedImports(
       continue;
     }
 
-    if (modulePath.startsWith(".") || modulePath.startsWith("/")) {
-      const resolvedImportPath = resolveLocalModulePath(file, modulePath, sourceFilesSet);
+    if (rawModulePath.startsWith(".") || rawModulePath.startsWith("/")) {
+      const resolvedImportPath = resolveLocalModulePath(file, rawModulePath, sourceFilesSet);
       if (!resolvedImportPath) {
         continue;
       }
@@ -2844,6 +5109,27 @@ function collectSupportedImports(
         sourceKind: "require",
       });
     }
+  }
+
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportEqualsDeclaration(statement) || !ts.isExternalModuleReference(statement.moduleReference)) {
+      continue;
+    }
+    const expression = statement.moduleReference.expression;
+    if (!ts.isStringLiteral(expression)) {
+      continue;
+    }
+    const modulePath = canonicalArcGisModulePath(expression.text);
+    const spec = MODULE_TO_SPEC.get(modulePath) ?? MODULE_TO_SPEC.get(`${modulePath}.js`);
+    if (!spec || !ts.isIdentifier(statement.name)) {
+      continue;
+    }
+    result.push({
+      kind: spec.kind,
+      localName: statement.name.text,
+      importStyle: "identifier",
+      sourceKind: "import",
+    });
   }
 
   return result;
@@ -2987,7 +5273,10 @@ function ensureCompatNamedImports(
     if (namedBindings && ts.isNamedImports(namedBindings)) {
       const existingSpecifiers = namedBindings.elements.map((element) => element.getText(sourceFile));
       const existingLocalNames = new Set(namedBindings.elements.map((element) => element.name.text));
-      const missing = symbols.filter((symbol) => !existingLocalNames.has(symbol));
+      const existingImportedNames = new Set(
+        namedBindings.elements.map((element) => element.propertyName?.text ?? element.name.text),
+      );
+      const missing = symbols.filter((symbol) => !existingImportedNames.has(symbol) && !existingLocalNames.has(symbol));
       if (missing.length === 0) {
         return { nextSource: source, changed: false };
       }
@@ -3206,6 +5495,130 @@ function findImportInsertionIndex(sourceFile: ts.SourceFile): number {
   return index;
 }
 
+function arcGisDollarImportRewrite(
+  node: ts.Node,
+  sourceFile: ts.SourceFile,
+  compatImportPath: string,
+  target: CodemodTarget,
+):
+  | {
+      start: number;
+      end: number;
+      text: string;
+      kinds: CodemodConstructorKind[];
+    }
+  | undefined {
+  if (target !== "honua-compat" || !ts.isCallExpression(node) || !isArcGisDollarImportCall(node)) {
+    return undefined;
+  }
+  const specifiers = dollarImportSpecifiers(node);
+  if (!specifiers) {
+    return undefined;
+  }
+
+  const parts: string[] = [];
+  const kinds: CodemodConstructorKind[] = [];
+  const awaited = ts.isAwaitExpression(node.parent);
+  for (const modulePath of specifiers) {
+    const spec = MODULE_TO_SPEC.get(modulePath) ?? MODULE_TO_SPEC.get(normalizeArcGisModulePath(modulePath));
+    const mappedOperator = GEOMETRY_OPERATOR_CALLS[operatorNameFromModule(modulePath) ?? ""];
+    if (isGeodeticLengthOperatorModule(modulePath) && target === "honua-compat") {
+      parts.push(geodeticLengthOperatorShim());
+      kinds.push("geometry-engine");
+    } else if (mappedOperator && target === "honua-compat") {
+      parts.push(mappedOperatorShim(mappedOperator, awaited));
+      kinds.push("geometry-engine");
+    } else if (spec && isKindSupportedForTarget(spec.kind, target)) {
+      parts.push(compatDollarImportText(compatImportPath, spec.compatSymbol, awaited));
+      kinds.push(spec.kind);
+    } else {
+      parts.push(`$arcgis.import(${JSON.stringify(modulePath)})`);
+    }
+  }
+  if (kinds.length === 0) {
+    return undefined;
+  }
+
+  const text = specifiers.length === 1 ? parts[0] : `Promise.all([${parts.join(", ")}])`;
+  const replaced = awaited ? node.parent : node;
+  return {
+    start: replaced.getStart(sourceFile),
+    end: replaced.getEnd(),
+    text,
+    kinds,
+  };
+}
+
+function isGeodeticLengthOperatorModule(modulePath: string): boolean {
+  return modulePath.includes("geometry/operators/geodeticLengthOperator");
+}
+
+function mappedOperatorShim(
+  mapped: {
+    method: string;
+    shape: "distance" | "unary" | "predicate" | "union" | "measure";
+  },
+  awaited: boolean,
+): string {
+  let execute: string;
+  if (mapped.shape === "distance") {
+    execute =
+      "execute(geometry, distance, options) { const unit = options && options.unit ? options.unit : undefined; return unit === undefined ? geometryEngineCompat.buffer(geometry, distance) : geometryEngineCompat.buffer(geometry, distance, unit); }";
+  } else if (mapped.shape === "measure") {
+    execute = `execute(geometry, options) { const unit = options && options.unit ? options.unit : undefined; return unit === undefined ? geometryEngineCompat.${mapped.method}(geometry) : geometryEngineCompat.${mapped.method}(geometry, unit); }`;
+  } else if (mapped.shape === "unary") {
+    execute = `execute(geometry) { return geometryEngineCompat.${mapped.method}(geometry); }`;
+  } else if (mapped.shape === "union") {
+    execute = "execute(a, b) { return geometryEngineCompat.union([a, b]); }";
+  } else {
+    execute = `execute(a, b) { return geometryEngineCompat.${mapped.method}(a, b); }`;
+  }
+  const objectText = `{ ${execute} }`;
+  return awaited ? objectText : `Promise.resolve(${objectText})`;
+}
+
+function geodeticLengthOperatorShim(): string {
+  return [
+    "Promise.resolve({",
+    "  isLoaded() { return true; },",
+    "  load() { return Promise.resolve(); },",
+    "  execute(geometry, options) {",
+    '    const unit = options && options.unit ? options.unit : "meters";',
+    "    return geometryEngineCompat.geodesicLength(geometry, unit);",
+    "  },",
+    "})",
+  ].join(" ");
+}
+
+function isArcGisDollarImportCall(node: ts.CallExpression): boolean {
+  return (
+    ts.isPropertyAccessExpression(node.expression) &&
+    ts.isIdentifier(node.expression.expression) &&
+    node.expression.expression.text === "$arcgis" &&
+    node.expression.name.text === "import" &&
+    node.arguments.length === 1
+  );
+}
+
+function dollarImportSpecifiers(node: ts.CallExpression): string[] | undefined {
+  const argument = node.arguments[0];
+  if (ts.isStringLiteral(argument)) {
+    return [argument.text];
+  }
+  if (ts.isArrayLiteralExpression(argument) && argument.elements.every((element) => ts.isStringLiteral(element))) {
+    return argument.elements.map((element) => (element as ts.StringLiteral).text);
+  }
+  return undefined;
+}
+
+function compatDollarImportText(compatImportPath: string, compatSymbol: string, awaited: boolean): string {
+  const specifier = JSON.stringify(compatImportPath);
+  if (awaited) {
+    return `(await import(${specifier})).${compatSymbol}`;
+  }
+  return `import(${specifier}).then((m) => m.${compatSymbol})`;
+}
+
 function isArcGisDynamicImportCall(node: ts.Node): node is ts.CallExpression {
   if (!ts.isCallExpression(node)) {
     return false;
@@ -3319,7 +5732,11 @@ function buildOptionalObjectOptionsText(node: ts.NewExpression, sourceFile: ts.S
 }
 
 type HonuaMapLibreWebMapOutcome =
-  | { kind: "rewrite"; text: string; manualGaps: readonly WebMapMapLibreManualGap[] }
+  | {
+      kind: "rewrite";
+      text: string;
+      manualGaps: readonly WebMapMapLibreManualGap[];
+    }
   | { kind: "manual"; reason: string };
 
 /**
@@ -3338,12 +5755,18 @@ function handleHonuaMapLibreWebMapNewExpression(
     return { kind: "manual", reason: HONUA_MAPLIBRE_WEBMAP_DYNAMIC_REASON };
   }
   if (args.length !== 1) {
-    return { kind: "manual", reason: HONUA_MAPLIBRE_WEBMAP_UNSUPPORTED_SHAPE_REASON };
+    return {
+      kind: "manual",
+      reason: HONUA_MAPLIBRE_WEBMAP_UNSUPPORTED_SHAPE_REASON,
+    };
   }
 
   const [arg] = args;
   if (!ts.isObjectLiteralExpression(arg)) {
-    return { kind: "manual", reason: HONUA_MAPLIBRE_WEBMAP_UNSUPPORTED_SHAPE_REASON };
+    return {
+      kind: "manual",
+      reason: HONUA_MAPLIBRE_WEBMAP_UNSUPPORTED_SHAPE_REASON,
+    };
   }
 
   // Reject portal-loaded / dynamic shapes outright ? they have no static
@@ -3354,7 +5777,10 @@ function handleHonuaMapLibreWebMapNewExpression(
 
   const evaluated = evaluateObjectLiteralAsJson(arg);
   if (!evaluated.ok) {
-    return { kind: "manual", reason: HONUA_MAPLIBRE_WEBMAP_UNSUPPORTED_SHAPE_REASON };
+    return {
+      kind: "manual",
+      reason: HONUA_MAPLIBRE_WEBMAP_UNSUPPORTED_SHAPE_REASON,
+    };
   }
 
   // Require at least one WebMap-JSON-specific top-level key so we don't
@@ -3373,7 +5799,10 @@ function handleHonuaMapLibreWebMapNewExpression(
   try {
     result = webmapJsonToMapLibreStyle(json as WebMapJson);
   } catch {
-    return { kind: "manual", reason: HONUA_MAPLIBRE_WEBMAP_UNSUPPORTED_SHAPE_REASON };
+    return {
+      kind: "manual",
+      reason: HONUA_MAPLIBRE_WEBMAP_UNSUPPORTED_SHAPE_REASON,
+    };
   }
 
   return {
@@ -3844,7 +6273,11 @@ function parseReactiveUtilsWatchAccessor(
   // current is the receiver expression ? produce its raw text using getText() at
   // call site (we only have its node here, not the source file). The caller
   // computes the receiver text from the original source.
-  return { kind: "simple", receiverText: receiverKey, propertyPath: segments.join(".") };
+  return {
+    kind: "simple",
+    receiverText: receiverKey,
+    propertyPath: segments.join("."),
+  };
 }
 
 function handleReactiveUtilsWatchAccessor(options: {
@@ -3902,8 +6335,12 @@ function removeUnusedArcGisImports(file: string, source: string): { nextSource: 
     if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
       continue;
     }
-    const modulePath = statement.moduleSpecifier.text;
-    if (!MODULE_TO_SPEC.has(modulePath) && !isSupportedArcGisBarrelModulePath(modulePath)) {
+    const modulePath = canonicalArcGisModulePath(statement.moduleSpecifier.text);
+    if (
+      !MODULE_TO_SPEC.has(modulePath) &&
+      !MODULE_TO_SPEC.has(`${modulePath}.js`) &&
+      !isSupportedArcGisBarrelModulePath(modulePath)
+    ) {
       continue;
     }
 
@@ -3924,6 +6361,40 @@ function removeUnusedArcGisImports(file: string, source: string): { nextSource: 
       continue;
     }
 
+    const bounds = expandToFullLine(source, statement.getStart(sourceFile), statement.getEnd());
+    removals.push({
+      start: bounds.start,
+      end: bounds.end,
+      text: "",
+    });
+  }
+
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportEqualsDeclaration(statement) || !ts.isExternalModuleReference(statement.moduleReference)) {
+      continue;
+    }
+    const expression = statement.moduleReference.expression;
+    if (!ts.isStringLiteral(expression) || !ts.isIdentifier(statement.name)) {
+      continue;
+    }
+    const modulePath = canonicalArcGisModulePath(expression.text);
+    if (!MODULE_TO_SPEC.has(modulePath) && !MODULE_TO_SPEC.has(`${modulePath}.js`)) {
+      continue;
+    }
+    const equalsName = statement.name.text;
+    let equalsUses = 0;
+    walk(sourceFile, (candidate) => {
+      if (!ts.isIdentifier(candidate) || candidate.text !== equalsName || candidate === statement.name) {
+        return;
+      }
+      if (isPropertyAccessName(candidate)) {
+        return;
+      }
+      equalsUses += 1;
+    });
+    if (equalsUses > 0) {
+      continue;
+    }
     const bounds = expandToFullLine(source, statement.getStart(sourceFile), statement.getEnd());
     removals.push({
       start: bounds.start,
@@ -4331,6 +6802,8 @@ function isSafeConstructorCall(
       return isSafeBasemapToggleWidgetCompatCall(node);
     case "locate-widget":
       return isSafeLocateWidgetCompatCall(node);
+    case "locator":
+      return isSafeLocatorCompatCall(node);
     case "scale-bar-widget":
       return isSafeScaleBarWidgetCompatCall(node);
     case "search-widget":
@@ -4393,6 +6866,10 @@ function isSafeConstructorCall(
         ok: false,
         reason: "ReactiveUtils is not a constructor and requires import-based migration.",
       };
+    case "portal":
+      return isSafePortalCompatCall(node);
+    case "directions-view-model":
+      return isSafeDirectionsViewModelCompatCall(node);
     case "geometry-engine":
       return {
         ok: false,
@@ -4509,7 +6986,10 @@ function isSafeAllowedPropertiesCall(
   }
   const [arg] = args;
   if (!ts.isObjectLiteralExpression(arg)) {
-    return { ok: false, reason: `${displayName} constructor argument is not an object literal.` };
+    return {
+      ok: false,
+      reason: `${displayName} constructor argument is not an object literal.`,
+    };
   }
   for (const property of arg.properties) {
     if (!isAssignableObjectProperty(property)) {
@@ -4706,6 +7186,10 @@ function isSafeFeatureLayerCompatCall(
           "listMode",
           "client",
           "maxAttachmentBytes",
+          "source",
+          "fields",
+          "objectIdField",
+          "geometryType",
         ])
       : target === "honua-maplibre"
         ? new Set([
@@ -4736,7 +7220,7 @@ function isSafeFeatureLayerCompatCall(
     }
 
     const name = getObjectPropertyName(property);
-    if (name === "url") {
+    if (name === "url" || (target === "honua-compat" && name === "source")) {
       hasUrlOption = true;
     }
   }
@@ -4752,7 +7236,7 @@ function isSafeFeatureLayerCompatCall(
   if (!hasUrlOption) {
     return {
       ok: false,
-      reason: "FeatureLayer options missing required url property; requires manual migration.",
+      reason: "FeatureLayer options missing required url or source property; requires manual migration.",
     };
   }
 
@@ -4903,6 +7387,85 @@ function isSafeGraphicCompatCall(node: ts.NewExpression): { ok: true } | { ok: f
   return { ok: true };
 }
 
+function renamePointCoordinateProperties(node: ts.NewExpression, sourceFile: ts.SourceFile): TextEdit[] {
+  const arg = node.arguments?.[0];
+  if (!arg || !ts.isObjectLiteralExpression(arg)) {
+    return [];
+  }
+  const edits: TextEdit[] = [];
+  for (const property of arg.properties) {
+    if (ts.isShorthandPropertyAssignment(property)) {
+      if (property.name.text === "longitude") {
+        edits.push({
+          start: property.getStart(sourceFile),
+          end: property.getEnd(),
+          text: "x: longitude",
+        });
+      } else if (property.name.text === "latitude") {
+        edits.push({
+          start: property.getStart(sourceFile),
+          end: property.getEnd(),
+          text: "y: latitude",
+        });
+      }
+      continue;
+    }
+    if (!ts.isPropertyAssignment(property) || !ts.isIdentifier(property.name)) {
+      continue;
+    }
+    if (property.name.text === "longitude") {
+      edits.push({
+        start: property.name.getStart(sourceFile),
+        end: property.name.getEnd(),
+        text: "x",
+      });
+    } else if (property.name.text === "latitude") {
+      edits.push({
+        start: property.name.getStart(sourceFile),
+        end: property.name.getEnd(),
+        text: "y",
+      });
+    }
+  }
+  return edits;
+}
+
+function removeObjectProperties(
+  node: ts.NewExpression,
+  sourceFile: ts.SourceFile,
+  source: string,
+  names: ReadonlySet<string>,
+): TextEdit[] {
+  const arg = node.arguments?.[0];
+  if (!arg || !ts.isObjectLiteralExpression(arg)) {
+    return [];
+  }
+  const edits: TextEdit[] = [];
+  for (const property of arg.properties) {
+    const name = getObjectPropertyName(property);
+    if (!name || !names.has(name)) {
+      continue;
+    }
+    let start = property.getStart(sourceFile);
+    let end = property.getEnd();
+    const trailing = /^\s*,/.exec(source.slice(end));
+    if (trailing) {
+      end += trailing[0].length;
+    } else {
+      const leading = /,\s*$/.exec(source.slice(Math.max(0, start - 8), start));
+      if (leading) {
+        start -= leading[0].length;
+      }
+    }
+    const note =
+      name === "ui"
+        ? `/* ${TODO_MARKER}[map-view]: ui.components was not copied; add controls with view.ui.add */ `
+        : `/* ${TODO_MARKER}[locate-widget]: scale was not copied */ `;
+    edits.push({ start, end, text: note });
+  }
+  return edits;
+}
+
 function isSafePointGeometryCompatCall(node: ts.NewExpression): { ok: true } | { ok: false; reason: string } {
   const args = node.arguments;
   if (!args || args.length === 0) {
@@ -4923,7 +7486,7 @@ function isSafePointGeometryCompatCall(node: ts.NewExpression): { ok: true } | {
     };
   }
 
-  const allowed = new Set(["x", "y", "z", "m", "spatialReference"]);
+  const allowed = new Set(["x", "y", "z", "m", "spatialReference", "longitude", "latitude"]);
   for (const property of arg.properties) {
     if (!isAssignableObjectProperty(property)) {
       return {
@@ -5850,7 +8413,7 @@ function isSafeMapViewCompatCall(
     }
   }
 
-  const unsupported = collectUnsupportedPropertyNames(arg, allowed);
+  const unsupported = collectUnsupportedPropertyNames(arg, allowed).filter((name) => name !== "ui");
   if (unsupported.length > 0) {
     return {
       ok: false,
@@ -6574,6 +9137,35 @@ function isSafeBasemapToggleWidgetCompatCall(node: ts.NewExpression): { ok: true
   return { ok: true };
 }
 
+function isSafeLocatorCompatCall(node: ts.NewExpression): { ok: true } | { ok: false; reason: string } {
+  const args = node.arguments;
+  if (!args || args.length === 0) {
+    return { ok: true };
+  }
+  if (args.length !== 1 || !ts.isObjectLiteralExpression(args[0])) {
+    return {
+      ok: false,
+      reason: "Locator constructor is not a single object literal.",
+    };
+  }
+  for (const property of args[0].properties) {
+    if (!isAssignableObjectProperty(property)) {
+      return {
+        ok: false,
+        reason: "Locator options contain spread/method/computed property syntax.",
+      };
+    }
+  }
+  const unsupported = collectUnsupportedPropertyNames(args[0], new Set(["url"]));
+  if (unsupported.length > 0) {
+    return {
+      ok: false,
+      reason: `Locator options include unsupported properties: ${unsupported.join(", ")}.`,
+    };
+  }
+  return { ok: true };
+}
+
 function isSafeLocateWidgetCompatCall(node: ts.NewExpression): { ok: true } | { ok: false; reason: string } {
   const args = node.arguments;
   if (!args || args.length === 0) {
@@ -6604,7 +9196,7 @@ function isSafeLocateWidgetCompatCall(node: ts.NewExpression): { ok: true } | { 
     }
   }
 
-  const unsupported = collectUnsupportedPropertyNames(arg, allowed);
+  const unsupported = collectUnsupportedPropertyNames(arg, allowed).filter((name) => name !== "scale");
   if (unsupported.length > 0) {
     return {
       ok: false,
@@ -7866,7 +10458,10 @@ function collectSourceFiles(rootDir: string): string[] {
   const result: string[] = [];
 
   while (queue.length > 0) {
-    const current = queue.pop()!;
+    const current = queue.pop();
+    if (current === undefined) {
+      break;
+    }
     const entries = fs.readdirSync(current, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = path.join(current, entry.name);

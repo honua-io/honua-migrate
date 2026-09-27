@@ -7,6 +7,7 @@ import {
   type EsriCompatCodemodResult,
   type MigrationTodo,
   SUPPORTED_ARCGIS_MODULE_KIND_BY_PATH,
+  codemodDropsModulePath,
   isKindSupportedForTarget,
   isSupportedArcGisBarrelModulePath,
   resolveArcGisBarrelImportKind,
@@ -18,6 +19,9 @@ import {
   type ArcGisDependencyManifest,
   type ArcGisImportHit,
   type ArcGisScanReport,
+  MAP_COMPONENT_CLAUSE,
+  REWRITTEN_SHELL_COMPONENT_PATHS,
+  canonicalArcGisModulePath,
   scanArcGisUsage,
   summarizeArcGisScan,
 } from "./scanner.js";
@@ -76,7 +80,13 @@ export interface ArcGisModuleSummary {
   count: number;
 }
 
-export type ArcGisUsageStyle = "static-import" | "dynamic-import" | "require" | "amd-require" | "arcgis-import";
+export type ArcGisUsageStyle =
+  | "static-import"
+  | "dynamic-import"
+  | "require"
+  | "amd-require"
+  | "arcgis-import"
+  | "map-component";
 
 /**
  * `no-arcgis-usage` means the scan discovered zero ArcGIS module sites and zero
@@ -157,6 +167,7 @@ export type JsFileDiagnosticCode =
   | "manual-call-site"
   | "import-left-in-place"
   | "module-loader-not-rewritten"
+  | "map-component-not-rewritten"
   | "widget-on-arcgis-runtime"
   | "unsupported-module";
 
@@ -303,6 +314,7 @@ function summarizeManualTodosByKind(todos: readonly MigrationTodo[]): Record<Cod
     "home-widget": 0,
     "basemap-toggle-widget": 0,
     "locate-widget": 0,
+    locator: 0,
     "scale-bar-widget": 0,
     "search-widget": 0,
     "basemap-layer-list-widget": 0,
@@ -334,6 +346,8 @@ function summarizeManualTodosByKind(todos: readonly MigrationTodo[]): Record<Cod
     "wms-layer": 0,
     "wfs-layer": 0,
     "imagery-layer": 0,
+    portal: 0,
+    "directions-view-model": 0,
     "geometry-engine": 0,
   };
 
@@ -425,6 +439,7 @@ function resolveImportHitDispositions(
     const key = importSiteKey(site);
     residualCounts.set(key, (residualCounts.get(key) ?? 0) + 1);
   }
+  const originalResidualCounts = new Map(residualCounts);
   // Out-of-scope hits account for their own surviving sites first, so a
   // residual site is never charged to an in-scope hit that was rewritten.
   for (const hit of scanReport.imports) {
@@ -448,7 +463,48 @@ function resolveImportHitDispositions(
     }
     handled.add(hit);
   }
+  // Identity Credential is rewritten by deleting the import. It is not a
+  // codemod-scoped constructor, so the removed import must not stay unhandled.
+  // AMD entries and rest/route or geometry-operator imports are the same shape:
+  // the codemod deletes them when it rewrites the call, and a survivor stays.
+  for (const hit of scanReport.imports) {
+    if (inScopeSet.has(hit) || codemodResult.target !== "honua-compat") {
+      continue;
+    }
+    const style = classifyUsageStyle(hit.importClause);
+    const canonical = canonicalArcGisModulePath(hit.modulePath);
+    const kind = supportedKindForModulePath(canonical);
+    const amdMoved =
+      style === "amd-require" &&
+      kind !== undefined &&
+      isKindSupportedForTarget(kind, "honua-compat") &&
+      kind !== "geometry-engine";
+    const dropped =
+      hit.modulePath.endsWith("/identity/Credential") || amdMoved || codemodDropsModulePath(hit.modulePath);
+    if (!dropped) {
+      continue;
+    }
+    if ((originalResidualCounts.get(importSiteKey(hit)) ?? 0) === 0) {
+      handled.add(hit);
+    }
+  }
   return { inScope: inScopeSet, handled };
+}
+
+function isTypeOnlyImportClause(importClause: string): boolean {
+  const clause = importClause.trim().replace(/^export\s+/, "");
+  if (clause.startsWith("type ") || clause.startsWith("type{")) {
+    return true;
+  }
+  if (clause.startsWith("{") && clause.endsWith("}")) {
+    const parts = clause
+      .slice(1, -1)
+      .split(",")
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0);
+    return parts.length > 0 && parts.every((part) => part.startsWith("type "));
+  }
+  return false;
 }
 
 interface ImportHitDispositions {
@@ -456,6 +512,16 @@ interface ImportHitDispositions {
   inScope: ReadonlySet<ArcGisImportHit>;
   /** In-scope hits the codemod removed from its output. */
   handled: ReadonlySet<ArcGisImportHit>;
+}
+
+function supportedKindForModulePath(modulePath: string): CodemodConstructorKind | undefined {
+  const withExtension = modulePath.endsWith(".js") ? modulePath : `${modulePath}.js`;
+  const withoutExtension = modulePath.endsWith(".js") ? modulePath.slice(0, -3) : modulePath;
+  return (
+    SUPPORTED_ARCGIS_MODULE_KIND_BY_PATH[modulePath] ??
+    SUPPORTED_ARCGIS_MODULE_KIND_BY_PATH[withExtension] ??
+    SUPPORTED_ARCGIS_MODULE_KIND_BY_PATH[withoutExtension]
+  );
 }
 
 function importSiteKey(hit: ArcGisImportHit): string {
@@ -467,10 +533,19 @@ function isImportHitHandledByCodemod(
   codemodResult: EsriCompatCodemodResult,
 ): boolean {
   const usageStyle = classifyUsageStyle(hit.importClause);
-  if (usageStyle === "amd-require" || usageStyle === "arcgis-import") {
-    // The codemod rewrites ESM and CommonJS sources; module-loader arrays and
-    // `$arcgis.import(...)` calls stay as written, whatever module they name.
+  if (usageStyle === "amd-require") {
     return false;
+  }
+  if (usageStyle === "map-component") {
+    return REWRITTEN_SHELL_COMPONENT_PATHS.has(hit.modulePath);
+  }
+  if (usageStyle === "arcgis-import") {
+    if (hit.modulePath.includes("geometry/operators/geodeticLengthOperator")) {
+      return codemodResult.target === "honua-compat";
+    }
+    const kind = supportedKindForModulePath(hit.modulePath);
+    // Supported `$arcgis.import` loads are rewritten. Residual sites decide whether this one was removed.
+    return kind !== undefined && isKindSupportedForTarget(kind, codemodResult.target);
   }
 
   const isReExport = hit.importClause.startsWith("export ");
@@ -504,6 +579,7 @@ function buildUsageInventory(
     require: 0,
     "amd-require": 0,
     "arcgis-import": 0,
+    "map-component": 0,
   };
   const widgetRows = new Map<string, WidgetRuntimeRequirement>();
   let handledModuleSites = 0;
@@ -660,6 +736,9 @@ function classifyUsageStyle(importClause: string): ArcGisUsageStyle {
   }
   if (importClause === ARCGIS_IMPORT_CLAUSE) {
     return "arcgis-import";
+  }
+  if (importClause === MAP_COMPONENT_CLAUSE) {
+    return "map-component";
   }
   return "static-import";
 }
@@ -862,10 +941,22 @@ function buildFileMigrations(
     return entry;
   };
 
+  const hitsByFile = new Map<string, ArcGisImportHit[]>();
+  for (const hit of scanReport.imports) {
+    const hits = hitsByFile.get(path.resolve(hit.file)) ?? [];
+    hits.push(hit);
+    hitsByFile.set(path.resolve(hit.file), hits);
+  }
   for (const hit of scanReport.imports) {
     const entry = entryFor(hit.file);
+    const fileHits = hitsByFile.get(path.resolve(hit.file)) ?? [];
+    const valueHits = fileHits.filter((candidate) => !isTypeOnlyImportClause(candidate.importClause));
+    const typeOnlySettled =
+      isTypeOnlyImportClause(hit.importClause) &&
+      valueHits.length > 0 &&
+      valueHits.every((candidate) => importHits.handled.has(candidate));
     entry.moduleSites += 1;
-    if (importHits.handled.has(hit)) {
+    if (importHits.handled.has(hit) || typeOnlySettled) {
       entry.handledModuleSites += 1;
     } else {
       entry.siteDiagnostics.push(describeUnhandledModuleSite(hit, importHits.inScope.has(hit), codemodResult.target));
@@ -951,7 +1042,61 @@ function describeUnhandledModuleSite(
 ): JsFileDiagnostic {
   const modulePath = hit.modulePath;
   const usageStyle = classifyUsageStyle(hit.importClause);
-  if (usageStyle === "amd-require" || usageStyle === "arcgis-import") {
+  if (modulePath.includes("/smartMapping/")) {
+    return {
+      code: "module-loader-not-rewritten",
+      modulePath,
+      message: `${modulePath} is an ArcGIS smart-mapping helper. Honua does not reproduce those statistics or generated renderers.`,
+      action: "Build the renderer or histogram from your own feature query, or keep this call on the ArcGIS client.",
+    };
+  }
+
+  if (modulePath.endsWith("/rest/identify")) {
+    return {
+      code: "unsupported-module",
+      modulePath,
+      message: `${modulePath} identify(url, params) does not match IdentifyCompat.identify, which takes a view and layers.`,
+      action: "Keep this identify call on the ArcGIS client, or call IdentifyCompat.identify with a view and layers.",
+    };
+  }
+
+  if (modulePath.endsWith("/rest/query") || modulePath.endsWith("/rest/query.js")) {
+    return {
+      code: "unsupported-module",
+      modulePath,
+      message: `${modulePath} executeQueryJSON(url, params) has no compat function of that shape.`,
+      action: "Keep this query on the ArcGIS client until a url-and-params query exists on the compat layer.",
+    };
+  }
+
+  if (/\/geometry\/operators\/(?:generalize|project|overlaps|distance)Operator(?:\.js)?$/.test(modulePath)) {
+    return {
+      code: "unsupported-module",
+      modulePath,
+      message: `${modulePath} is not covered by geometryEngineCompat.`,
+      action: "Keep this geometry operator on the ArcGIS client.",
+    };
+  }
+
+  if (modulePath.endsWith("/arcgis-chart") || modulePath.includes("charts-components")) {
+    return {
+      code: "map-component-not-rewritten",
+      modulePath,
+      message: `${modulePath} is an ArcGIS Charts component. The codemod keeps @arcgis/charts-components as written.`,
+      action: "Keep this chart on ArcGIS Charts, or draw it from the feature query yourself.",
+    };
+  }
+
+  if (modulePath.endsWith("/arcgis-cdn")) {
+    return {
+      code: "map-component-not-rewritten",
+      modulePath,
+      message: `${modulePath} still loads the ArcGIS Maps SDK from the CDN.`,
+      action: "Remove the CDN script after every ArcGIS load has been rewritten onto @honua/sdk-esri-compat.",
+    };
+  }
+
+  if ((usageStyle === "amd-require" || usageStyle === "arcgis-import") && !inScope) {
     const loader = usageStyle === "amd-require" ? "an AMD require/define array" : "$arcgis.import(...)";
     return {
       code: "module-loader-not-rewritten",
@@ -959,6 +1104,16 @@ function describeUnhandledModuleSite(
       message: `${modulePath} is loaded through ${loader}, which the codemod leaves as written.`,
       action:
         "Keep this file on the ArcGIS JS client, or rewrite the load as an @arcgis/core ESM import and rerun the codemod.",
+    };
+  }
+
+  if (usageStyle === "map-component" && !inScope) {
+    return {
+      code: "map-component-not-rewritten",
+      modulePath,
+      message: `${modulePath} is a map component or a component API call, which the codemod does not rewrite.`,
+      action:
+        "Keep this file on the ArcGIS Maps SDK components, or port the view, layer, and related-record calls onto Honua by hand.",
     };
   }
 
