@@ -66,6 +66,8 @@ export interface JsMigrationReport {
   manualTodos: MigrationTodo[];
   /** Per-file boundaries and diagnostics, and which conversion mode the result supports. */
   conversion: JsConversionPlan;
+  /** What a rewritten Legend does. honua-compat does not mount one by itself. */
+  legendDisposition: string;
 }
 
 export interface MigrationReasonSummary {
@@ -266,7 +268,15 @@ export function buildJsMigrationReport(
     unhandledArcGisModules,
     manualTodos: codemodResult.manualTodos,
     conversion,
+    legendDisposition: legendDispositionFor(codemodResult.target),
   };
+}
+
+function legendDispositionFor(target: JsMigrationReport["codemodTarget"]): string {
+  if (target === "honua-compat") {
+    return "Legend stays headless unless registerHonuaWidgetKit is called. The codemod does not emit that call.";
+  }
+  return "Legend follows the selected migration target.";
 }
 
 function summarizeManualTodosByKind(todos: readonly MigrationTodo[]): Record<CodemodConstructorKind, number> {

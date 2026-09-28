@@ -181,6 +181,9 @@ describe("buildJsMigrationReport", () => {
   it("builds manual summaries and unhandled module inventory", () => {
     const report = buildJsMigrationReport("/tmp/app", createCodemodResult(), createScanReport());
     expect(report.codemodTarget).toBe("honua-compat");
+    expect(report.legendDisposition).toBe(
+      "Legend stays headless unless registerHonuaWidgetKit is called. The codemod does not emit that call.",
+    );
 
     expect(report.manualRewriteMetric).toMatchObject({
       numerator: 1,
