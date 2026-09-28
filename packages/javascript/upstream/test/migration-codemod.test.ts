@@ -4353,6 +4353,30 @@ describe("runEsriCompatCodemod", () => {
 });
 
 describe("PR 172 review regressions", () => {
+  it("rewrites map constraints on the view and leaves quoted or dotted text", () => {
+    const root = makeTempProject();
+    const file = path.join(root, "index.html");
+    fs.writeFileSync(
+      file,
+      [
+        "<arcgis-map></arcgis-map>",
+        '<script type="module">',
+        'const viewElement = document.querySelector("arcgis-map");',
+        "viewElement.constraints = { minScale: 10000 };",
+        'const key = "viewElement.constraints";',
+        "other.viewElement.constraints = 1;",
+        "</script>",
+      ].join("\n"),
+    );
+
+    runEsriCompatCodemod({ rootDir: root, write: true });
+
+    const output = fs.readFileSync(file, "utf8");
+    expect(output).toContain("honuaView.constraints = { minScale: 10000 }");
+    expect(output).toContain('const key = "viewElement.constraints"');
+    expect(output).toContain("other.viewElement.constraints = 1;");
+  });
+
   it("preserves external-only shells without a bootstrap host", () => {
     const root = makeTempProject();
     const file = path.join(root, "index.html");
