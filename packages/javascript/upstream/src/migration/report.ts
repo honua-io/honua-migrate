@@ -273,7 +273,7 @@ export function buildJsMigrationReport(
 }
 
 function legendDispositionFor(target: JsMigrationReport["codemodTarget"]): string {
-  if (target === "honua-compat") {
+  if (target === "honua-compat" || target === "esri-leaflet") {
     return "Legend stays headless unless registerHonuaWidgetKit is called. The codemod does not emit that call.";
   }
   return "Legend follows the selected migration target.";
