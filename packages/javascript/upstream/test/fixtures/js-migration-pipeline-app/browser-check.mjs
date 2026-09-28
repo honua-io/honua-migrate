@@ -82,7 +82,8 @@ try {
     const status = document.getElementById("status");
     return { ...status.dataset, text: status.textContent };
   });
-  const offOrigin = browserRequests.filter((url) => !url.startsWith(origin));
+  const basemapHost = /^https:\/\/(?:tile\.openstreetmap\.org|[\w.-]*arcgisonline\.com|[\w.-]*arcgis\.com)\//u;
+  const offOrigin = browserRequests.filter((url) => !url.startsWith(origin) && !basemapHost.test(url));
   const result = { observed, pageErrors, offOrigin, requests };
   fs.writeFileSync(path.join(distDir, "browser-observations.json"), `${JSON.stringify(result, null, 2)}\n`);
   console.log(JSON.stringify(result));
