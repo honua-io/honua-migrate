@@ -1454,7 +1454,10 @@ function rewriteMapComponentShell(
     next = next.replace(new RegExp(`\\b${ident}\\.whenLayerView\\s*\\(`, "g"), "honuaView.whenLayerView(");
     next = next.replace(new RegExp(`\\b${ident}\\.goTo\\s*\\(`, "g"), "honuaView.goTo(");
     next = next.replace(new RegExp(`\\b${ident}\\.map\\b`, "g"), "honuaView.map");
-    next = next.replace(new RegExp(`\\b${ident}\\.constraints\\b`, "g"), "honuaView.constraints");
+    // Only a bare `viewElement.constraints` access. A quoted or dotted
+    // occurrence is data, not the map binding.
+    const constraintsPattern = new RegExp(String.raw`(?<![\w."'\`])${ident}\.constraints\b`, "g");
+    next = next.replace(constraintsPattern, "honuaView.constraints");
   }
 
   const lines: string[] = [];
