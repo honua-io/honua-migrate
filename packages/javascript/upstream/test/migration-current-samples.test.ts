@@ -426,6 +426,8 @@ describe("current ArcGIS sample corpus", () => {
     const treesPage = writtenPage("intro-featurelayer");
     expect(treesPage).toContain('new MapCompat({ basemap: "hybrid" })');
     expect(treesPage).toContain("FeatureLayerCompat");
+    expect(treesPage).toContain("honuaView.constraints");
+    expect(treesPage).not.toContain("viewElement.constraints");
     expect(treesPage).not.toContain('src="%CDN%"');
 
     expect(counties.report.conversion.recommendedMode).toBe("complete-honua-conversion");
