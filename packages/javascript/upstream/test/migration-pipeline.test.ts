@@ -99,11 +99,12 @@ function runCli(args: readonly string[]): ReturnType<typeof spawnSync> {
 
 // The five packages a honua-compat migration adds to an app that declares none of them.
 const COMPAT_ADDITIONS: Array<[string, string, string, string, boolean]> = [
-  ["add", "dependencies", "@honua/sdk", "^0.1.2-beta.0", false],
-  ["add", "dependencies", "@honua/sdk-esri-compat", "^0.1.2-beta.0", false],
+  ["add", "dependencies", "@honua/sdk", "0.1.10-beta.0", false],
+  ["add", "dependencies", "@honua/sdk-esri-compat", "0.1.10-beta.0", false],
   ["add", "dependencies", "@bufbuild/protobuf", "^2.15.0", true],
   ["add", "dependencies", "@connectrpc/connect", "^2.2.0", true],
   ["add", "dependencies", "@connectrpc/connect-web", "^2.2.0", true],
+  ["add", "dependencies", "maplibre-gl", "^6.4.1", false],
 ];
 
 const MAP_ONLY_SOURCE =
@@ -233,8 +234,9 @@ describe("JS migration pipeline", () => {
         "@bufbuild/protobuf": "^2.15.0",
         "@connectrpc/connect": "^2.2.0",
         "@connectrpc/connect-web": "^2.2.0",
-        "@honua/sdk": "^0.1.2-beta.0",
-        "@honua/sdk-esri-compat": "^0.1.2-beta.0",
+        "@honua/sdk": "0.1.10-beta.0",
+        "@honua/sdk-esri-compat": "0.1.10-beta.0",
+        "maplibre-gl": "^6.4.1",
       },
       devDependencies: {
         "playwright-core": "1.58.2",
@@ -399,7 +401,7 @@ describe("JS migration pipeline", () => {
       ...COMPAT_ADDITIONS,
       ["keep", "dependencies", "@arcgis/core", "^5.0.19", false],
     ]);
-    expect(plan.dependencyChanges[5].reason).toBe(
+    expect(plan.dependencyChanges[6].reason).toBe(
       "Assisted conversion: src/selection.ts still needs the ArcGIS JS runtime.",
     );
 
@@ -494,7 +496,7 @@ describe("JS migration pipeline", () => {
         stage: "dependencies",
         message: "There is no package.json at the application root, so no dependency changes were planned.",
         action:
-          "Declare @honua/sdk, @honua/sdk-esri-compat, @bufbuild/protobuf, @connectrpc/connect, @connectrpc/connect-web in the manifest that builds this app.",
+          "Declare @honua/sdk, @honua/sdk-esri-compat, @bufbuild/protobuf, @connectrpc/connect, @connectrpc/connect-web, maplibre-gl in the manifest that builds this app.",
       },
     ]);
 

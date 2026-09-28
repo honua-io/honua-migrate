@@ -43,8 +43,8 @@ const NPM_SCRIPT_NAME = /^[A-Za-z0-9][A-Za-z0-9:._-]*$/;
 
 /** Packages the honua-compat output imports, at the ranges this engine is built and tested against. */
 export const HONUA_COMPAT_RUNTIME_DEPENDENCIES: Readonly<Record<string, string>> = {
-  "@honua/sdk": "^0.1.2-beta.0",
-  "@honua/sdk-esri-compat": "^0.1.2-beta.0",
+  "@honua/sdk": "0.1.10-beta.0",
+  "@honua/sdk-esri-compat": "0.1.10-beta.0",
 };
 
 export const SDK_JS_OPTIONAL_GRPC_PEERS_ISSUE = "https://github.com/honua-io/honua-sdk-js/issues/1715";
@@ -60,6 +60,11 @@ export const HONUA_COMPAT_BUNDLER_WORKAROUND_DEPENDENCIES: Readonly<Record<strin
   "@bufbuild/protobuf": "^2.15.0",
   "@connectrpc/connect": "^2.2.0",
   "@connectrpc/connect-web": "^2.2.0",
+};
+
+/** The compat map mount imports maplibre-gl, and the split package does not depend on it. */
+export const HONUA_COMPAT_MAP_RENDERER_DEPENDENCIES: Readonly<Record<string, string>> = {
+  "maplibre-gl": "^6.4.1",
 };
 
 const CONFIG_FILE_NAME =
@@ -427,7 +432,11 @@ function runCodemodOnCopy(
 
 function requiredDependencies(target: CodemodTarget): Record<string, string> {
   return target === "honua-compat"
-    ? { ...HONUA_COMPAT_RUNTIME_DEPENDENCIES, ...HONUA_COMPAT_BUNDLER_WORKAROUND_DEPENDENCIES }
+    ? {
+        ...HONUA_COMPAT_RUNTIME_DEPENDENCIES,
+        ...HONUA_COMPAT_BUNDLER_WORKAROUND_DEPENDENCIES,
+        ...HONUA_COMPAT_MAP_RENDERER_DEPENDENCIES,
+      }
     : {};
 }
 
@@ -521,6 +530,17 @@ function planDependencyChanges(
           reason:
             "@honua/sdk-esri-compat imports this optional @honua/sdk peer from its client, and bundlers fail to resolve it when it is absent, even in a REST-only app.",
           workaround: SDK_JS_OPTIONAL_GRPC_PEERS_ISSUE,
+        });
+      }
+    }
+    for (const [name, version] of Object.entries(HONUA_COMPAT_MAP_RENDERER_DEPENDENCIES)) {
+      if (!declared(name)) {
+        changes.push({
+          action: "add",
+          section: "dependencies",
+          name,
+          version,
+          reason: "MapViewCompat mounts the map with maplibre-gl, and the compat package does not install it.",
         });
       }
     }
