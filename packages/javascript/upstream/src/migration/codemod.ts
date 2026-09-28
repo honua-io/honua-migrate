@@ -1454,6 +1454,7 @@ function rewriteMapComponentShell(
     next = next.replace(new RegExp(`\\b${ident}\\.whenLayerView\\s*\\(`, "g"), "honuaView.whenLayerView(");
     next = next.replace(new RegExp(`\\b${ident}\\.goTo\\s*\\(`, "g"), "honuaView.goTo(");
     next = next.replace(new RegExp(`\\b${ident}\\.map\\b`, "g"), "honuaView.map");
+    next = next.replace(new RegExp(`\\b${ident}\\.constraints\\b`, "g"), "honuaView.constraints");
   }
 
   const lines: string[] = [];
