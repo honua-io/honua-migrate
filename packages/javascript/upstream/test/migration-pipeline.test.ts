@@ -239,7 +239,7 @@ describe("JS migration pipeline", () => {
         "maplibre-gl": "^6.4.1",
       },
       devDependencies: {
-        "playwright-core": "1.58.2",
+        "playwright-core": "1.63.0",
         vite: "8.1.5",
       },
     });
