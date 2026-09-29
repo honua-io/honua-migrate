@@ -2,8 +2,8 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { parseWebMap } from "@honua/sdk/webmap";
 import type { WebMapJson } from "@honua/sdk/webmap";
+import { parseWebMap } from "@honua/sdk/webmap";
 import { stringifyArtifact } from "./artifact-safety.js";
 import { type CodemodMetricsByKind, type CodemodTarget, runEsriCompatCodemod } from "./codemod.js";
 import {
@@ -13,8 +13,8 @@ import {
   runContentReconcile,
   runContentScan,
 } from "./content.js";
-import { MIGRATION_DEMO_PRIMARY_TARGET } from "./demo-targets.js";
 import { parseGeoservicesServiceUrl, runMigrationDemo } from "./demo.js";
+import { MIGRATION_DEMO_PRIMARY_TARGET } from "./demo-targets.js";
 import { evaluateMigrationGates } from "./gating.js";
 import {
   commitStagedOutputDirectory,
@@ -26,7 +26,7 @@ import {
 import { getJsParityMatrix, summarizeJsParityMatrix } from "./parity-matrix.js";
 import { applyJsMigration, planJsMigration } from "./pipeline.js";
 import { runLayerReconciliation, summarizeLayerReconciliation } from "./reconcile.js";
-import { type ArcGisUsageInventory, type MigrationReadiness, buildJsMigrationReport } from "./report.js";
+import { type ArcGisUsageInventory, buildJsMigrationReport, type MigrationReadiness } from "./report.js";
 import { getJsRuntimeParityMatrix, summarizeJsRuntimeParity } from "./runtime-matrix.js";
 import { emitEsriSampleCorpusEvidence } from "./sample-corpus-evidence.js";
 import { scanArcGisUsage, summarizeArcGisScan } from "./scanner.js";

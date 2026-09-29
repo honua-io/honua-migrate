@@ -8,7 +8,7 @@ import {
   type LayerReconciliationReport,
   runLayerReconciliation,
 } from "./reconcile.js";
-import { type JsMigrationReport, buildJsMigrationReport } from "./report.js";
+import { buildJsMigrationReport, type JsMigrationReport } from "./report.js";
 import { scanArcGisUsage } from "./scanner.js";
 
 const IMPORT_STATUS_BY_ENUM_VALUE = new Map<number, string>([

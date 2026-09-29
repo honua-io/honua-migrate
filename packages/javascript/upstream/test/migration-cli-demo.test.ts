@@ -136,38 +136,36 @@ describe("migration cli demo", () => {
     expect(fs.existsSync(path.join(report.workingAppDir, "src", "main.js"))).toBe(true);
   });
 
-  it(
-    "refuses demo mutation without acknowledgement and does not disclose credentials",
-    { timeout: 60_000 },
-    async () => {
-      ensureBuiltCliArtifacts();
-      const root = makeTempDir();
-      const outputDir = path.join(root, "unacknowledged-output");
-      const secret = "never-print-this-demo-key";
+  it("refuses demo mutation without acknowledgement and does not disclose credentials", {
+    timeout: 60_000,
+  }, async () => {
+    ensureBuiltCliArtifacts();
+    const root = makeTempDir();
+    const outputDir = path.join(root, "unacknowledged-output");
+    const secret = "never-print-this-demo-key";
 
-      const result = await runCli(
-        [
-          "demo",
-          "--fixtures-root",
-          path.join(getProjectRoot(), "test", "fixtures"),
-          "--fixture",
-          "esri-demo-feature-table-relates-app",
-          "--output-dir",
-          outputDir,
-          "--admin-api-key",
-          secret,
-          "--skip-import",
-          "--skip-reconcile",
-        ],
-        getProjectRoot(),
-      );
+    const result = await runCli(
+      [
+        "demo",
+        "--fixtures-root",
+        path.join(getProjectRoot(), "test", "fixtures"),
+        "--fixture",
+        "esri-demo-feature-table-relates-app",
+        "--output-dir",
+        outputDir,
+        "--admin-api-key",
+        secret,
+        "--skip-import",
+        "--skip-reconcile",
+      ],
+      getProjectRoot(),
+    );
 
-      expect(result.status).toBe(1);
-      expect(result.stderr).toContain("--acknowledge-mutations");
-      expect(`${result.stdout}\n${result.stderr}`).not.toContain(secret);
-      expect(fs.existsSync(outputDir)).toBe(false);
-    },
-  );
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("--acknowledge-mutations");
+    expect(`${result.stdout}\n${result.stderr}`).not.toContain(secret);
+    expect(fs.existsSync(outputDir)).toBe(false);
+  });
 
   it("does not expose remote import error bodies in CLI stderr", { timeout: 60_000 }, async () => {
     ensureBuiltCliArtifacts();
