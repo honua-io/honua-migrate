@@ -235,4 +235,110 @@ describe("migration cli target selection", () => {
     expect(report.manualTodos[0]?.kind).toBe("scene-view");
     expect(report.manualTodos[0]?.reason).toContain("unsupported properties");
   }, 240_000);
+
+  it("leaves a Map, MapView, and SceneView app byte-identical when the mode is keep-esri-client", () => {
+    ensureBuiltCliArtifacts();
+    const root = makeTempDir();
+    const appFile = path.join(root, "app.ts");
+    const manifestPath = path.join(root, "package.json");
+    const source = [
+      "import Map from '@arcgis/core/Map';",
+      "import MapView from '@arcgis/core/views/MapView';",
+      "import SceneView from '@arcgis/core/views/SceneView';",
+      "const map = new Map({ basemap: 'streets-vector' });",
+      "const view = new MapView({ map, container: 'view' });",
+      "const scene = new SceneView({ map, container: 'scene' });",
+      "void view;",
+      "void scene;",
+    ].join("\n");
+    fs.writeFileSync(appFile, source, "utf8");
+    fs.writeFileSync(manifestPath, '{"private":true}\n', "utf8");
+    const beforeApp = fs.readFileSync(appFile);
+    const beforeManifest = fs.readFileSync(manifestPath);
+    const reportPath = path.join(makeTempDir(), "keep-esri-report.json");
+
+    const result = runCli(
+      ["codemod", root, "--target", "honua-compat", "--write", "--report", reportPath],
+      getProjectRoot(),
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("filesChanged=0");
+    expect(result.stdout).toContain("conversion=recommended:keep-esri-client");
+    expect(result.stdout).toContain("writeMode=stopped");
+    expect(fs.readFileSync(appFile)).toEqual(beforeApp);
+    expect(fs.readFileSync(manifestPath)).toEqual(beforeManifest);
+    expect(fs.readFileSync(appFile, "utf8")).not.toContain("@honua/sdk-esri-compat");
+    const report = JSON.parse(fs.readFileSync(reportPath, "utf8")) as {
+      codemodExecution: {
+        writeMode: string;
+        applied: boolean;
+        preview: {
+          filesChanged: number;
+          autoMigratedCallSites: number;
+          fileBoundaries: { converted: number };
+        };
+      };
+      codemodResult: { filesChanged: number; metrics: { autoMigratedCallSites: number } };
+      conversion: {
+        recommendedMode: string;
+        rationale: string;
+        fileBoundaries: { converted: number; mixed: number; kept: number };
+        files: Array<{ boundary: string }>;
+      };
+      unhandledArcGisModules: Array<{ modulePath: string }>;
+    };
+    expect(report.codemodExecution.writeMode).toBe("stopped");
+    expect(report.codemodExecution.applied).toBe(false);
+    expect(report.codemodExecution.preview.filesChanged).toBeGreaterThan(0);
+    expect(report.codemodExecution.preview.autoMigratedCallSites).toBeGreaterThan(0);
+    expect(report.codemodExecution.preview.fileBoundaries.converted).toBeGreaterThan(0);
+    expect(report.codemodResult.filesChanged).toBe(0);
+    expect(report.codemodResult.metrics.autoMigratedCallSites).toBe(0);
+    expect(report.conversion.recommendedMode).toBe("keep-esri-client");
+    expect(report.conversion.rationale).toContain("scene-3d-detected");
+    expect(report.conversion.fileBoundaries.converted).toBe(0);
+    expect(report.conversion.fileBoundaries.mixed).toBe(0);
+    expect(report.conversion.fileBoundaries.kept).toBeGreaterThan(0);
+    expect(report.conversion.files.every((file) => file.boundary === "kept")).toBe(true);
+    expect(report.unhandledArcGisModules.some((item) => item.modulePath.includes("SceneView"))).toBe(true);
+  }, 240_000);
+
+  it("still writes a Map and MapView app that converts completely", () => {
+    ensureBuiltCliArtifacts();
+    const root = makeTempDir();
+    const appFile = path.join(root, "app.ts");
+    const reportPath = path.join(makeTempDir(), "converted-report.json");
+    const source = [
+      "import Map from '@arcgis/core/Map';",
+      "import MapView from '@arcgis/core/views/MapView';",
+      "const map = new Map({ basemap: 'streets-vector' });",
+      "const view = new MapView({ map, container: 'view' });",
+      "void view;",
+    ].join("\n");
+    fs.writeFileSync(appFile, source, "utf8");
+
+    const result = runCli(
+      ["codemod", root, "--target", "honua-compat", "--write", "--report", reportPath],
+      getProjectRoot(),
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("conversion=recommended:complete-honua-conversion");
+    expect(result.stdout).toContain("writeMode=enabled");
+    const migrated = fs.readFileSync(appFile, "utf8");
+    expect(migrated).toContain("MapCompat");
+    expect(migrated).toContain("MapViewCompat");
+    expect(migrated).not.toBe(source);
+    const report = JSON.parse(fs.readFileSync(reportPath, "utf8")) as {
+      codemodExecution: { writeMode: string; applied: boolean; preview?: unknown };
+      codemodResult: { filesChanged: number };
+      conversion: { fileBoundaries: { converted: number } };
+    };
+    expect(report.codemodExecution.writeMode).toBe("enabled");
+    expect(report.codemodExecution.applied).toBe(true);
+    expect(report.codemodExecution.preview).toBeUndefined();
+    expect(report.codemodResult.filesChanged).toBeGreaterThan(0);
+    expect(report.conversion.fileBoundaries.converted).toBeGreaterThan(0);
+  }, 240_000);
 });

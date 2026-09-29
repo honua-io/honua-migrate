@@ -5,7 +5,12 @@ import path from "node:path";
 import type { WebMapJson } from "@honua/sdk/webmap";
 import { parseWebMap } from "@honua/sdk/webmap";
 import { stringifyArtifact } from "./artifact-safety.js";
-import { type CodemodMetricsByKind, type CodemodTarget, runEsriCompatCodemod } from "./codemod.js";
+import {
+  type CodemodMetricsByKind,
+  type CodemodTarget,
+  type EsriCompatCodemodResult,
+  runEsriCompatCodemod,
+} from "./codemod.js";
 import {
   type ContentImportReport,
   runContentExport,
@@ -26,7 +31,12 @@ import {
 import { getJsParityMatrix, summarizeJsParityMatrix } from "./parity-matrix.js";
 import { applyJsMigration, planJsMigration } from "./pipeline.js";
 import { runLayerReconciliation, summarizeLayerReconciliation } from "./reconcile.js";
-import { type ArcGisUsageInventory, buildJsMigrationReport, type MigrationReadiness } from "./report.js";
+import {
+  type ArcGisUsageInventory,
+  buildJsMigrationReport,
+  type JsMigrationReport,
+  type MigrationReadiness,
+} from "./report.js";
 import { getJsRuntimeParityMatrix, summarizeJsRuntimeParity } from "./runtime-matrix.js";
 import { emitEsriSampleCorpusEvidence } from "./sample-corpus-evidence.js";
 import { scanArcGisUsage, summarizeArcGisScan } from "./scanner.js";
@@ -1190,18 +1200,89 @@ function formatUsageInventory(inventory: ArcGisUsageInventory): string {
   ].join(",");
 }
 
+function keepsEsriClient(mode: string | null, target: CodemodTarget): boolean {
+  return target === "honua-compat" && mode === "keep-esri-client";
+}
+
+interface CodemodExecution {
+  writeMode: "dry-run" | "stopped" | "enabled";
+  /** True only when this run wrote source. A stopped keep-esri-client run leaves the tree unchanged. */
+  applied: boolean;
+  /** The dry-run transform, present only when a requested write was not applied. */
+  preview?: {
+    filesChanged: number;
+    fileBoundaries: JsMigrationReport["conversion"]["fileBoundaries"];
+    autoMigratedCallSites: number;
+    manualCallSites: number;
+  };
+}
+
+/** Codemod result for a write that did not run: no file changed, and every scanned import is still on ArcGIS. */
+function unchangedCodemodResult(
+  preview: EsriCompatCodemodResult,
+  residualArcGisModuleSites: EsriCompatCodemodResult["residualArcGisModuleSites"],
+): EsriCompatCodemodResult {
+  const byKind = {} as EsriCompatCodemodResult["metrics"]["byKind"];
+  for (const kind of Object.keys(preview.metrics.byKind) as Array<keyof typeof byKind>) {
+    byKind[kind] = { total: 0, autoMigrated: 0, manual: 0 };
+  }
+  return {
+    rootDir: preview.rootDir,
+    target: preview.target,
+    filesScanned: preview.filesScanned,
+    filesChanged: 0,
+    metrics: {
+      totalCodemodScopedCallSites: 0,
+      autoMigratedCallSites: 0,
+      manualCallSites: 0,
+      byKind,
+    },
+    fileResults: [],
+    manualTodos: [],
+    residualArcGisModuleSites,
+    errors: preview.errors,
+  };
+}
+
 function runCodemod(args: ParsedArgs): void {
   const outputPlan = preflightOutputPlan({ files: args.reportPath ? [args.reportPath] : [], force: args.force });
   const reportPath = outputPlan.files[0];
   const scanReport = scanArcGisUsage(args.target);
-  const codemodResult = runEsriCompatCodemod({
+  const codemodOptions = {
     rootDir: args.target,
-    write: args.write,
     compatImportPath: args.compatImportPath,
     annotateTodos: args.annotateTodos,
     target: args.codemodTarget,
-  });
-  const report = buildJsMigrationReport(args.target, codemodResult, scanReport);
+  };
+  const preview = runEsriCompatCodemod({ ...codemodOptions, write: false });
+  const previewReport = buildJsMigrationReport(args.target, preview, scanReport);
+  // A honua-compat --write must not persist a conversion the report tells the app to keep on ArcGIS.
+  const stopped = args.write && keepsEsriClient(previewReport.conversion.recommendedMode, args.codemodTarget);
+  const codemodResult = stopped
+    ? unchangedCodemodResult(preview, scanReport.imports)
+    : args.write
+      ? runEsriCompatCodemod({ ...codemodOptions, write: true })
+      : preview;
+  const reportBody =
+    stopped || args.write ? buildJsMigrationReport(args.target, codemodResult, scanReport) : previewReport;
+  const writeMode = !args.write ? "dry-run" : stopped ? "stopped" : "enabled";
+  const report: JsMigrationReport & { codemodExecution: CodemodExecution } = {
+    ...reportBody,
+    codemodExecution: {
+      writeMode,
+      applied: writeMode === "enabled",
+      ...(stopped
+        ? {
+            preview: {
+              filesChanged: preview.filesChanged,
+              fileBoundaries: previewReport.conversion.fileBoundaries,
+              autoMigratedCallSites: preview.metrics.autoMigratedCallSites,
+              manualCallSites: preview.metrics.manualCallSites,
+            },
+          }
+        : {}),
+    },
+  };
 
   process.stdout.write(
     [
@@ -1211,7 +1292,7 @@ function runCodemod(args: ParsedArgs): void {
       `manual=${formatManualDifficultyBreakdown(report.manualTodos)}`,
       `manualRewrite=${report.manualRewriteMetric.numerator}/${report.manualRewriteMetric.denominator}`,
       `manualIntervention=${report.manualInterventionMetric.numerator}/${report.manualInterventionMetric.denominator}`,
-      `writeMode=${args.write ? "enabled" : "dry-run"}`,
+      `writeMode=${writeMode}`,
       `annotateTodos=${args.annotateTodos ? "enabled" : "disabled"}`,
       `target=${args.codemodTarget}`,
       `readiness=${report.readiness}`,
