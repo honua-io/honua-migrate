@@ -28,8 +28,8 @@
     "repository": "https://github.com/honua-io/honua-migrate",
     "packagePath": "packages/javascript",
     "npmPackage": "@honua/honua-migrate",
-    "version": "0.1.5-beta.0",
-    "releaseTag": "javascript-v0.1.5-beta.0",
+    "version": "0.1.6-beta.0",
+    "releaseTag": "javascript-v0.1.6-beta.0",
     "nodeEngine": ">=20.19.0"
   },
   "historyImport": {

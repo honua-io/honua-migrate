@@ -4444,8 +4444,24 @@ describe("PR 172 review regressions", () => {
     expect(fs.readFileSync(path.join(src, "main.ts"), "utf8")).toContain("new LocatorCompat(");
     expect(
       JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).dependencies["@honua/sdk-esri-compat"],
-    ).toBe("^0.1.9-beta.0");
+    ).toBe("0.1.11-beta.0");
     expect(fs.existsSync(path.join(src, "package.json"))).toBe(false);
+  });
+
+  it("leaves a hand-written compat pin alone", () => {
+    const root = makeTempProject();
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ dependencies: { "@honua/sdk-esri-compat": "workspace:*" } }),
+    );
+    fs.writeFileSync(
+      path.join(root, "main.ts"),
+      'import FeatureLayer from "@arcgis/core/layers/FeatureLayer";\nconst layer = new FeatureLayer({ url: "https://example.test/FeatureServer/0" });\n',
+    );
+    runEsriCompatCodemod({ rootDir: root, write: true });
+    expect(
+      JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).dependencies["@honua/sdk-esri-compat"],
+    ).toBe("workspace:*");
   });
 
   it.each(["Credential", "MyCredential"])("preserves binding %s, keys, shorthand and shadowing", (binding) => {
