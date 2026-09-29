@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -425,17 +426,25 @@ describe("current ArcGIS sample corpus", () => {
     );
     const treesPage = writtenPage("intro-featurelayer");
     expect(treesPage).toContain('new MapCompat({ basemap: "hybrid" })');
+    expect(treesPage).toContain('const honuaMap = new MapCompat({ basemap: "hybrid" });');
+    expect(treesPage).toContain("honuaMap.add(featureLayer)");
+    expect(treesPage).toContain("xmin: __honuaGoToTarget.xmin");
+    expect(treesPage).not.toContain("honuaView.goTo(featureLayer.fullExtent");
     expect(treesPage).toContain("FeatureLayerCompat");
     expect(treesPage).toContain("honuaView.constraints");
     expect(treesPage).not.toContain("viewElement.constraints");
     expect(treesPage).not.toContain('src="%CDN%"');
+    expect(treesPage).not.toContain("registerHonuaWidgetKit");
 
     expect(counties.report.conversion.recommendedMode).toBe("complete-honua-conversion");
     const countyModules = counties.report.unhandledArcGisModules.map((module) => module.modulePath);
     expect(countyModules).not.toContain("@arcgis/core/layers/FeatureLayer.js");
     expect(countyModules).not.toContain("@arcgis/core/Map.js");
     expect(countyModules).not.toContain("@arcgis/core/geometry/operators/centroidOperator.js");
-    expect(writtenPage("featurelayer-query")).toContain("geometryEngineCompat.centroid");
+    const countyPage = writtenPage("featurelayer-query");
+    expect(countyPage).toContain("geometryEngineCompat.centroid");
+    expect(countyPage).toContain("honuaView.map = map");
+    expect(countyPage).not.toContain("honuaMap = map");
 
     expect(related.report.conversion.recommendedMode).toBe("assisted-conversion");
     expect(related.report.conversion.recommendedMode).not.toBe("complete-honua-conversion");
@@ -449,7 +458,10 @@ describe("current ArcGIS sample corpus", () => {
 
     const relatedPage = writtenPage("query-related-features");
     expect(relatedPage).toContain(
-      'const honuaView = new MapViewCompat({ container: document.getElementById("honua-map"), map: new WebMapCompat({ portalItem: { id: "00113543095f45e78e521e316dc447dd" } }) });',
+      'const honuaMap = new WebMapCompat({ portalItem: { id: "00113543095f45e78e521e316dc447dd" } });',
+    );
+    expect(relatedPage).toContain(
+      'const honuaView = new MapViewCompat({ container: document.getElementById("honua-map"), map: honuaMap });',
     );
     expect(relatedPage).toContain("await honuaView.when()");
     expect(relatedPage).toContain("await honuaView.whenLayerView(layer)");
@@ -464,12 +476,57 @@ describe("current ArcGIS sample corpus", () => {
     expect(relatedPage).not.toContain("<arcgis-expand");
   });
 
+  it("typechecks the rewritten intro-featurelayer script against the installed compat package", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-intro-types-"));
+    tempDirs.push(dir);
+    fs.cpSync(path.join(CORPUS, "intro-featurelayer"), dir, { recursive: true });
+    const codemodResult = runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
+    expect(codemodResult.errors).toBeUndefined();
+    const html = fs.readFileSync(path.join(dir, "index.html"), "utf8");
+    const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
+    expect(script).toContain("honuaMap.add(featureLayer)");
+    expect(script).toContain("xmin: __honuaGoToTarget.xmin");
+    expect(script).not.toContain("honuaView.goTo(featureLayer.fullExtent");
+    fs.writeFileSync(path.join(dir, "main.ts"), `${script?.trim()}\n`);
+    fs.writeFileSync(path.join(dir, "package.json"), '{"type":"module"}\n');
+    fs.writeFileSync(
+      path.join(dir, "tsconfig.json"),
+      `${JSON.stringify(
+        {
+          compilerOptions: {
+            module: "es2022",
+            moduleResolution: "bundler",
+            moduleDetection: "force",
+            target: "es2022",
+            strict: true,
+            skipLibCheck: true,
+            noEmit: true,
+            lib: ["ES2022", "DOM"],
+            types: [],
+          },
+          files: ["main.ts"],
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    fs.symlinkSync(path.resolve(import.meta.dirname, "../../node_modules"), path.join(dir, "node_modules"));
+    const tsc = spawnSync(
+      path.resolve(import.meta.dirname, "../../node_modules/typescript/bin/tsc"),
+      ["-p", "tsconfig.json", "--pretty", "false", "--noEmit"],
+      { cwd: dir, encoding: "utf8" },
+    );
+    expect(tsc.status, `${tsc.stdout}\n${tsc.stderr}`).toBe(0);
+  });
+
   it("rewrites the popup shell and geodetic length, and leaves smart-mapping statistics held", () => {
     const popup = migrate("popup-actions");
     const popupModules = popup.report.unhandledArcGisModules.map((module) => module.modulePath);
     expect(popupModules).not.toContain("@arcgis/core/geometry/operators/geodeticLengthOperator.js");
     expect(popup.report.conversion.recommendedMode).not.toBe("keep-esri-client");
     const popupPage = writtenPage("popup-actions");
+    expect(popupPage).toContain("honuaView.map = new Map(");
+    expect(popupPage).not.toContain("honuaMap = new Map(");
     expect(popupPage).toContain("geometryEngineCompat.geodesicLength(geometry, unit)");
     expect(popupPage).not.toContain("geodeticLengthOperator.js");
     expect(popupPage).not.toContain('src="%CDN%"');
