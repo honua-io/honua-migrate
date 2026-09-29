@@ -8,6 +8,7 @@
       "tag-separator": "-",
       "include-component-in-tag": true,
       "bump-minor-pre-major": true,
+      "exclude-paths": ["packages/javascript", "packages/maui"],
       "extra-files": [
         "src/honua_migrate/__init__.py",
         "src/honua_esri_assess/__init__.py"
