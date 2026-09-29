@@ -156,9 +156,12 @@ and `Locate` moves to `LocateCompat`. Any other `init` call stays, and so does
 the value it watches. A `Graphic` that receives a symbol still imported from
 `@arcgis/core` stays `new Graphic`.
 
-A file that rewrites `Locator` declares `@honua/sdk-esri-compat` at
-`^0.1.9-beta.0`, the first published release that exports `LocatorCompat`.
-Other rewritten files stay on `^0.1.2-beta.0`.
+A rewritten file declares `@honua/sdk-esri-compat` at exact `0.1.11-beta.0`.
+That tarball contains the members the codemod emits, including `LocatorCompat`.
+`^0.1.2-beta.0` and `^0.1.9-beta.0` do not select it. A later codemod run, and
+the reviewed `migrate` plan, replace those two stale ranges on
+`@honua/sdk-esri-compat` and leave any other pin alone. A custom compat import
+path is not given this version.
 
 Do not invent a mapping for a kept module. Smart-mapping `size` and
 `histogram` stay kept. `executeQueryJSON(url, params)` and

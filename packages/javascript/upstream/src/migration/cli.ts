@@ -328,7 +328,7 @@ function runMigrate(args: ParsedArgs): void {
     process.stdout.write(`planDigest=${plan.planDigest}\n`);
     process.stdout.write(`mode=${plan.mode ?? "none"}\n`);
     process.stdout.write(
-      `sourceChanges=${plan.sourceChanges.length} dependencyChanges=add:${count("add")},remove:${count("remove")},keep:${count("keep")} configReferences=${plan.configReferences.length} holds=${plan.holds.length}\n`,
+      `sourceChanges=${plan.sourceChanges.length} dependencyChanges=add:${count("add")},update:${count("update")},remove:${count("remove")},keep:${count("keep")} configReferences=${plan.configReferences.length} holds=${plan.holds.length}\n`,
     );
     if (plan.sourceChanges.length > 0) {
       process.stdout.write("sourceChanges:\n");

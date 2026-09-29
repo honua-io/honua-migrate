@@ -17,9 +17,10 @@ const HONUA_MAP_IMPORT_PATH = "@honua/sdk-js/map";
 const MAPLIBRE_IMPORT_PATH = "maplibre-gl";
 const MAPLIBRE_NAMESPACE = "maplibregl";
 const TODO_MARKER = "TODO(honua-migrate)";
-const DEFAULT_COMPAT_DEPENDENCY_RANGE = "^0.1.2-beta.0";
-/** First published `@honua/sdk-esri-compat` release that exports `LocatorCompat`. */
-const LOCATOR_COMPAT_DEPENDENCY_RANGE = "^0.1.9-beta.0";
+/** Exact compat tarball that contains every member this codemod emits.
+ *  `^0.1.2-beta.0` and `^0.1.9-beta.0` do not select `0.1.11-beta.0`. */
+export const COMPAT_DEPENDENCY_RANGE = "0.1.11-beta.0";
+export const STALE_COMPAT_DEPENDENCY_RANGES = new Set(["^0.1.2-beta.0", "^0.1.9-beta.0"]);
 const CJS_REQUIRE_MANUAL_REASON =
   "CommonJS require constructors are not auto-migrated; convert the module to ESM and rerun.";
 const ESRI_LEAFLET_UNSUPPORTED_CONSTRUCTOR_REASON =
@@ -968,10 +969,10 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
     residualArcGisModuleSites.push(...findArcGisModuleSites(fileResult.nextSource, file));
   }
 
-  if (options.write && fileResults.some((item) => item.addedCompatImport)) {
-    const compatRange =
-      metrics.byKind.locator.autoMigrated > 0 ? LOCATOR_COMPAT_DEPENDENCY_RANGE : DEFAULT_COMPAT_DEPENDENCY_RANGE;
-    ensureCompatPackageDependency(rootDir, compatImportPath, compatRange);
+  if (options.write && target === "honua-compat" && compatImportPath === DEFAULT_COMPAT_IMPORT_PATH) {
+    ensureCompatPackageDependency(rootDir, compatImportPath, COMPAT_DEPENDENCY_RANGE, {
+      allowAdd: fileResults.some((item) => item.addedCompatImport),
+    });
   }
 
   return {
@@ -1035,7 +1036,16 @@ function rewriteRewrittenEsriNamespaceTypes(sourceFile: ts.SourceFile, compatSym
   return edits;
 }
 
-function ensureCompatPackageDependency(rootDir: string, importPath: string, range: string): void {
+function ensureCompatPackageDependency(
+  rootDir: string,
+  importPath: string,
+  range: string,
+  options: { allowAdd: boolean },
+): void {
+  // A private --compat-import-path is not this package, so it is neither added nor upgraded.
+  if (importPath !== DEFAULT_COMPAT_IMPORT_PATH) {
+    return;
+  }
   let manifestDir = path.resolve(rootDir);
   while (!fs.existsSync(path.join(manifestDir, "package.json"))) {
     const parent = path.dirname(manifestDir);
@@ -1056,7 +1066,12 @@ function ensureCompatPackageDependency(rootDir: string, importPath: string, rang
     return;
   }
   const current = manifest.dependencies?.[importPath];
-  if (current === range || (current && current !== DEFAULT_COMPAT_DEPENDENCY_RANGE)) {
+  if (current === range || (current && !STALE_COMPAT_DEPENDENCY_RANGES.has(current))) {
+    return;
+  }
+  // A missing dependency is added only when this run introduced the compat import.
+  // A stale range is replaced even when the source was already converted.
+  if (current === undefined && !options.allowAdd) {
     return;
   }
   manifest.dependencies = {

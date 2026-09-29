@@ -5,6 +5,7 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
+import { COMPAT_DEPENDENCY_RANGE } from "../src/migration/codemod.js";
 import {
   applyJsMigration,
   createUnifiedDiff,
@@ -117,6 +118,7 @@ describe("JS migration pipeline", () => {
       devDependencies: Record<string, string>;
     };
 
+    expect(COMPAT_DEPENDENCY_RANGE).toBe(HONUA_COMPAT_RUNTIME_DEPENDENCIES["@honua/sdk-esri-compat"]);
     for (const [name, range] of Object.entries(HONUA_COMPAT_RUNTIME_DEPENDENCIES)) {
       expect(manifest.dependencies[name], name).toBe(range);
     }
@@ -322,6 +324,80 @@ describe("JS migration pipeline", () => {
       .filter((url) => url.pathname === "/rest/services/trails/FeatureServer/0/query");
     expect(queries.map((url) => url.searchParams.get("where"))).toEqual(["DIFFICULTY = 'easy'"]);
   }, 300_000);
+
+  it("plans an update when the declared compat range cannot select the emitted members", () => {
+    const app = writeApp({
+      "package.json": `${JSON.stringify(
+        {
+          private: true,
+          dependencies: {
+            "@arcgis/core": "^4.34.8",
+            "@honua/sdk": "0.1.11-beta.0",
+            "@honua/sdk-esri-compat": "^0.1.2-beta.0",
+          },
+        },
+        null,
+        2,
+      )}\n`,
+      "src/main.ts": MAP_ONLY_SOURCE,
+    });
+
+    const plan = planJsMigration({ appRoot: app });
+
+    expect(plan.mode).toBe("complete-honua-conversion");
+    expect(summarizeChanges(plan.dependencyChanges)).toEqual([
+      ["update", "dependencies", "@honua/sdk-esri-compat", "0.1.11-beta.0", false],
+      ["add", "dependencies", "@bufbuild/protobuf", "^2.15.0", true],
+      ["add", "dependencies", "@connectrpc/connect", "^2.2.0", true],
+      ["add", "dependencies", "@connectrpc/connect-web", "^2.2.0", true],
+      ["add", "dependencies", "maplibre-gl", "^6.4.1", false],
+      ["remove", "dependencies", "@arcgis/core", "^4.34.8", false],
+    ]);
+    expect(plan.dependencyChanges[0].reason).toBe(
+      "The declared range does not select the compat tarball that contains the members the codemod emits.",
+    );
+    expect(plan.patch).toContain('"@honua/sdk-esri-compat": "0.1.11-beta.0"');
+
+    const report = applyJsMigration({ appRoot: app, approvedDigest: plan.planDigest });
+
+    expect(report.verdict).toBe("unvalidated");
+    expect(report.stages.find((stage) => stage.stage === "dependencies")?.detail).toContain(
+      "Updated: @honua/sdk-esri-compat",
+    );
+    expect(JSON.parse(readTree(app)["package.json"]).dependencies).toEqual({
+      "@bufbuild/protobuf": "^2.15.0",
+      "@connectrpc/connect": "^2.2.0",
+      "@connectrpc/connect-web": "^2.2.0",
+      "@honua/sdk": "0.1.11-beta.0",
+      "@honua/sdk-esri-compat": "0.1.11-beta.0",
+      "maplibre-gl": "^6.4.1",
+    });
+  });
+
+  it("leaves a hand-written compat pin in place when planning other dependency changes", () => {
+    const app = writeApp({
+      "package.json": `${JSON.stringify(
+        {
+          private: true,
+          dependencies: {
+            "@arcgis/core": "^4.34.8",
+            "@honua/sdk": "0.1.11-beta.0",
+            "@honua/sdk-esri-compat": "workspace:*",
+          },
+        },
+        null,
+        2,
+      )}\n`,
+      "src/main.ts": MAP_ONLY_SOURCE,
+    });
+
+    const plan = planJsMigration({ appRoot: app });
+
+    expect(plan.dependencyChanges.some((change) => change.name === "@honua/sdk-esri-compat")).toBe(false);
+    const report = applyJsMigration({ appRoot: app, approvedDigest: plan.planDigest });
+    expect(report.verdict).toBe("unvalidated");
+    expect(JSON.parse(readTree(app)["package.json"]).dependencies["@honua/sdk-esri-compat"]).toBe("workspace:*");
+  });
 
   it("refuses a digest the current tree no longer produces and writes nothing", () => {
     const app = copyFixture(PIPELINE_FIXTURE);

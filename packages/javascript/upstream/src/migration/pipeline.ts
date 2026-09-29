@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { type CodemodTarget, runEsriCompatCodemod } from "./codemod.js";
+import { type CodemodTarget, runEsriCompatCodemod, STALE_COMPAT_DEPENDENCY_RANGES } from "./codemod.js";
 import { writeOutputFilesAtomically } from "./output-writer.js";
 import { buildJsMigrationReport, type JsConversionMode, type JsMigrationReport } from "./report.js";
 import { type ArcGisDependencySection, scanArcGisUsage } from "./scanner.js";
@@ -71,7 +71,7 @@ const CONFIG_FILE_NAME =
   /^(?:(?:vite|vitest|webpack|rollup|rspack|rsbuild|esbuild|next|nuxt|astro|svelte|babel|jest)\.config\.[cm]?[jt]s|tsconfig(?:\.[\w-]+)?\.json|jsconfig\.json|angular\.json|\.babelrc(?:\.json)?)$/;
 const ARCGIS_RUNTIME_REFERENCE = /@arcgis\/|arcgis-js-api|esri-loader/;
 
-export type JsDependencyChangeAction = "add" | "remove" | "keep";
+export type JsDependencyChangeAction = "add" | "update" | "remove" | "keep";
 
 export interface JsDependencyChange {
   action: JsDependencyChangeAction;
@@ -518,6 +518,18 @@ function planDependencyChanges(
               ? "The migrated source imports @honua/sdk-esri-compat."
               : "@honua/sdk-esri-compat requires @honua/sdk as a peer dependency.",
         });
+      } else if (name === DEFAULT_COMPAT_IMPORT_PATH) {
+        const current = dependencySection(manifest, "dependencies")[name];
+        if (current !== undefined && current !== version && STALE_COMPAT_DEPENDENCY_RANGES.has(current)) {
+          changes.push({
+            action: "update",
+            section: "dependencies",
+            name,
+            version,
+            reason:
+              "The declared range does not select the compat tarball that contains the members the codemod emits.",
+          });
+        }
       }
     }
     for (const [name, version] of Object.entries(HONUA_COMPAT_BUNDLER_WORKAROUND_DEPENDENCIES)) {
@@ -594,7 +606,7 @@ function renderManifest(parsed: ParsedManifest, original: string, changes: reado
       continue;
     }
     const section = { ...dependencySection(manifest, change.section) };
-    if (change.action === "add") {
+    if (change.action === "add" || change.action === "update") {
       const keys = Object.keys(section);
       const sorted = keys.every((key, index) => index === 0 || compareText(keys[index - 1], key) <= 0);
       section[change.name] = change.version;
@@ -687,7 +699,7 @@ function dependencyStage(plan: JsMigrationPlan): JsPipelineStage {
     stage: "dependencies",
     status: "passed",
     detail: plan.manifest.changed
-      ? `Updated package.json. Added: ${describe("add")}. Removed: ${describe("remove")}. Kept: ${describe("keep")}.`
+      ? `Updated package.json. Added: ${describe("add")}. Updated: ${describe("update")}. Removed: ${describe("remove")}. Kept: ${describe("keep")}.`
       : "package.json already declares what the migrated source needs.",
   };
 }
