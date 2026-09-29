@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import tomllib
 import urllib.error
 from pathlib import Path
 from types import ModuleType
@@ -11,6 +12,9 @@ from types import ModuleType
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+VERSION = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))[
+    "project"
+]["version"]
 
 
 def _module() -> ModuleType:
@@ -28,8 +32,8 @@ def _dist(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     dist = tmp_path / "dist"
     dist.mkdir()
     files = {
-        "honua_migrate-0.7.1-py3-none-any.whl": b"wheel",
-        "honua_migrate-0.7.1.tar.gz": b"sdist",
+        f"honua_migrate-{VERSION}-py3-none-any.whl": b"wheel",
+        f"honua_migrate-{VERSION}.tar.gz": b"sdist",
     }
     for name, payload in files.items():
         (dist / name).write_bytes(payload)
@@ -41,7 +45,7 @@ def _dist(tmp_path: Path) -> tuple[Path, dict[str, str]]:
 
 def _release(hashes: dict[str, str]) -> dict:
     return {
-        "info": {"name": "honua-migrate", "version": "0.7.1"},
+        "info": {"name": "honua-migrate", "version": VERSION},
         "urls": [
             {"filename": name, "digests": {"sha256": digest}}
             for name, digest in hashes.items()
@@ -66,7 +70,7 @@ def test_pypi_404_is_the_only_missing_version_response(
         raise urllib.error.HTTPError("https://pypi.invalid", 404, "missing", {}, None)
 
     monkeypatch.setattr(module.urllib.request, "urlopen", missing)
-    assert module.fetch_pypi_release("honua-migrate", "0.7.1") is None
+    assert module.fetch_pypi_release("honua-migrate", VERSION) is None
 
 
 def test_exact_existing_version_is_retry_safe(tmp_path: Path) -> None:
