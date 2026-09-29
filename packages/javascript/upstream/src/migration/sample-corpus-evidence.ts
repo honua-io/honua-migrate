@@ -9,6 +9,7 @@ import {
 } from "./codemod.js";
 import {
   type ArcGisServiceReference,
+  analyzeEsriSampleFixture,
   type EsriSampleCorpusManifest,
   type EsriSampleCorpusSample,
   type EsriSampleFixtureAnalysis,
@@ -17,9 +18,8 @@ import {
   type EsriSampleSkipReason,
   type EsriSampleSourceReference,
   type EsriSampleTermsMetadata,
-  type PortalItemReference,
-  analyzeEsriSampleFixture,
   loadEsriSampleCorpusManifest,
+  type PortalItemReference,
 } from "./sample-corpus.js";
 
 const DEFAULT_CODEMOD_TARGET: CodemodTarget = "honua-maplibre";
