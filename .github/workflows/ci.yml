@@ -254,6 +254,12 @@ jobs:
       contents: read
       pull-requests: read
     steps:
+      # The action reads configFile from the workspace; without a checkout it
+      # silently falls back to config-conventional and ignores .commitlintrc.json.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - uses: wagoid/commitlint-github-action@v6
         with:
           configFile: ".commitlintrc.json"
