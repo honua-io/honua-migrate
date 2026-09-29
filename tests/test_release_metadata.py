@@ -116,6 +116,28 @@ def test_release_please_config_uses_component_tags() -> None:
     assert config["packages"]["packages/maui"]["component"] == "maui"
 
 
+def test_python_extra_files_mark_the_fallback_version_for_release_please() -> None:
+    """Release Please's generic updater only bumps lines inside version markers.
+
+    Without them the fallback ``__version__`` stays behind the project version
+    and ``validate_publish_tag.py`` rejects the release after it is tagged.
+    """
+
+    config = json.loads(
+        (REPO_ROOT / "release-please-config.json").read_text(encoding="utf-8")
+    )
+    expected = _pyproject()["project"]["version"]
+    for relative in config["packages"]["."]["extra-files"]:
+        text = (REPO_ROOT / relative).read_text(encoding="utf-8")
+        block = re.search(
+            r"# x-release-please-start-version\n(.*?)# x-release-please-end",
+            text,
+            re.DOTALL,
+        )
+        assert block, f"{relative}: missing x-release-please version markers"
+        assert f'__version__ = "{expected}"' in block.group(1), relative
+
+
 def test_publish_workflow_publishes_only_from_validated_release_tags() -> None:
     workflow = (REPO_ROOT / ".github" / "workflows" / "publish.yml").read_text(
         encoding="utf-8"

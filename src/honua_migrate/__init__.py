@@ -35,7 +35,9 @@ from .contract_validation import (
 try:
     __version__ = version("honua-migrate")
 except PackageNotFoundError:
+    # x-release-please-start-version
     __version__ = "0.7.1"
+    # x-release-please-end
 
 __all__ = [
     "EXIT_APPLY_REFUSED",
