@@ -6,7 +6,7 @@ import path from "node:path";
 
 import { type CodemodTarget, runEsriCompatCodemod } from "./codemod.js";
 import { writeOutputFilesAtomically } from "./output-writer.js";
-import { type JsConversionMode, type JsMigrationReport, buildJsMigrationReport } from "./report.js";
+import { buildJsMigrationReport, type JsConversionMode, type JsMigrationReport } from "./report.js";
 import { type ArcGisDependencySection, scanArcGisUsage } from "./scanner.js";
 
 /**

@@ -1,8 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-
-import { parseWebMap } from "@honua/sdk/webmap";
 import type { WebMapJson } from "@honua/sdk/webmap";
+import { parseWebMap } from "@honua/sdk/webmap";
 import { stringifyArtifact } from "./artifact-safety.js";
 import { type GeoservicesImportJobReport, runGeoservicesImportJob } from "./demo.js";
 import { trimChar, trimTrailingSlashes } from "./path-utils.js";
@@ -1164,7 +1163,7 @@ function resolvePortalSharingRestBase(portalUrl: string): string {
 }
 
 function quotePortalQueryValue(value: string): string {
-  return `\"${value.replaceAll('"', '\\"')}\"`;
+  return `"${value.replaceAll('"', '\\"')}"`;
 }
 
 function normalizeBaseUrl(baseUrl: string): string {
@@ -1283,7 +1282,7 @@ function asNumber(value: unknown): number | undefined {
 function readRequiredNumber(source: Record<string, unknown>, key: string): number {
   const value = asNumber(source[key]);
   if (value === undefined) {
-    throw new Error(`Expected \"${key}\" to be a number.`);
+    throw new Error(`Expected "${key}" to be a number.`);
   }
   return value;
 }

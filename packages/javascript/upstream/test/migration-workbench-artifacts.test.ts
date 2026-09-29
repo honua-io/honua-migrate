@@ -6,11 +6,11 @@ import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
 import {
-  MIGRATION_WORKBENCH_ARTIFACT_PATHS,
   buildMigrationWorkbenchArtifacts,
   defaultRepositoryRoot,
   executeIsolatedGeneratedModule,
   hashRegularTree,
+  MIGRATION_WORKBENCH_ARTIFACT_PATHS,
   verifyMigrationPatch,
 } from "../scripts/lib/migration-workbench-artifacts.mjs";
 import { verifyPreparedSdkArtifact } from "../scripts/lib/prepared-sdk-artifact.mjs";
