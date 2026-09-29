@@ -4,13 +4,13 @@ import {
   type CodemodConstructorKind,
   type CodemodFileError,
   type CodemodFileResult,
-  type EsriCompatCodemodResult,
-  type MigrationTodo,
-  SUPPORTED_ARCGIS_MODULE_KIND_BY_PATH,
   codemodDropsModulePath,
+  type EsriCompatCodemodResult,
   isKindSupportedForTarget,
   isSupportedArcGisBarrelModulePath,
+  type MigrationTodo,
   resolveArcGisBarrelImportKind,
+  SUPPORTED_ARCGIS_MODULE_KIND_BY_PATH,
 } from "./codemod.js";
 import {
   AMD_REQUIRE_IMPORT_CLAUSE,
@@ -19,17 +19,17 @@ import {
   type ArcGisDependencyManifest,
   type ArcGisImportHit,
   type ArcGisScanReport,
+  canonicalArcGisModulePath,
   MAP_COMPONENT_CLAUSE,
   REWRITTEN_SHELL_COMPONENT_PATHS,
-  canonicalArcGisModulePath,
   scanArcGisUsage,
   summarizeArcGisScan,
 } from "./scanner.js";
 import {
   ARCGIS_WIDGET_DEPRECATION_RELEASE,
   ARCGIS_WIDGET_REMOVAL_RELEASE,
-  type WidgetDispositionKind,
   getWidgetDisposition,
+  type WidgetDispositionKind,
   widgetModulePathInfo,
 } from "./widget-dispositions.js";
 
