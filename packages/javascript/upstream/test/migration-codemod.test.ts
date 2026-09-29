@@ -4464,6 +4464,56 @@ describe("PR 172 review regressions", () => {
     ).toBe("workspace:*");
   });
 
+  it.each(["^0.1.2-beta.0", "^0.1.9-beta.0"])(
+    "replaces a stale %s pin when a later run adds no compat import",
+    (staleRange) => {
+      const root = makeTempProject();
+      const source =
+        'import { FeatureLayerCompat } from "@honua/sdk-esri-compat";\nconst layer = new FeatureLayerCompat({ url: "https://example.test/FeatureServer/0" });\n';
+      fs.writeFileSync(
+        path.join(root, "package.json"),
+        JSON.stringify({ dependencies: { "@honua/sdk-esri-compat": staleRange } }),
+      );
+      fs.writeFileSync(path.join(root, "main.ts"), source);
+      runEsriCompatCodemod({ rootDir: root, write: true });
+      expect(fs.readFileSync(path.join(root, "main.ts"), "utf8")).toBe(source);
+      expect(
+        JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).dependencies["@honua/sdk-esri-compat"],
+      ).toBe("0.1.11-beta.0");
+    },
+  );
+
+  it("does not add a compat dependency when a later run adds no import and none is declared", () => {
+    const root = makeTempProject();
+    const manifest = { private: true };
+    fs.writeFileSync(path.join(root, "package.json"), `${JSON.stringify(manifest)}\n`);
+    fs.writeFileSync(
+      path.join(root, "main.ts"),
+      'import { MapCompat } from "@honua/sdk-esri-compat";\nexport const map = new MapCompat({ basemap: "streets-vector" });\n',
+    );
+    runEsriCompatCodemod({ rootDir: root, write: true });
+    expect(JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"))).toEqual(manifest);
+  });
+
+  it("does not rewrite a custom compat import path to the published compat version", () => {
+    const root = makeTempProject();
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ dependencies: { "@private/compat": "^0.1.2-beta.0" } }),
+    );
+    fs.writeFileSync(
+      path.join(root, "main.ts"),
+      'import FeatureLayer from "@arcgis/core/layers/FeatureLayer";\nconst layer = new FeatureLayer({ url: "https://example.test/FeatureServer/0" });\n',
+    );
+    runEsriCompatCodemod({ rootDir: root, write: true, compatImportPath: "@private/compat" });
+    const dependencies = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).dependencies as Record<
+      string,
+      string
+    >;
+    expect(dependencies).toEqual({ "@private/compat": "^0.1.2-beta.0" });
+    expect(fs.readFileSync(path.join(root, "main.ts"), "utf8")).toContain('from "@private/compat"');
+  });
+
   it.each(["Credential", "MyCredential"])("preserves binding %s, keys, shorthand and shadowing", (binding) => {
     const root = makeTempProject();
     const file = path.join(root, "identity.js");
