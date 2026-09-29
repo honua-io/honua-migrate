@@ -1,9 +1,8 @@
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
-
-import { emitEsriSampleCorpusEvidence } from "../src/migration/sample-corpus-evidence.js";
 import { loadEsriSampleCorpusManifest } from "../src/migration/sample-corpus.js";
+import { emitEsriSampleCorpusEvidence } from "../src/migration/sample-corpus-evidence.js";
 
 const corpusRoot = path.join(import.meta.dirname, "fixtures", "esri-sample-corpus");
 const manifestPath = path.join(corpusRoot, "manifest.json");

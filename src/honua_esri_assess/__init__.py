@@ -19,7 +19,9 @@ if not getattr(sys, "_honua_migrate_mounting_assessment", False):
 try:
     __version__ = version("honua-migrate")
 except PackageNotFoundError:
+    # x-release-please-start-version
     __version__ = "0.7.1"
+    # x-release-please-end
 
 
 def bundled_schema_version() -> str:
