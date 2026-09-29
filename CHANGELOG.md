@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.8.0](https://github.com/honua-io/honua-migrate/compare/honua-migrate-v0.7.1...honua-migrate-v0.8.0) (2026-09-29)
+
+
+### Features
+
+* **js-migration:** define the 2026.1 cohort and count surviving imports as unhandled ([#162](https://github.com/honua-io/honua-migrate/issues/162)) ([8a8d635](https://github.com/honua-io/honua-migrate/commit/8a8d6351fc8b8c437ed3966ccac28f955ecabb2f))
+* **js-migration:** per-file diagnostics and conversion modes in the JS report ([#164](https://github.com/honua-io/honua-migrate/issues/164)) ([4866847](https://github.com/honua-io/honua-migrate/commit/4866847d28f46f8dcc20d832a7d813396120aeae)), closes [#142](https://github.com/honua-io/honua-migrate/issues/142)
+* **js-migration:** reviewed migrate pipeline from plan to browser validation ([#165](https://github.com/honua-io/honua-migrate/issues/165)) ([ce271ee](https://github.com/honua-io/honua-migrate/commit/ce271ee949f2fb59a0e985ab4be907b97e41f346)), closes [#142](https://github.com/honua-io/honua-migrate/issues/142)
+* **migration:** export ArcGIS existing-app handoff with verified target IDs ([#146](https://github.com/honua-io/honua-migrate/issues/146)) ([1763d4b](https://github.com/honua-io/honua-migrate/commit/1763d4b04b394ce8dca6d2e7d8a4b4944be94f8d))
+
+
+### Bug Fixes
+
+* **js-migration:** depend on compat 0.1.10-beta.0 ([#176](https://github.com/honua-io/honua-migrate/issues/176)) ([f2b59c4](https://github.com/honua-io/honua-migrate/commit/f2b59c4084447addb0139bd55fe2d94b52c68ef3))
+* **js-migration:** rewrite a 2D ArcGIS app onto the compat client ([#172](https://github.com/honua-io/honua-migrate/issues/172)) ([a640f01](https://github.com/honua-io/honua-migrate/commit/a640f01472d8359743cc2dc5d4faa78c82e67e19))
+* **release:** keep component package commits out of the Python release ([#181](https://github.com/honua-io/honua-migrate/issues/181)) ([f18109e](https://github.com/honua-io/honua-migrate/commit/f18109e39a0f1b72a27d3886e460a6263b0fa6c0))
+* **release:** mark fallback versions for release-please ([#178](https://github.com/honua-io/honua-migrate/issues/178)) ([89cfa94](https://github.com/honua-io/honua-migrate/commit/89cfa94545a3f4d49da9262d7c636682fd950d2c))
+
+
+### Documentation
+
+* **esri:** scope server compatibility claim ([#140](https://github.com/honua-io/honua-migrate/issues/140)) ([76c4ace](https://github.com/honua-io/honua-migrate/commit/76c4acef9ade01517b1b7243a514383d2cd67d52))
+* fix signposting, and stop describing a closed product that does not exist ([#167](https://github.com/honua-io/honua-migrate/issues/167)) ([829dc82](https://github.com/honua-io/honua-migrate/commit/829dc82c414f96ae193fb7179382e194c9d3ce38))
+* **okf:** bring honua-migrate into the OKF bundle, and give it a front door ([#148](https://github.com/honua-io/honua-migrate/issues/148)) ([08d9e36](https://github.com/honua-io/honua-migrate/commit/08d9e3612c8abf6f01fdea3462e690b39da45512))
+* **okf:** give the pages a resource, so the bundle is a graph ([#151](https://github.com/honua-io/honua-migrate/issues/151)) ([2fcde9b](https://github.com/honua-io/honua-migrate/commit/2fcde9bbcf208afb0c03d81ee7e8c26d8c5ee707))
+* **okf:** take the generator's examples-section revision ([#150](https://github.com/honua-io/honua-migrate/issues/150)) ([a75a426](https://github.com/honua-io/honua-migrate/commit/a75a42664e50b3666da252ba00dcf364a6fdd4e0))
+
 ## [0.7.1](https://github.com/honua-io/honua-esri-assess/compare/honua-esri-assess-v0.7.0...honua-esri-assess-v0.7.1) (2026-06-10)
 
 
