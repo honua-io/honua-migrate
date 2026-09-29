@@ -7,10 +7,10 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { runEsriCompatCodemod } from "../src/migration/codemod.js";
 import {
+  buildJsMigrationReport,
   type JsConversionMode,
   type JsFileMigration,
   type JsMigrationReport,
-  buildJsMigrationReport,
 } from "../src/migration/report.js";
 import { scanArcGisUsage } from "../src/migration/scanner.js";
 import { getWidgetDisposition } from "../src/migration/widget-dispositions.js";

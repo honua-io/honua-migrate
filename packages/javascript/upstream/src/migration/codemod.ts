@@ -5792,9 +5792,7 @@ function handleHonuaMapLibreWebMapNewExpression(
   // 'streets' }`) for a WebMap JSON document. WebMap JSON uses
   // `baseMap` (capital M) and/or `operationalLayers`.
   const json = evaluated.value as Record<string, unknown>;
-  const looksLikeWebMapJson =
-    Object.prototype.hasOwnProperty.call(json, "operationalLayers") ||
-    Object.prototype.hasOwnProperty.call(json, "baseMap");
+  const looksLikeWebMapJson = Object.hasOwn(json, "operationalLayers") || Object.hasOwn(json, "baseMap");
   if (!looksLikeWebMapJson) {
     return { kind: "manual", reason: HONUA_MAPLIBRE_WEBMAP_DYNAMIC_REASON };
   }
