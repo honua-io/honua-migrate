@@ -102,6 +102,9 @@ def test_release_please_config_uses_component_tags() -> None:
         "src/honua_migrate/__init__.py",
         "src/honua_esri_assess/__init__.py",
     ]
+    # Component packages release on their own; keep their commits out of the
+    # Python changelog and version bump.
+    assert package["exclude-paths"] == ["packages/javascript", "packages/maui"]
     javascript_release_type = (
         "node"
         if (REPO_ROOT / "packages/javascript/package.json").is_file()
