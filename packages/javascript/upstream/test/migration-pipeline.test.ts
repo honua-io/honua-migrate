@@ -99,8 +99,8 @@ function runCli(args: readonly string[]): ReturnType<typeof spawnSync> {
 
 // The five packages a honua-compat migration adds to an app that declares none of them.
 const COMPAT_ADDITIONS: Array<[string, string, string, string, boolean]> = [
-  ["add", "dependencies", "@honua/sdk", "0.1.10-beta.0", false],
-  ["add", "dependencies", "@honua/sdk-esri-compat", "0.1.10-beta.0", false],
+  ["add", "dependencies", "@honua/sdk", "0.1.11-beta.0", false],
+  ["add", "dependencies", "@honua/sdk-esri-compat", "0.1.11-beta.0", false],
   ["add", "dependencies", "@bufbuild/protobuf", "^2.15.0", true],
   ["add", "dependencies", "@connectrpc/connect", "^2.2.0", true],
   ["add", "dependencies", "@connectrpc/connect-web", "^2.2.0", true],
@@ -234,8 +234,8 @@ describe("JS migration pipeline", () => {
         "@bufbuild/protobuf": "^2.15.0",
         "@connectrpc/connect": "^2.2.0",
         "@connectrpc/connect-web": "^2.2.0",
-        "@honua/sdk": "0.1.10-beta.0",
-        "@honua/sdk-esri-compat": "0.1.10-beta.0",
+        "@honua/sdk": "0.1.11-beta.0",
+        "@honua/sdk-esri-compat": "0.1.11-beta.0",
         "maplibre-gl": "^6.4.1",
       },
       devDependencies: {

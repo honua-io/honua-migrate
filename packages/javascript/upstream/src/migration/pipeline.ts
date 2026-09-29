@@ -43,8 +43,8 @@ const NPM_SCRIPT_NAME = /^[A-Za-z0-9][A-Za-z0-9:._-]*$/;
 
 /** Packages the honua-compat output imports, at the ranges this engine is built and tested against. */
 export const HONUA_COMPAT_RUNTIME_DEPENDENCIES: Readonly<Record<string, string>> = {
-  "@honua/sdk": "0.1.10-beta.0",
-  "@honua/sdk-esri-compat": "0.1.10-beta.0",
+  "@honua/sdk": "0.1.11-beta.0",
+  "@honua/sdk-esri-compat": "0.1.11-beta.0",
 };
 
 export const SDK_JS_OPTIONAL_GRPC_PEERS_ISSUE = "https://github.com/honua-io/honua-sdk-js/issues/1715";

@@ -1277,8 +1277,11 @@ function emitShellConstructors(
     symbols.add("MapViewCompat");
     const mapForView = mapConstructorForShell(element);
     symbols.add(mapForView.symbol);
+    // Bind the map. MapViewCompat.map is typed unknown, so honuaView.map.add
+    // does not typecheck against the published compat package.
+    lines.push(`const honuaMap = ${mapForView.expression};`);
     lines.push(
-      `const honuaView = new MapViewCompat({ container: document.getElementById("${element.id}"), map: ${mapForView.expression} });`,
+      `const honuaView = new MapViewCompat({ container: document.getElementById("${element.id}"), map: honuaMap });`,
     );
     for (const child of element.children) {
       emitShellConstructors(child, lines, symbols, usedNames, false);
@@ -1406,6 +1409,40 @@ function installShellBootstrap(source: string, bootstrap: string): string {
   return `${prefix}${gap}${bootstrap}${suffix.startsWith("\n") ? "" : "\n"}${suffix}`;
 }
 
+// FeatureLayerCompat.fullExtent is HonuaExtent | undefined. That value is not
+// assignable to MapViewGoToInput. Copy the four numbers into a fresh extent
+// when they are present, and leave every other target on goTo.
+function rewriteExtentGoToCalls(source: string): string {
+  const sourceFile = ts.createSourceFile("extent-go-to.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const edits: TextEdit[] = [];
+  walk(sourceFile, (node) => {
+    if (!ts.isCallExpression(node) || !ts.isPropertyAccessExpression(node.expression)) {
+      return;
+    }
+    if (node.expression.name.text !== "goTo" || node.expression.expression.getText(sourceFile) !== "honuaView") {
+      return;
+    }
+    const target = node.arguments[0];
+    if (!target) {
+      return;
+    }
+    const options = node.arguments[1];
+    const targetText = target.getText(sourceFile);
+    const optionsText = options ? `, ${options.getText(sourceFile)}` : "";
+    edits.push({
+      start: node.getStart(sourceFile),
+      end: node.getEnd(),
+      text:
+        `(() => { const __honuaGoToTarget = ${targetText}; ` +
+        `return __honuaGoToTarget && typeof __honuaGoToTarget === "object" && "xmin" in __honuaGoToTarget && typeof __honuaGoToTarget.xmin === "number" && typeof __honuaGoToTarget.ymin === "number" && typeof __honuaGoToTarget.xmax === "number" && typeof __honuaGoToTarget.ymax === "number" ` +
+        `? honuaView.goTo({ xmin: __honuaGoToTarget.xmin, ymin: __honuaGoToTarget.ymin, xmax: __honuaGoToTarget.xmax, ymax: __honuaGoToTarget.ymax }${optionsText}) ` +
+        `: __honuaGoToTarget && typeof __honuaGoToTarget === "object" && !("xmin" in __honuaGoToTarget) ` +
+        `? honuaView.goTo(__honuaGoToTarget${optionsText}) : Promise.resolve(honuaView); })()`,
+    });
+  });
+  return applyTextEdits(source, edits);
+}
+
 function rewriteMapComponentShell(
   source: string,
   inject: "inline" | "tags-only",
@@ -1453,7 +1490,11 @@ function rewriteMapComponentShell(
     next = next.replace(new RegExp(`\\b${ident}\\.viewOnReady\\s*\\(\\s*\\)`, "g"), "honuaView.when()");
     next = next.replace(new RegExp(`\\b${ident}\\.whenLayerView\\s*\\(`, "g"), "honuaView.whenLayerView(");
     next = next.replace(new RegExp(`\\b${ident}\\.goTo\\s*\\(`, "g"), "honuaView.goTo(");
-    next = next.replace(new RegExp(`\\b${ident}\\.map\\b`, "g"), "honuaView.map");
+    // Assignment to the view's map property typechecks (the property is unknown).
+    // A read such as `.map.add` does not, so those use the bound map instead.
+    next = next.replace(new RegExp(`\\b${ident}\\.map\\s*=(?!=)`, "g"), "honuaView.map =");
+    next = next.replace(new RegExp(`\\b${ident}\\.map\\b`, "g"), "honuaMap");
+    next = rewriteExtentGoToCalls(next);
     // Only a bare `viewElement.constraints` access. A quoted or dotted
     // occurrence is data, not the map binding.
     const constraintsPattern = new RegExp(String.raw`(?<![\w."'\`])${ident}\.constraints\b`, "g");
@@ -1462,7 +1503,7 @@ function rewriteMapComponentShell(
 
   const lines: string[] = [];
   const symbols = new Set<string>();
-  const usedNames = new Set<string>(["honuaView"]);
+  const usedNames = new Set<string>(["honuaView", "honuaMap"]);
   for (const root of roots) {
     emitShellConstructors(root, lines, symbols, usedNames, true);
   }

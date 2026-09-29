@@ -17,7 +17,7 @@ describe("standalone package boundary", () => {
       dependencies: Record<string, string>;
     };
 
-    expect(packageJson.version).toBe("0.1.4-beta.0");
+    expect(packageJson.version).toBe("0.1.5-beta.0");
     expect(packageJson.repository).toEqual({
       type: "git",
       url: "git+https://github.com/honua-io/honua-migrate.git",
@@ -50,8 +50,8 @@ describe("standalone package boundary", () => {
       repository: "https://github.com/honua-io/honua-migrate",
       packagePath: "packages/javascript",
       npmPackage: "@honua/honua-migrate",
-      version: "0.1.4-beta.0",
-      releaseTag: "javascript-v0.1.4-beta.0",
+      version: "0.1.5-beta.0",
+      releaseTag: "javascript-v0.1.5-beta.0",
       nodeEngine: ">=20.19.0",
     });
   });
