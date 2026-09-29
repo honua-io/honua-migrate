@@ -6,15 +6,15 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  applyJsMigration,
+  createUnifiedDiff,
   HONUA_COMPAT_BUNDLER_WORKAROUND_DEPENDENCIES,
   HONUA_COMPAT_RUNTIME_DEPENDENCIES,
   type JsDependencyChange,
   type JsMigrationPipelineReport,
   type JsMigrationPlan,
-  SDK_JS_OPTIONAL_GRPC_PEERS_ISSUE,
-  applyJsMigration,
-  createUnifiedDiff,
   planJsMigration,
+  SDK_JS_OPTIONAL_GRPC_PEERS_ISSUE,
 } from "../src/migration/pipeline.js";
 import { getProjectRoot, withCliLock } from "./migration-cli-lock.js";
 import { getPreparedMigrationCliPath } from "./prepared-sdk-artifacts.js";

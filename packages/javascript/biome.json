@@ -1,10 +1,10 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
-  "organizeImports": { "enabled": true },
+  "$schema": "https://biomejs.dev/schemas/2.5.14/schema.json",
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "complexity": { "noForEach": "off", "useLiteralKeys": "off" },
       "correctness": { "noSelfAssign": "off" },
       "performance": { "noDelete": "off" },
@@ -25,12 +25,17 @@
   },
   "overrides": [
     {
-      "include": ["upstream/test/**/*.ts"],
+      "includes": ["**/upstream/test/**/*.ts"],
       "linter": { "rules": { "suspicious": { "noExplicitAny": "off" } } }
     }
   ],
   "files": {
-    "include": ["upstream/src/**/*.ts", "upstream/test/**/*.ts"],
-    "ignore": ["dist", "node_modules", "upstream/test/fixtures"]
+    "includes": [
+      "**/upstream/src/**/*.ts",
+      "**/upstream/test/**/*.ts",
+      "!**/dist",
+      "!**/node_modules",
+      "!**/upstream/test/fixtures"
+    ]
   }
 }
