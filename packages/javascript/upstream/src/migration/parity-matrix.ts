@@ -1,7 +1,7 @@
 import {
   type CodemodConstructorKind,
-  SUPPORTED_ARCGIS_MODULE_KIND_BY_PATH,
   isKindSupportedForTarget,
+  SUPPORTED_ARCGIS_MODULE_KIND_BY_PATH,
 } from "./codemod.js";
 
 export type JsParityCategory = "layer" | "view" | "widget" | "control";
