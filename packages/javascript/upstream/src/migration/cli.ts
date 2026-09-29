@@ -1190,18 +1190,28 @@ function formatUsageInventory(inventory: ArcGisUsageInventory): string {
   ].join(",");
 }
 
+function keepsEsriClient(mode: string | null, target: CodemodTarget): boolean {
+  return target === "honua-compat" && mode === "keep-esri-client";
+}
+
 function runCodemod(args: ParsedArgs): void {
   const outputPlan = preflightOutputPlan({ files: args.reportPath ? [args.reportPath] : [], force: args.force });
   const reportPath = outputPlan.files[0];
   const scanReport = scanArcGisUsage(args.target);
-  const codemodResult = runEsriCompatCodemod({
+  const codemodOptions = {
     rootDir: args.target,
-    write: args.write,
     compatImportPath: args.compatImportPath,
     annotateTodos: args.annotateTodos,
     target: args.codemodTarget,
-  });
-  const report = buildJsMigrationReport(args.target, codemodResult, scanReport);
+  };
+  const preview = runEsriCompatCodemod({ ...codemodOptions, write: false });
+  const previewReport = buildJsMigrationReport(args.target, preview, scanReport);
+  // A honua-compat --write must not persist a conversion the report tells the app to keep on ArcGIS.
+  const stopped = args.write && keepsEsriClient(previewReport.conversion.recommendedMode, args.codemodTarget);
+  const codemodResult = args.write && !stopped ? runEsriCompatCodemod({ ...codemodOptions, write: true }) : preview;
+  const report =
+    args.write && !stopped ? buildJsMigrationReport(args.target, codemodResult, scanReport) : previewReport;
+  const writeMode = !args.write ? "dry-run" : stopped ? "stopped" : "enabled";
 
   process.stdout.write(
     [
@@ -1211,7 +1221,7 @@ function runCodemod(args: ParsedArgs): void {
       `manual=${formatManualDifficultyBreakdown(report.manualTodos)}`,
       `manualRewrite=${report.manualRewriteMetric.numerator}/${report.manualRewriteMetric.denominator}`,
       `manualIntervention=${report.manualInterventionMetric.numerator}/${report.manualInterventionMetric.denominator}`,
-      `writeMode=${args.write ? "enabled" : "dry-run"}`,
+      `writeMode=${writeMode}`,
       `annotateTodos=${args.annotateTodos ? "enabled" : "disabled"}`,
       `target=${args.codemodTarget}`,
       `readiness=${report.readiness}`,
