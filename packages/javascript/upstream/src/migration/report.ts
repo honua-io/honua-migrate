@@ -268,11 +268,17 @@ export function buildJsMigrationReport(
     unhandledArcGisModules,
     manualTodos: codemodResult.manualTodos,
     conversion,
-    legendDisposition: legendDispositionFor(codemodResult.target),
+    legendDisposition: legendDispositionFor(codemodResult.target, codemodResult.emittedWidgetKitRegistration === true),
   };
 }
 
-function legendDispositionFor(target: JsMigrationReport["codemodTarget"]): string {
+function legendDispositionFor(
+  target: JsMigrationReport["codemodTarget"],
+  emittedWidgetKitRegistration: boolean,
+): string {
+  if (target === "honua-compat" && emittedWidgetKitRegistration) {
+    return "Legend renders through honua-legend after the emitted registerHonuaWidgetKit call.";
+  }
   if (target === "honua-compat" || target === "esri-leaflet") {
     return "Legend stays headless unless registerHonuaWidgetKit is called. The codemod does not emit that call.";
   }

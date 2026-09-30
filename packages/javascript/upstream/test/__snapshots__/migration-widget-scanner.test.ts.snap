@@ -3,23 +3,23 @@
 exports[`widget readiness report on the esri-widget-cliff-app fixture > matches the JSON report snapshot 1`] = `
 {
   "deprecationRelease": "5.0",
-  "dispositionDataVersion": "1.1.0",
+  "dispositionDataVersion": "1.2.0",
   "filesScanned": 4,
   "filesWithWidgetUsage": 4,
   "removalRelease": "6.0",
   "removalTimeframe": "as early as Q1 2027",
   "rootDir": "<fixture>",
   "summary": {
-    "assistedSites": 6,
-    "assistedWidgets": 6,
+    "assistedSites": 7,
+    "assistedWidgets": 7,
     "automatedPct": 30.76923076923077,
     "automatedSites": 4,
     "automatedWidgets": 4,
-    "manualSites": 3,
-    "manualWidgets": 3,
+    "manualSites": 2,
+    "manualWidgets": 2,
     "totalSites": 13,
   },
-  "summaryLine": "4 automated / 6 assisted / 3 manual of 13 widget usage sites (30.8% automated). Every classic ArcGIS JS widget is deprecated as of 5.0 (some since 4.32), and existing widget-based apps keep working on 5.x. Esri plans to begin removing widgets at 6.0 (as early as Q1 2027), each once its component no longer wraps widget code.",
+  "summaryLine": "4 automated / 7 assisted / 2 manual of 13 widget usage sites (30.8% automated). Every classic ArcGIS JS widget is deprecated as of 5.0 (some since 4.32), and existing widget-based apps keep working on 5.x. Esri plans to begin removing widgets at 6.0 (as early as Q1 2027), each once its component no longer wraps widget code.",
   "widgets": [
     {
       "bucket": "automated",
@@ -98,9 +98,9 @@ exports[`widget readiness report on the esri-widget-cliff-app fixture > matches 
       "widget": "Editor",
     },
     {
-      "bucket": "manual",
+      "bucket": "assisted",
       "count": 1,
-      "disposition": "manual-workaround",
+      "disposition": "app-platform",
       "guideLink": "docs/widget-survival-guide.md#elevationprofile",
       "sites": [
         {
@@ -113,7 +113,7 @@ exports[`widget readiness report on the esri-widget-cliff-app fixture > matches 
         },
       ],
       "supportModule": false,
-      "target": "No drop-in widget. Sample the profile geometry yourself (e.g. @honua/sdk-js/geometry densify + an elevation/terrain source such as maplibre-gl queryTerrainElevation) and chart with your own charting library.",
+      "target": "sampleElevations returns one elevation sample per densified vertex when the map has terrain, and the named error terrain-missing with an empty sample list when it does not.",
       "widget": "ElevationProfile",
     },
     {
@@ -275,13 +275,13 @@ exports[`widget readiness report on the esri-widget-cliff-app fixture > matches 
 exports[`widget readiness report on the esri-widget-cliff-app fixture > matches the markdown report snapshot 1`] = `
 "# ArcGIS widget readiness report
 
-Every classic ArcGIS JS widget is deprecated as of 5.0 (some since 4.32), and existing widget-based apps keep working on 5.x. Esri plans to begin removing widgets at 6.0 (as early as Q1 2027), each once its component no longer wraps widget code. Disposition data v1.1.0.
+Every classic ArcGIS JS widget is deprecated as of 5.0 (some since 4.32), and existing widget-based apps keep working on 5.x. Esri plans to begin removing widgets at 6.0 (as early as Q1 2027), each once its component no longer wraps widget code. Disposition data v1.2.0.
 
 - Files scanned: 4
 - Files with widget usage: 4
 - Widget usage sites: 13
 
-4 automated / 6 assisted / 3 manual of 13 widget usage sites (30.8% automated). Every classic ArcGIS JS widget is deprecated as of 5.0 (some since 4.32), and existing widget-based apps keep working on 5.x. Esri plans to begin removing widgets at 6.0 (as early as Q1 2027), each once its component no longer wraps widget code.
+4 automated / 7 assisted / 2 manual of 13 widget usage sites (30.8% automated). Every classic ArcGIS JS widget is deprecated as of 5.0 (some since 4.32), and existing widget-based apps keep working on 5.x. Esri plans to begin removing widgets at 6.0 (as early as Q1 2027), each once its component no longer wraps widget code.
 
 | Widget | Sites | Disposition | Target |
 | --- | --- | --- | --- |
@@ -289,7 +289,7 @@ Every classic ArcGIS JS widget is deprecated as of 5.0 (some since 4.32), and ex
 | [Daylight](docs/widget-survival-guide.md#daylight) | 1 | \`no-equivalent\` | None. Requires a 3D scene with sun/shadow simulation. |
 | [Directions](docs/widget-survival-guide.md#directions) | 1 | \`compat-shim\` | DirectionsCompat from @honua/sdk-esri-compat backed by HonuaRouteService (RouteTask parity) |
 | [Editor](docs/widget-survival-guide.md#editor) | 1 | \`compat-shim\` | EditorCompat from @honua/sdk-esri-compat |
-| [ElevationProfile](docs/widget-survival-guide.md#elevationprofile) | 1 | \`manual-workaround\` | No drop-in widget. Sample the profile geometry yourself (e.g. @honua/sdk-js/geometry densify + an elevation/terrain source such as maplibre-gl queryTerrainElevation) and chart with your own charting library. |
+| [ElevationProfile](docs/widget-survival-guide.md#elevationprofile) | 1 | \`app-platform\` | sampleElevations returns one elevation sample per densified vertex when the map has terrain, and the named error terrain-missing with an empty sample list when it does not. |
 | [Expand](docs/widget-survival-guide.md#expand) | 1 | \`automated\` | ExpandCompat from @honua/sdk-esri-compat |
 | [FeatureTable](docs/widget-survival-guide.md#featuretable) | 1 | \`compat-shim\` | FeatureTableCompat from @honua/sdk-esri-compat |
 | [LayerList](docs/widget-survival-guide.md#layerlist) | 1 | \`automated\` | LayerListCompat from @honua/sdk-esri-compat |

@@ -21,7 +21,7 @@
  */
 
 /** Version of this disposition dataset. Bump when rows or taxonomy change. */
-export const WIDGET_DISPOSITION_DATA_VERSION = "1.1.0";
+export const WIDGET_DISPOSITION_DATA_VERSION = "1.2.0";
 
 /** ArcGIS Maps SDK for JavaScript release that deprecated every classic widget (February 2026). */
 export const ARCGIS_WIDGET_DEPRECATION_RELEASE = "5.0";
@@ -475,8 +475,9 @@ export const WIDGET_DISPOSITION_DOCUMENTATION: readonly WidgetDispositionData[] 
     "DirectionsCompat from @honua/sdk-esri-compat backed by HonuaRouteService (RouteTask parity)",
     [
       COMPAT_SHIM_NOTE,
-      "Only RouteTask-backed routing is shimmed; service-area, closest-facility, and OD-cost-matrix flows",
-      "remain unsupported (docs/migration-punch-list.md, parity gap 3).",
+      "The shim renders through the widget host. The maneuver list renders when the route result has steps,",
+      "and only the summary renders when the result is a polyline with no steps. Service area, closest facility,",
+      "OD cost matrix, and travel-mode editing stay absent (docs/migration-punch-list.md, parity gap 3).",
     ].join(" "),
     "src/esri-compat/directions.ts",
   ),
@@ -493,8 +494,8 @@ export const WIDGET_DISPOSITION_DOCUMENTATION: readonly WidgetDispositionData[] 
     "EditorCompat from @honua/sdk-esri-compat",
     [
       COMPAT_SHIM_NOTE,
-      "Attribute + geometry editing against feature services works; advanced form elements and",
-      "utility-network editing do not.",
+      "The shim renders through the widget host. Attribute + geometry editing against feature services works;",
+      "advanced form elements and utility-network editing do not.",
     ].join(" "),
     "src/esri-compat/editor.ts",
   ),
@@ -502,7 +503,11 @@ export const WIDGET_DISPOSITION_DOCUMENTATION: readonly WidgetDispositionData[] 
     "FeatureForm",
     "compat-shim",
     "FeatureFormCompat from @honua/sdk-esri-compat",
-    `${COMPAT_SHIM_NOTE} Arcade-driven form expressions are not evaluated.`,
+    [
+      COMPAT_SHIM_NOTE,
+      "The shim renders through the widget host. One stored form expression can hide a field and one can write",
+      "a calculated value. An unknown function fails only that field. This is not a general Arcade interpreter.",
+    ].join(" "),
     "src/esri-compat/feature-form.ts",
   ),
   widgetEntry(
@@ -511,8 +516,8 @@ export const WIDGET_DISPOSITION_DOCUMENTATION: readonly WidgetDispositionData[] 
     "FeatureTableCompat from @honua/sdk-esri-compat",
     [
       COMPAT_SHIM_NOTE,
-      "Related-records and popup interaction flows are exercised by the demo fixtures; column",
-      "virtualization and attachment editing differ from ArcGIS.",
+      "The shim renders through the widget host. Related-records and popup interaction flows are exercised by",
+      "the demo fixtures; column virtualization and attachment editing differ from ArcGIS.",
     ].join(" "),
     "src/esri-compat/feature-table.ts",
   ),
@@ -520,7 +525,7 @@ export const WIDGET_DISPOSITION_DOCUMENTATION: readonly WidgetDispositionData[] 
     "Measurement",
     "compat-shim",
     "MeasurementCompat from @honua/sdk-esri-compat (2D distance/area only)",
-    `${COMPAT_SHIM_NOTE} 3D measurement modes are not supported.`,
+    `${COMPAT_SHIM_NOTE} The shim renders through the widget host. 3D measurement modes are not supported.`,
     "src/esri-compat/measurement.ts",
     appPlatformComponent(
       "honua-measurement",
@@ -534,8 +539,8 @@ export const WIDGET_DISPOSITION_DOCUMENTATION: readonly WidgetDispositionData[] 
     "PrintCompat from @honua/sdk-esri-compat",
     [
       COMPAT_SHIM_NOTE,
-      "Export goes through the Honua rendering pipeline, not an ArcGIS print service; custom print",
-      "templates need re-authoring.",
+      "The shim renders through the widget host. Export goes through the Honua rendering pipeline, not an",
+      "ArcGIS print service; custom print templates need re-authoring.",
     ].join(" "),
     "src/esri-compat/print.ts",
   ),
@@ -543,7 +548,11 @@ export const WIDGET_DISPOSITION_DOCUMENTATION: readonly WidgetDispositionData[] 
     "Sketch",
     "compat-shim",
     "SketchCompat from @honua/sdk-esri-compat",
-    `${COMPAT_SHIM_NOTE} Snapping and 3D sketch tools are not reproduced.`,
+    [
+      COMPAT_SHIM_NOTE,
+      "The shim renders through the widget host. Snapping moves a new vertex onto an existing vertex when it",
+      "is on, and leaves the pointer position when it is off. 3D sketch tools are not reproduced.",
+    ].join(" "),
     "src/esri-compat/sketch.ts",
   ),
   widgetEntry(
@@ -552,26 +561,25 @@ export const WIDGET_DISPOSITION_DOCUMENTATION: readonly WidgetDispositionData[] 
     "TimeSliderCompat from @honua/sdk-esri-compat",
     [
       COMPAT_SHIM_NOTE,
-      "Time-aware layer filtering works; stops derived from server time-info metadata should be",
-      "verified per service.",
+      "The shim renders through the widget host. Time-aware layer filtering works; stops derived from server",
+      "time-info metadata should be verified per service.",
     ].join(" "),
     "src/esri-compat/time-slider.ts",
   ),
   // --- manual-workaround ---
   widgetEntry(
     "ElevationProfile",
-    "manual-workaround",
-    "No drop-in widget. Sample the profile geometry yourself (e.g. @honua/sdk-js/geometry densify + an " +
-      "elevation/terrain source such as maplibre-gl queryTerrainElevation) and chart with your own charting library.",
-    "There is no ElevationProfile shim and no automated rewrite. The workaround is honest but real work: " +
-      "profile sampling, unit handling, and chart UX are app code you own after migration.",
+    "app-platform",
+    "sampleElevations returns one elevation sample per densified vertex when the map has terrain, and the named " +
+      "error terrain-missing with an empty sample list when it does not.",
+    "There is no ElevationProfile widget rewrite. The sampler does not invent elevations when terrain is missing " +
+      "and does not chart the profile or convert units.",
   ),
   widgetEntry(
     "Attachments",
-    "manual-workaround",
-    "No drop-in widget. List a feature's attachments with FeatureLayerCompat.queryAttachments and render the " +
-      "list in your own UI.",
-    `${NO_REWRITE_NOTE} Attachment upload, delete, and keyword filtering are app code you write against the service.`,
+    "app-platform",
+    "honua-attachments lists the names FeatureLayerCompat.queryAttachments returned. The list renders through the widget host.",
+    "There is no codemod rewrite for this widget. Upload, delete, and keyword filtering stay absent.",
   ),
   widgetEntry(
     "BatchAttributeForm",
@@ -588,27 +596,27 @@ export const WIDGET_DISPOSITION_DOCUMENTATION: readonly WidgetDispositionData[] 
   ),
   widgetEntry(
     "Features",
-    "manual-workaround",
-    "No drop-in widget. Page through the selected features yourself and render each one with FeatureCompat.",
-    `${NO_REWRITE_NOTE} Paging controls, selection sync with the view, and action menus are app code you own.`,
+    "app-platform",
+    "honua-feature-pager pages one honua-feature-inspection per selected feature. The pager renders through the widget host.",
+    "There is no codemod rewrite for this widget. Popup actions and field-info format callbacks stay absent.",
   ),
   widgetEntry(
     "Histogram",
-    "manual-workaround",
-    "No drop-in widget. Compute bins from your own feature query and draw them with your charting library.",
-    `${NO_REWRITE_NOTE} ArcGIS smart-mapping statistics are not reproduced, so bin boundaries must be computed by the app.`,
+    "app-platform",
+    "honua-chart draws equal-interval and quantile bins from the query count, sum, min, max, and average.",
+    "There is no codemod rewrite for this widget. Class-breaks renderers, color ramps, and predominance stay absent.",
   ),
   widgetEntry(
     "HistogramRangeSlider",
-    "manual-workaround",
-    "No drop-in widget. Pair your own histogram chart with a range input and apply the chosen range as a layer filter.",
-    `${NO_REWRITE_NOTE} Smart-mapping statistics and the widget's filter-expression helpers are not reproduced.`,
+    "app-platform",
+    "The histogram range control on honua-chart writes the chosen range back as a layer definitionExpression filter.",
+    "There is no codemod rewrite for this widget. The control does not reproduce scale thumbnails or region presets.",
   ),
   widgetEntry(
     "ScaleRangeSlider",
-    "manual-workaround",
-    "No drop-in widget. Drive FeatureLayerCompat.setScaleRange from your own control.",
-    `${NO_REWRITE_NOTE} The widget's scale-preview thumbnails and region presets are not reproduced.`,
+    "app-platform",
+    "honua-scale-range writes the changed min and max through FeatureLayerCompat.setScaleRange. The control renders through the widget host.",
+    "There is no codemod rewrite for this widget. Scale-preview thumbnails and region presets stay absent.",
   ),
   widgetEntry(
     "Slider",

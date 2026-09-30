@@ -26,6 +26,30 @@ function writtenPage(name: string): string {
   return fs.readFileSync(path.join(dir, "index.html"), "utf8");
 }
 
+/** Resolve `@honua/sdk-js/web-components` from the built package, not a stub. */
+function linkTypecheckNodeModules(dir: string): void {
+  const source = path.resolve(import.meta.dirname, "../../node_modules");
+  const target = path.join(dir, "node_modules");
+  fs.mkdirSync(target, { recursive: true });
+  for (const name of fs.readdirSync(source)) {
+    if (name === "@honua") {
+      continue;
+    }
+    fs.symlinkSync(path.join(source, name), path.join(target, name));
+  }
+  const honua = path.join(target, "@honua");
+  fs.mkdirSync(honua);
+  for (const name of fs.readdirSync(path.join(source, "@honua"))) {
+    fs.symlinkSync(path.join(source, "@honua", name), path.join(honua, name));
+  }
+  const sdkJs = path.resolve(import.meta.dirname, "../../../../../honua-sdk-js");
+  const types = path.join(sdkJs, "dist/src/_deprecated/web-components.d.ts");
+  if (!fs.existsSync(path.join(sdkJs, "package.json")) || !fs.existsSync(types)) {
+    throw new Error(`@honua/sdk-js web-components types are not built at ${types}`);
+  }
+  fs.symlinkSync(sdkJs, path.join(honua, "sdk-js"));
+}
+
 function migrate(name: string) {
   const rootDir = path.join(CORPUS, name);
   const scanReport = scanArcGisUsage(rootDir);
@@ -83,6 +107,7 @@ describe("current ArcGIS sample corpus", () => {
     expect(written).toContain("MapCompat");
     expect(written).toContain("MapViewCompat");
     expect(written).toContain("FeatureLayerCompat");
+    expect(written).not.toContain("registerHonuaWidgetKit");
     expect(written).not.toContain('from "esri/Map"');
     expect(fs.readFileSync(path.join(dir, "assets.d.ts"), "utf8")).toBe('declare module "*.svg";\n');
   });
@@ -434,7 +459,21 @@ describe("current ArcGIS sample corpus", () => {
     expect(treesPage).toContain("honuaView.constraints");
     expect(treesPage).not.toContain("viewElement.constraints");
     expect(treesPage).not.toContain('src="%CDN%"');
-    expect(treesPage).not.toContain("registerHonuaWidgetKit");
+    expect(treesPage.match(/registerHonuaWidgetKit\(/g)).toHaveLength(1);
+    expect(trees.report.legendDisposition).toBe(
+      "Legend renders through honua-legend after the emitted registerHonuaWidgetKit call.",
+    );
+    expect(trees.report.codemodResult.emittedWidgetKitRegistration).toBe(true);
+    expect(fs.readFileSync(path.join(CORPUS, "intro-featurelayer", "index.html"), "utf8")).not.toContain(
+      "registerHonuaWidgetKit",
+    );
+    const rerunDir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-widget-kit-rerun-"));
+    tempDirs.push(rerunDir);
+    fs.cpSync(path.join(CORPUS, "intro-featurelayer"), rerunDir, { recursive: true });
+    runEsriCompatCodemod({ rootDir: rerunDir, write: true, target: "honua-compat" });
+    runEsriCompatCodemod({ rootDir: rerunDir, write: true, target: "honua-compat" });
+    const rewrittenTwice = fs.readFileSync(path.join(rerunDir, "index.html"), "utf8");
+    expect(rewrittenTwice.match(/registerHonuaWidgetKit\(/g)).toHaveLength(1);
 
     expect(counties.report.conversion.recommendedMode).toBe("complete-honua-conversion");
     const countyModules = counties.report.unhandledArcGisModules.map((module) => module.modulePath);
@@ -492,6 +531,7 @@ describe("current ArcGIS sample corpus", () => {
     expect(script).toContain("honuaMap.add(featureLayer)");
     expect(script).toContain("xmin: __honuaGoToTarget.xmin");
     expect(script).not.toContain("honuaView.goTo(featureLayer.fullExtent");
+    expect(script).toContain('registerHonuaWidgetKit(() => import("@honua/sdk-js/web-components"))');
     fs.writeFileSync(path.join(dir, "main.ts"), `${script?.trim()}\n`);
     fs.writeFileSync(path.join(dir, "package.json"), '{"type":"module"}\n');
     fs.writeFileSync(
@@ -515,14 +555,15 @@ describe("current ArcGIS sample corpus", () => {
         2,
       )}\n`,
     );
-    fs.symlinkSync(path.resolve(import.meta.dirname, "../../node_modules"), path.join(dir, "node_modules"));
+    linkTypecheckNodeModules(dir);
     const tsc = spawnSync(
       path.resolve(import.meta.dirname, "../../node_modules/typescript/bin/tsc"),
       ["-p", "tsconfig.json", "--pretty", "false", "--noEmit"],
       { cwd: dir, encoding: "utf8" },
     );
     expect(tsc.status, `${tsc.stdout}\n${tsc.stderr}`).toBe(0);
-  });
+    expect(`${tsc.stdout}\n${tsc.stderr}`).not.toContain("TS2307");
+  }, 60_000);
 
   it("rewrites the popup shell and geodetic length, and leaves smart-mapping statistics held", () => {
     const popup = migrate("popup-actions");

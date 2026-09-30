@@ -819,6 +819,11 @@ export interface EsriCompatCodemodResult {
    */
   residualArcGisModuleSites?: ArcGisImportHit[];
   errors?: CodemodFileError[];
+  /**
+   * True when the transformed tree contains `registerHonuaWidgetKit(...)`.
+   * Set for a honua-compat result that constructs Legend, LayerList, or TimeSlider.
+   */
+  emittedWidgetKitRegistration?: boolean;
 }
 
 export interface EsriCompatCodemodOptions {
@@ -855,6 +860,7 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
   const manualTodos: MigrationTodo[] = [];
   const residualArcGisModuleSites: ArcGisImportHit[] = [];
   const errors: CodemodFileError[] = [];
+  let emittedWidgetKitRegistration = false;
 
   for (const file of files) {
     let source: string;
@@ -895,6 +901,19 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
           addedCompatImport: true,
           rewrittenConstructors: fileResult.rewrittenConstructors + 1,
         };
+      }
+      if (
+        target === "honua-compat" &&
+        !fileResult.nextSource.includes("registerHonuaWidgetKit(") &&
+        emitsHostedWidget(fileResult.nextSource)
+      ) {
+        fileResult = {
+          ...fileResult,
+          nextSource: installWidgetKitRegistration(fileResult.nextSource, compatImportPath),
+        };
+      }
+      if (fileResult.nextSource.includes("registerHonuaWidgetKit(")) {
+        emittedWidgetKitRegistration = true;
       }
     } catch (error) {
       errors.push({
@@ -994,7 +1013,52 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
     manualTodos: manualTodos.sort(compareTodos),
     residualArcGisModuleSites,
     errors: errors.length > 0 ? errors.sort(compareFileErrors) : undefined,
+    emittedWidgetKitRegistration,
   };
+}
+
+const HOSTED_WIDGET_CONSTRUCTOR =
+  /\bnew\s+(?:Attribution|BasemapGallery|BasemapToggle|Bookmarks|Compass|Directions|Editor|FeatureForm|FeatureTable|Fullscreen|Home|LayerList|Legend|Locate|Measurement|Popup|Print|ScaleBar|Search|Sketch|TimeSlider|Zoom)Compat\b/;
+
+function emitsHostedWidget(source: string): boolean {
+  return HOSTED_WIDGET_CONSTRUCTOR.test(source);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** One registration call, placed after the compat import and before the hosted constructors. */
+function installWidgetKitRegistration(source: string, compatImportPath: string): string {
+  if (source.includes("registerHonuaWidgetKit(") || !emitsHostedWidget(source)) {
+    return source;
+  }
+  const call = 'registerHonuaWidgetKit(() => import("@honua/sdk-js/web-components"));';
+  const doubleQuoted = JSON.stringify(compatImportPath);
+  const singleQuoted = `'${compatImportPath.replaceAll("'", "\\'")}'`;
+  const pattern = new RegExp(
+    `import\\s*\\{([^}]*)\\}\\s*from\\s*(?:${escapeRegExp(doubleQuoted)}|${escapeRegExp(singleQuoted)})\\s*;`,
+  );
+  const match = pattern.exec(source);
+  if (!match || match.index === undefined) {
+    const hosted = HOSTED_WIDGET_CONSTRUCTOR.exec(source);
+    if (!hosted || hosted.index === undefined) {
+      return source;
+    }
+    const insertion = `import { registerHonuaWidgetKit } from ${doubleQuoted};\n${call}\n`;
+    return `${source.slice(0, hosted.index)}${insertion}${source.slice(hosted.index)}`;
+  }
+  const names = match[1]
+    .split(",")
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
+  if (!names.includes("registerHonuaWidgetKit")) {
+    names.push("registerHonuaWidgetKit");
+    names.sort();
+  }
+  const quote = match[0].includes(doubleQuoted) ? doubleQuoted : singleQuoted;
+  const replacement = `import { ${names.join(", ")} } from ${quote};\n${call}`;
+  return `${source.slice(0, match.index)}${replacement}${source.slice(match.index + match[0].length)}`;
 }
 
 function rewriteRewrittenEsriNamespaceTypes(sourceFile: ts.SourceFile, compatSymbols: ReadonlySet<string>): TextEdit[] {
