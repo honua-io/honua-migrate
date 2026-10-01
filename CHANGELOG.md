@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.8.1](https://github.com/honua-io/honua-migrate/compare/honua-migrate-v0.8.0...honua-migrate-v0.8.1) (2026-10-01)
+
+
+### Bug Fixes
+
+* **js-migration:** depend on compat 0.1.11 and emit a typed shell ([da4f3b2](https://github.com/honua-io/honua-migrate/commit/da4f3b20bda012f72855f3fb0ba2f4e1dbf739a5))
+* **js-migration:** depend on compat 0.1.11 and emit a typed shell ([2fd7f76](https://github.com/honua-io/honua-migrate/commit/2fd7f7684100839af1caeb93ce51af3e82774708))
+* **js-migration:** stop codemod writes that should keep ArcGIS ([4dd5bed](https://github.com/honua-io/honua-migrate/commit/4dd5bed092d3be195fc5f23d712d4a86f9fdf2e8))
+* **js-migration:** stop codemod writes that should keep ArcGIS ([7d2a377](https://github.com/honua-io/honua-migrate/commit/7d2a3778de048b864cba01b864e2b74d7b0cd408))
+* **js-migration:** write a compat range that selects 0.1.11 ([dea0608](https://github.com/honua-io/honua-migrate/commit/dea0608d88e38b897c5323319c300de5e05c8bc9))
+* **js-migration:** write a compat range that selects 0.1.11 ([84b7aa2](https://github.com/honua-io/honua-migrate/commit/84b7aa2437ce87100c9872a1004c3d3b11553593))
+
 ## [0.8.0](https://github.com/honua-io/honua-migrate/compare/honua-migrate-v0.7.1...honua-migrate-v0.8.0) (2026-09-29)
 
 
