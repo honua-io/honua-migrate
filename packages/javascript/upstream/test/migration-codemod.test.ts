@@ -2097,6 +2097,7 @@ describe("runEsriCompatCodemod", () => {
     });
 
     expect(result.filesChanged).toBe(1);
+    expect(result.emittedWidgetKitRegistration).toBe(false);
     expect(result.metrics.totalCodemodScopedCallSites).toBe(18);
     expect(result.metrics.autoMigratedCallSites).toBe(18);
     expect(result.metrics.manualCallSites).toBe(0);
@@ -2217,6 +2218,7 @@ describe("runEsriCompatCodemod", () => {
     expect(nextSource).toContain("const fullscreen = new FullscreenCompat({ view });");
     expect(nextSource).toContain("const zoom = new ZoomCompat({ view });");
     expect(nextSource).toContain("const attribution = new AttributionCompat({ view });");
+    expect(nextSource).not.toContain("registerHonuaWidgetKit");
     expect(nextSource).not.toContain("@arcgis/core/Map");
     expect(nextSource).not.toContain("@arcgis/core/views/MapView");
     expect(nextSource).not.toContain("@arcgis/core/views/SceneView");
