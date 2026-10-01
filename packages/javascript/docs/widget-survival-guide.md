@@ -15,7 +15,7 @@ Every classic ArcGIS JS widget is deprecated as of 5.0 (some since 4.32), and ex
 
 This guide answers, for each deprecated widget (`esri/widgets/*` / `@arcgis/core/widgets/*`), what happens if you migrate to Honua/MapLibre instead of rewriting onto Esri's web components. Dispositions are deliberately honest — including "no equivalent" — in the spirit of the [migration punch list](https://github.com/honua-io/honua-sdk-js/blob/trunk/docs/migration-punch-list.md).
 
-This document is generated from the versioned disposition data in [`upstream/src/migration/widget-dispositions.ts`](https://github.com/honua-io/honua-migrate/blob/javascript-v0.1.7-beta.0/packages/javascript/upstream/src/migration/widget-dispositions.ts) (v1.1.0); the `honua-js-migrate widgets` scanner consumes the same data, so the scanner report and this guide cannot drift apart.
+This document is generated from the versioned disposition data in [`upstream/src/migration/widget-dispositions.ts`](https://github.com/honua-io/honua-migrate/blob/javascript-v0.1.7-beta.0/packages/javascript/upstream/src/migration/widget-dispositions.ts) (v1.2.0); the `honua-js-migrate widgets` scanner consumes the same data, so the scanner report and this guide cannot drift apart.
 
 ## Pinned sources
 
@@ -39,7 +39,7 @@ The report inventories every widget usage site (ESM imports, AMD `require([...])
 
 - **Automated** (`automated`): The `honua-js-migrate` codemod deterministically rewrites the import and safe constructor call sites to a Honua compat shim from `@honua/sdk-esri-compat`. Unsafe option literals fall through to an annotated manual TODO.
 - **Compat shim** (`compat-shim`): A Honua compat shim exists and the codemod rewrites to it, but the widget carries a large interaction surface. Treat the migration as assisted and verify app-specific behavior by hand.
-- **App platform** (`app-platform`): A native Honua app-platform element ships for this capability. (Reserved: no widget currently carries this disposition in this data version.)
+- **App platform** (`app-platform`): A native Honua element covers this capability. The codemod does not rewrite the widget constructor.
 - **MapLibre plugin** (`maplibre-plugin`): The capability is served by a MapLibre control or community plugin wired up by hand. (Reserved: no widget currently carries this disposition; several `automated` rows note the MapLibre-native control underneath.)
 - **Manual workaround** (`manual-workaround`): No drop-in replacement and no codemod rewrite. The row documents an explicit, honest workaround that is real app work you own.
 - **No equivalent** (`no-equivalent`): No Honua or MapLibre surface reproduces the widget today. Apps that depend on it need a product decision, not a rewrite.
@@ -54,9 +54,9 @@ A compat-backed row may also list a direct `@honua/app-platform` component. That
 | --- | --- |
 | `automated` | 21 |
 | `compat-shim` | 11 |
-| `app-platform` | 0 |
+| `app-platform` | 6 |
 | `maplibre-plugin` | 0 |
-| `manual-workaround` | 11 |
+| `manual-workaround` | 5 |
 | `no-equivalent` | 16 |
 | **Total** | **59** |
 
@@ -66,7 +66,7 @@ A compat-backed row may also list a direct `@honua/app-platform` component. That
 | --- | --- | --- | --- | --- |
 | [AreaMeasurement2D](#areameasurement2d) | `@arcgis/core/widgets/AreaMeasurement2D` | `esri/widgets/AreaMeasurement2D` | `compat-shim` | AreaMeasurement2DCompat from @honua/sdk-esri-compat |
 | [AreaMeasurement3D](#areameasurement3d) | `@arcgis/core/widgets/AreaMeasurement3D` | `esri/widgets/AreaMeasurement3D` | `no-equivalent` | None. Requires 3D scene area measurement. |
-| [Attachments](#attachments) | `@arcgis/core/widgets/Attachments` | `esri/widgets/Attachments` | `manual-workaround` | No drop-in widget. List a feature's attachments with FeatureLayerCompat.queryAttachments and render the list in your own UI. |
+| [Attachments](#attachments) | `@arcgis/core/widgets/Attachments` | `esri/widgets/Attachments` | `app-platform` | honua-attachments lists the names FeatureLayerCompat.queryAttachments returned. The list renders through the widget host. |
 | [Attribution](#attribution) | `@arcgis/core/widgets/Attribution` | `esri/widgets/Attribution` | `automated` | AttributionCompat from @honua/sdk-esri-compat (MapLibre AttributionControl underneath) |
 | [BasemapGallery](#basemapgallery) | `@arcgis/core/widgets/BasemapGallery` | `esri/widgets/BasemapGallery` | `automated` | BasemapGalleryCompat from @honua/sdk-esri-compat |
 | [BasemapLayerList](#basemaplayerlist) | `@arcgis/core/widgets/BasemapLayerList` | `esri/widgets/BasemapLayerList` | `automated` | BasemapLayerListCompat from @honua/sdk-esri-compat |
@@ -83,17 +83,17 @@ A compat-backed row may also list a direct `@honua/app-platform` component. That
 | [DirectLineMeasurement3D](#directlinemeasurement3d) | `@arcgis/core/widgets/DirectLineMeasurement3D` | `esri/widgets/DirectLineMeasurement3D` | `no-equivalent` | None. Requires 3D scene direct-line measurement. |
 | [DistanceMeasurement2D](#distancemeasurement2d) | `@arcgis/core/widgets/DistanceMeasurement2D` | `esri/widgets/DistanceMeasurement2D` | `compat-shim` | DistanceMeasurement2DCompat from @honua/sdk-esri-compat |
 | [Editor](#editor) | `@arcgis/core/widgets/Editor` | `esri/widgets/Editor` | `compat-shim` | EditorCompat from @honua/sdk-esri-compat |
-| [ElevationProfile](#elevationprofile) | `@arcgis/core/widgets/ElevationProfile` | `esri/widgets/ElevationProfile` | `manual-workaround` | No drop-in widget. Sample the profile geometry yourself (e.g. @honua/sdk-js/geometry densify + an elevation/terrain source such as maplibre-gl queryTerrainElevation) and chart with your own charting library. |
+| [ElevationProfile](#elevationprofile) | `@arcgis/core/widgets/ElevationProfile` | `esri/widgets/ElevationProfile` | `app-platform` | sampleElevations returns one elevation sample per densified vertex when the map has terrain, and the named error terrain-missing with an empty sample list when it does not. |
 | [Expand](#expand) | `@arcgis/core/widgets/Expand` | `esri/widgets/Expand` | `automated` | ExpandCompat from @honua/sdk-esri-compat |
 | [Feature](#feature) | `@arcgis/core/widgets/Feature` | `esri/widgets/Feature` | `automated` | FeatureCompat from @honua/sdk-esri-compat |
 | [FeatureForm](#featureform) | `@arcgis/core/widgets/FeatureForm` | `esri/widgets/FeatureForm` | `compat-shim` | FeatureFormCompat from @honua/sdk-esri-compat |
-| [Features](#features) | `@arcgis/core/widgets/Features` | `esri/widgets/Features` | `manual-workaround` | No drop-in widget. Page through the selected features yourself and render each one with FeatureCompat. |
+| [Features](#features) | `@arcgis/core/widgets/Features` | `esri/widgets/Features` | `app-platform` | honua-feature-pager pages one honua-feature-inspection per selected feature. The pager renders through the widget host. |
 | [FeatureTable](#featuretable) | `@arcgis/core/widgets/FeatureTable` | `esri/widgets/FeatureTable` | `compat-shim` | FeatureTableCompat from @honua/sdk-esri-compat |
 | [FeatureTemplates](#featuretemplates) | `@arcgis/core/widgets/FeatureTemplates` | `esri/widgets/FeatureTemplates` | `automated` | FeatureTemplatesCompat from @honua/sdk-esri-compat |
 | [FloorFilter](#floorfilter) | `@arcgis/core/widgets/FloorFilter` | `esri/widgets/FloorFilter` | `no-equivalent` | None. Filters floor-aware maps by ArcGIS Indoors site, facility, and level, which Honua does not model. |
 | [Fullscreen](#fullscreen) | `@arcgis/core/widgets/Fullscreen` | `esri/widgets/Fullscreen` | `automated` | FullscreenCompat from @honua/sdk-esri-compat (MapLibre FullscreenControl underneath) |
-| [Histogram](#histogram) | `@arcgis/core/widgets/Histogram` | `esri/widgets/Histogram` | `manual-workaround` | No drop-in widget. Compute bins from your own feature query and draw them with your charting library. |
-| [HistogramRangeSlider](#histogramrangeslider) | `@arcgis/core/widgets/HistogramRangeSlider` | `esri/widgets/HistogramRangeSlider` | `manual-workaround` | No drop-in widget. Pair your own histogram chart with a range input and apply the chosen range as a layer filter. |
+| [Histogram](#histogram) | `@arcgis/core/widgets/Histogram` | `esri/widgets/Histogram` | `app-platform` | honua-chart draws equal-interval and quantile bins from the query count, sum, min, max, and average. |
+| [HistogramRangeSlider](#histogramrangeslider) | `@arcgis/core/widgets/HistogramRangeSlider` | `esri/widgets/HistogramRangeSlider` | `app-platform` | The histogram range control on honua-chart writes the chosen range back as a layer definitionExpression filter. |
 | [Home](#home) | `@arcgis/core/widgets/Home` | `esri/widgets/Home` | `automated` | HomeCompat from @honua/sdk-esri-compat |
 | [LayerList](#layerlist) | `@arcgis/core/widgets/LayerList` | `esri/widgets/LayerList` | `automated` | LayerListCompat from @honua/sdk-esri-compat<br>Direct app-platform component: [`<honua-layer-list>`](https://github.com/honua-io/honua-sdk-js/blob/trunk/src/web-components/elements.ts) from `@honua/app-platform/web-components` |
 | [Legend](#legend) | `@arcgis/core/widgets/Legend` | `esri/widgets/Legend` | `automated` | LegendCompat from @honua/sdk-esri-compat<br>Direct app-platform component: [`<honua-legend>`](https://github.com/honua-io/honua-sdk-js/blob/trunk/src/web-components/elements.ts) from `@honua/app-platform/web-components` |
@@ -105,7 +105,7 @@ A compat-backed row may also list a direct `@honua/app-platform` component. That
 | [Popup](#popup) | `@arcgis/core/widgets/Popup` | `esri/widgets/Popup` | `automated` | PopupCompat from @honua/sdk-esri-compat |
 | [Print](#print) | `@arcgis/core/widgets/Print` | `esri/widgets/Print` | `compat-shim` | PrintCompat from @honua/sdk-esri-compat |
 | [ScaleBar](#scalebar) | `@arcgis/core/widgets/ScaleBar` | `esri/widgets/ScaleBar` | `automated` | ScaleBarCompat from @honua/sdk-esri-compat (MapLibre ScaleControl underneath) |
-| [ScaleRangeSlider](#scalerangeslider) | `@arcgis/core/widgets/ScaleRangeSlider` | `esri/widgets/ScaleRangeSlider` | `manual-workaround` | No drop-in widget. Drive FeatureLayerCompat.setScaleRange from your own control. |
+| [ScaleRangeSlider](#scalerangeslider) | `@arcgis/core/widgets/ScaleRangeSlider` | `esri/widgets/ScaleRangeSlider` | `app-platform` | honua-scale-range writes the changed min and max through FeatureLayerCompat.setScaleRange. The control renders through the widget host. |
 | [Search](#search) | `@arcgis/core/widgets/Search` | `esri/widgets/Search` | `automated` | SearchCompat from @honua/sdk-esri-compat backed by the Honua geocoding surface<br>Direct app-platform component: [`<honua-search>`](https://github.com/honua-io/honua-sdk-js/blob/trunk/src/web-components/elements.ts) from `@honua/app-platform/web-components` |
 | [ShadowCast](#shadowcast) | `@arcgis/core/widgets/ShadowCast` | `esri/widgets/ShadowCast` | `no-equivalent` | None. Requires a 3D scene with shadow accumulation. |
 | [Sketch](#sketch) | `@arcgis/core/widgets/Sketch` | `esri/widgets/Sketch` | `compat-shim` | SketchCompat from @honua/sdk-esri-compat |
@@ -145,11 +145,11 @@ A compat-backed row may also list a direct `@honua/app-platform` component. That
 
 ### Attachments
 
-- Disposition: `manual-workaround` (Manual workaround)
+- Disposition: `app-platform` (App platform)
 - Deprecated since: ArcGIS JS 5.0
 - Modules: `@arcgis/core/widgets/Attachments`, `esri/widgets/Attachments`
-- Target: No drop-in widget. List a feature's attachments with FeatureLayerCompat.queryAttachments and render the list in your own UI.
-- Notes: There is no shim and no codemod rewrite for this widget, so the scanner counts its sites as manual. Attachment upload, delete, and keyword filtering are app code you write against the service.
+- Target: honua-attachments lists the names FeatureLayerCompat.queryAttachments returned. The list renders through the widget host.
+- Notes: There is no codemod rewrite for this widget. Upload, delete, and keyword filtering stay absent.
 
 ### Attribution
 
@@ -261,7 +261,7 @@ A compat-backed row may also list a direct `@honua/app-platform` component. That
 - Modules: `@arcgis/core/widgets/Directions`, `esri/widgets/Directions`
 - Target: DirectionsCompat from @honua/sdk-esri-compat backed by HonuaRouteService (RouteTask parity)
 - Compat shim source: [`src/esri-compat/directions.ts`](https://github.com/honua-io/honua-sdk-js/blob/trunk/src/esri-compat/directions.ts) in honua-sdk-js
-- Notes: The honua-migrate codemod rewrites the import and safe constructor call sites, but the shim covers the core workflow rather than the full ArcGIS surface — plan hands-on verification of app-specific behavior after migration. Rendering is not byte-identical to ArcGIS. Only RouteTask-backed routing is shimmed; service-area, closest-facility, and OD-cost-matrix flows remain unsupported (docs/migration-punch-list.md, parity gap 3).
+- Notes: The honua-migrate codemod rewrites the import and safe constructor call sites, but the shim covers the core workflow rather than the full ArcGIS surface — plan hands-on verification of app-specific behavior after migration. Rendering is not byte-identical to ArcGIS. The shim renders through the widget host. The maneuver list renders when the route result has steps, and only the summary renders when the result is a polyline with no steps. Service area, closest facility, OD cost matrix, and travel-mode editing stay absent (docs/migration-punch-list.md, parity gap 3).
 
 ### DirectLineMeasurement3D
 
@@ -287,15 +287,15 @@ A compat-backed row may also list a direct `@honua/app-platform` component. That
 - Modules: `@arcgis/core/widgets/Editor`, `esri/widgets/Editor`
 - Target: EditorCompat from @honua/sdk-esri-compat
 - Compat shim source: [`src/esri-compat/editor.ts`](https://github.com/honua-io/honua-sdk-js/blob/trunk/src/esri-compat/editor.ts) in honua-sdk-js
-- Notes: The honua-migrate codemod rewrites the import and safe constructor call sites, but the shim covers the core workflow rather than the full ArcGIS surface — plan hands-on verification of app-specific behavior after migration. Rendering is not byte-identical to ArcGIS. Attribute + geometry editing against feature services works; advanced form elements and utility-network editing do not.
+- Notes: The honua-migrate codemod rewrites the import and safe constructor call sites, but the shim covers the core workflow rather than the full ArcGIS surface — plan hands-on verification of app-specific behavior after migration. Rendering is not byte-identical to ArcGIS. The shim renders through the widget host. Attribute + geometry editing against feature services works; advanced form elements and utility-network editing do not.
 
 ### ElevationProfile
 
-- Disposition: `manual-workaround` (Manual workaround)
+- Disposition: `app-platform` (App platform)
 - Deprecated since: ArcGIS JS 5.0
 - Modules: `@arcgis/core/widgets/ElevationProfile`, `esri/widgets/ElevationProfile`
-- Target: No drop-in widget. Sample the profile geometry yourself (e.g. @honua/sdk-js/geometry densify + an elevation/terrain source such as maplibre-gl queryTerrainElevation) and chart with your own charting library.
-- Notes: There is no ElevationProfile shim and no automated rewrite. The workaround is honest but real work: profile sampling, unit handling, and chart UX are app code you own after migration.
+- Target: sampleElevations returns one elevation sample per densified vertex when the map has terrain, and the named error terrain-missing with an empty sample list when it does not.
+- Notes: There is no ElevationProfile widget rewrite. The sampler does not invent elevations when terrain is missing and does not chart the profile or convert units.
 
 ### Expand
 
@@ -322,15 +322,15 @@ A compat-backed row may also list a direct `@honua/app-platform` component. That
 - Modules: `@arcgis/core/widgets/FeatureForm`, `esri/widgets/FeatureForm`
 - Target: FeatureFormCompat from @honua/sdk-esri-compat
 - Compat shim source: [`src/esri-compat/feature-form.ts`](https://github.com/honua-io/honua-sdk-js/blob/trunk/src/esri-compat/feature-form.ts) in honua-sdk-js
-- Notes: The honua-migrate codemod rewrites the import and safe constructor call sites, but the shim covers the core workflow rather than the full ArcGIS surface — plan hands-on verification of app-specific behavior after migration. Rendering is not byte-identical to ArcGIS. Arcade-driven form expressions are not evaluated.
+- Notes: The honua-migrate codemod rewrites the import and safe constructor call sites, but the shim covers the core workflow rather than the full ArcGIS surface — plan hands-on verification of app-specific behavior after migration. Rendering is not byte-identical to ArcGIS. The shim renders through the widget host. One stored form expression can hide a field and one can write a calculated value. An unknown function fails only that field. This is not a general Arcade interpreter.
 
 ### Features
 
-- Disposition: `manual-workaround` (Manual workaround)
+- Disposition: `app-platform` (App platform)
 - Deprecated since: ArcGIS JS 4.34
 - Modules: `@arcgis/core/widgets/Features`, `esri/widgets/Features`
-- Target: No drop-in widget. Page through the selected features yourself and render each one with FeatureCompat.
-- Notes: There is no shim and no codemod rewrite for this widget, so the scanner counts its sites as manual. Paging controls, selection sync with the view, and action menus are app code you own.
+- Target: honua-feature-pager pages one honua-feature-inspection per selected feature. The pager renders through the widget host.
+- Notes: There is no codemod rewrite for this widget. Popup actions and field-info format callbacks stay absent.
 
 ### FeatureTable
 
@@ -339,7 +339,7 @@ A compat-backed row may also list a direct `@honua/app-platform` component. That
 - Modules: `@arcgis/core/widgets/FeatureTable`, `esri/widgets/FeatureTable`
 - Target: FeatureTableCompat from @honua/sdk-esri-compat
 - Compat shim source: [`src/esri-compat/feature-table.ts`](https://github.com/honua-io/honua-sdk-js/blob/trunk/src/esri-compat/feature-table.ts) in honua-sdk-js
-- Notes: The honua-migrate codemod rewrites the import and safe constructor call sites, but the shim covers the core workflow rather than the full ArcGIS surface — plan hands-on verification of app-specific behavior after migration. Rendering is not byte-identical to ArcGIS. Related-records and popup interaction flows are exercised by the demo fixtures; column virtualization and attachment editing differ from ArcGIS.
+- Notes: The honua-migrate codemod rewrites the import and safe constructor call sites, but the shim covers the core workflow rather than the full ArcGIS surface — plan hands-on verification of app-specific behavior after migration. Rendering is not byte-identical to ArcGIS. The shim renders through the widget host. Related-records and popup interaction flows are exercised by the demo fixtures; column virtualization and attachment editing differ from ArcGIS.
 
 ### FeatureTemplates
 
@@ -369,19 +369,19 @@ A compat-backed row may also list a direct `@honua/app-platform` component. That
 
 ### Histogram
 
-- Disposition: `manual-workaround` (Manual workaround)
+- Disposition: `app-platform` (App platform)
 - Deprecated since: ArcGIS JS 5.0
 - Modules: `@arcgis/core/widgets/Histogram`, `esri/widgets/Histogram`
-- Target: No drop-in widget. Compute bins from your own feature query and draw them with your charting library.
-- Notes: There is no shim and no codemod rewrite for this widget, so the scanner counts its sites as manual. ArcGIS smart-mapping statistics are not reproduced, so bin boundaries must be computed by the app.
+- Target: honua-chart draws equal-interval and quantile bins from the query count, sum, min, max, and average.
+- Notes: There is no codemod rewrite for this widget. Class-breaks renderers, color ramps, and predominance stay absent.
 
 ### HistogramRangeSlider
 
-- Disposition: `manual-workaround` (Manual workaround)
+- Disposition: `app-platform` (App platform)
 - Deprecated since: ArcGIS JS 5.0
 - Modules: `@arcgis/core/widgets/HistogramRangeSlider`, `esri/widgets/HistogramRangeSlider`
-- Target: No drop-in widget. Pair your own histogram chart with a range input and apply the chosen range as a layer filter.
-- Notes: There is no shim and no codemod rewrite for this widget, so the scanner counts its sites as manual. Smart-mapping statistics and the widget's filter-expression helpers are not reproduced.
+- Target: The histogram range control on honua-chart writes the chosen range back as a layer definitionExpression filter.
+- Notes: There is no codemod rewrite for this widget. The control does not reproduce scale thumbnails or region presets.
 
 ### Home
 
@@ -459,7 +459,7 @@ import "@honua/app-platform/web-components";
 - Target: MeasurementCompat from @honua/sdk-esri-compat (2D distance/area only)
 - Compat shim source: [`src/esri-compat/measurement.ts`](https://github.com/honua-io/honua-sdk-js/blob/trunk/src/esri-compat/measurement.ts) in honua-sdk-js
 - Direct app-platform component: [`<honua-measurement>`](https://github.com/honua-io/honua-sdk-js/blob/trunk/src/web-components/measurement.ts) from `@honua/app-platform/web-components`
-- Notes: The honua-migrate codemod rewrites the import and safe constructor call sites, but the shim covers the core workflow rather than the full ArcGIS surface — plan hands-on verification of app-specific behavior after migration. Rendering is not byte-identical to ArcGIS. 3D measurement modes are not supported.
+- Notes: The honua-migrate codemod rewrites the import and safe constructor call sites, but the shim covers the core workflow rather than the full ArcGIS surface — plan hands-on verification of app-specific behavior after migration. Rendering is not byte-identical to ArcGIS. The shim renders through the widget host. 3D measurement modes are not supported.
 
 App-platform usage (the module import auto-registers the element):
 
@@ -504,7 +504,7 @@ import "@honua/app-platform/web-components";
 - Modules: `@arcgis/core/widgets/Print`, `esri/widgets/Print`
 - Target: PrintCompat from @honua/sdk-esri-compat
 - Compat shim source: [`src/esri-compat/print.ts`](https://github.com/honua-io/honua-sdk-js/blob/trunk/src/esri-compat/print.ts) in honua-sdk-js
-- Notes: The honua-migrate codemod rewrites the import and safe constructor call sites, but the shim covers the core workflow rather than the full ArcGIS surface — plan hands-on verification of app-specific behavior after migration. Rendering is not byte-identical to ArcGIS. Export goes through the Honua rendering pipeline, not an ArcGIS print service; custom print templates need re-authoring.
+- Notes: The honua-migrate codemod rewrites the import and safe constructor call sites, but the shim covers the core workflow rather than the full ArcGIS surface — plan hands-on verification of app-specific behavior after migration. Rendering is not byte-identical to ArcGIS. The shim renders through the widget host. Export goes through the Honua rendering pipeline, not an ArcGIS print service; custom print templates need re-authoring.
 
 ### ScaleBar
 
@@ -517,11 +517,11 @@ import "@honua/app-platform/web-components";
 
 ### ScaleRangeSlider
 
-- Disposition: `manual-workaround` (Manual workaround)
+- Disposition: `app-platform` (App platform)
 - Deprecated since: ArcGIS JS 5.0
 - Modules: `@arcgis/core/widgets/ScaleRangeSlider`, `esri/widgets/ScaleRangeSlider`
-- Target: No drop-in widget. Drive FeatureLayerCompat.setScaleRange from your own control.
-- Notes: There is no shim and no codemod rewrite for this widget, so the scanner counts its sites as manual. The widget's scale-preview thumbnails and region presets are not reproduced.
+- Target: honua-scale-range writes the changed min and max through FeatureLayerCompat.setScaleRange. The control renders through the widget host.
+- Notes: There is no codemod rewrite for this widget. Scale-preview thumbnails and region presets stay absent.
 
 ### Search
 
@@ -559,7 +559,7 @@ import "@honua/app-platform/web-components";
 - Modules: `@arcgis/core/widgets/Sketch`, `esri/widgets/Sketch`
 - Target: SketchCompat from @honua/sdk-esri-compat
 - Compat shim source: [`src/esri-compat/sketch.ts`](https://github.com/honua-io/honua-sdk-js/blob/trunk/src/esri-compat/sketch.ts) in honua-sdk-js
-- Notes: The honua-migrate codemod rewrites the import and safe constructor call sites, but the shim covers the core workflow rather than the full ArcGIS surface — plan hands-on verification of app-specific behavior after migration. Rendering is not byte-identical to ArcGIS. Snapping and 3D sketch tools are not reproduced.
+- Notes: The honua-migrate codemod rewrites the import and safe constructor call sites, but the shim covers the core workflow rather than the full ArcGIS surface — plan hands-on verification of app-specific behavior after migration. Rendering is not byte-identical to ArcGIS. The shim renders through the widget host. Snapping moves a new vertex onto an existing vertex when it is on, and leaves the pointer position when it is off. 3D sketch tools are not reproduced.
 
 ### Slice
 
@@ -602,7 +602,7 @@ import "@honua/app-platform/web-components";
 - Modules: `@arcgis/core/widgets/TimeSlider`, `esri/widgets/TimeSlider`
 - Target: TimeSliderCompat from @honua/sdk-esri-compat
 - Compat shim source: [`src/esri-compat/time-slider.ts`](https://github.com/honua-io/honua-sdk-js/blob/trunk/src/esri-compat/time-slider.ts) in honua-sdk-js
-- Notes: The honua-migrate codemod rewrites the import and safe constructor call sites, but the shim covers the core workflow rather than the full ArcGIS surface — plan hands-on verification of app-specific behavior after migration. Rendering is not byte-identical to ArcGIS. Time-aware layer filtering works; stops derived from server time-info metadata should be verified per service.
+- Notes: The honua-migrate codemod rewrites the import and safe constructor call sites, but the shim covers the core workflow rather than the full ArcGIS surface — plan hands-on verification of app-specific behavior after migration. Rendering is not byte-identical to ArcGIS. The shim renders through the widget host. Time-aware layer filtering works; stops derived from server time-info metadata should be verified per service.
 
 ### TimeZoneLabel
 

@@ -178,6 +178,18 @@ function createScanReport(): ArcGisScanReport {
 }
 
 describe("buildJsMigrationReport", () => {
+  it("says the legend renders when the codemod emitted the kit registration", () => {
+    const report = buildJsMigrationReport(
+      "/tmp/app",
+      { ...createCodemodResult(), emittedWidgetKitRegistration: true },
+      createScanReport(),
+    );
+
+    expect(report.legendDisposition).toBe(
+      "Legend renders through honua-legend after the emitted registerHonuaWidgetKit call.",
+    );
+  });
+
   it.each(["honua-compat", "esri-leaflet"] as const)("warns that Legend stays headless for %s", (target) => {
     const report = buildJsMigrationReport("/tmp/app", { ...createCodemodResult(), target }, createScanReport());
 

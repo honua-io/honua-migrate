@@ -830,7 +830,13 @@ describe("arcgis migration integration", () => {
     expect(report.unhandledArcGisModules).toEqual([]);
 
     const migratedMain = fs.readFileSync(path.join(workingCopy, "src", "main.ts"), "utf8");
-    expect(migratedMain).toContain('import { FeatureLayerCompat, FeatureTableCompat } from "@honua/sdk-esri-compat";');
+    expect(migratedMain).toContain(
+      'import { FeatureLayerCompat, FeatureTableCompat, registerHonuaWidgetKit } from "@honua/sdk-esri-compat";',
+    );
+    expect(migratedMain).toContain('registerHonuaWidgetKit(() => import("@honua/sdk-js/web-components"));');
+    expect(migratedMain.indexOf("registerHonuaWidgetKit(")).toBeLessThan(
+      migratedMain.indexOf("new FeatureTableCompat("),
+    );
     expect(migratedMain).toContain("const parcels = new FeatureLayerCompat({");
     expect(migratedMain).toContain("const table = new FeatureTableCompat({");
     expect(migratedMain).not.toContain("@arcgis/core/layers/FeatureLayer");
@@ -870,7 +876,11 @@ describe("arcgis migration integration", () => {
 
     const migratedMain = fs.readFileSync(path.join(workingCopy, "src", "main.ts"), "utf8");
     expect(migratedMain).toContain(
-      'import { FeatureLayerCompat, FeatureTableCompat, MapCompat, MapViewCompat } from "@honua/sdk-esri-compat";',
+      'import { FeatureLayerCompat, FeatureTableCompat, MapCompat, MapViewCompat, registerHonuaWidgetKit } from "@honua/sdk-esri-compat";',
+    );
+    expect(migratedMain).toContain('registerHonuaWidgetKit(() => import("@honua/sdk-js/web-components"));');
+    expect(migratedMain.indexOf("registerHonuaWidgetKit(")).toBeLessThan(
+      migratedMain.indexOf("new FeatureTableCompat("),
     );
     expect(migratedMain).toContain("const table = new FeatureTableCompat({");
     expect(migratedMain).toContain("relatedRecordsEnabled: true");
@@ -934,7 +944,13 @@ describe("arcgis migration integration", () => {
     expect(report.unhandledArcGisModules).toEqual([]);
 
     const migratedMain = fs.readFileSync(path.join(workingCopy, "src", "main.ts"), "utf8");
-    expect(migratedMain).toContain('import { FeatureFormCompat, FeatureLayerCompat } from "@honua/sdk-esri-compat";');
+    expect(migratedMain).toContain(
+      'import { FeatureFormCompat, FeatureLayerCompat, registerHonuaWidgetKit } from "@honua/sdk-esri-compat";',
+    );
+    expect(migratedMain).toContain('registerHonuaWidgetKit(() => import("@honua/sdk-js/web-components"));');
+    expect(migratedMain.indexOf("registerHonuaWidgetKit(")).toBeLessThan(
+      migratedMain.indexOf("new FeatureFormCompat("),
+    );
     expect(migratedMain).toContain("const form = new FeatureFormCompat({");
     expect(migratedMain).not.toContain("@arcgis/core/widgets/FeatureForm");
   });
@@ -1063,7 +1079,11 @@ describe("arcgis migration integration", () => {
     expect(report.unhandledArcGisModules).toEqual([]);
 
     const migratedMain = fs.readFileSync(path.join(workingCopy, "src", "main.ts"), "utf8");
-    expect(migratedMain).toContain('import { MapCompat, MapViewCompat, PrintCompat } from "@honua/sdk-esri-compat";');
+    expect(migratedMain).toContain(
+      'import { MapCompat, MapViewCompat, PrintCompat, registerHonuaWidgetKit } from "@honua/sdk-esri-compat";',
+    );
+    expect(migratedMain).toContain('registerHonuaWidgetKit(() => import("@honua/sdk-js/web-components"));');
+    expect(migratedMain.indexOf("registerHonuaWidgetKit(")).toBeLessThan(migratedMain.indexOf("new PrintCompat("));
     expect(migratedMain).toContain("const printer = new PrintCompat({");
     expect(migratedMain).not.toContain("@arcgis/core/widgets/Print");
   });
@@ -1297,8 +1317,10 @@ describe("arcgis migration integration", () => {
 
     const migratedMain = fs.readFileSync(path.join(workingCopy, "src", "main.ts"), "utf8");
     expect(migratedMain).toContain(
-      'import { FeatureLayerCompat, LayerListCompat, MapCompat, MapViewCompat, PopupTemplateCompat } from "@honua/sdk-esri-compat";',
+      'import { FeatureLayerCompat, LayerListCompat, MapCompat, MapViewCompat, PopupTemplateCompat, registerHonuaWidgetKit } from "@honua/sdk-esri-compat";',
     );
+    expect(migratedMain).toContain('registerHonuaWidgetKit(() => import("@honua/sdk-js/web-components"));');
+    expect(migratedMain.indexOf("registerHonuaWidgetKit(")).toBeLessThan(migratedMain.indexOf("new LayerListCompat("));
     expect(migratedMain).toContain("const layerList = new LayerListCompat({");
     expect(migratedMain).toContain("listItemCreatedFunction: (event) => {");
     expect(migratedMain).toContain('layerList.on("trigger-action", (event) => {');
@@ -1445,7 +1467,7 @@ describe("arcgis migration integration", () => {
 
     const migratedMain = fs.readFileSync(path.join(workingCopy, "src", "main.ts"), "utf8");
     expect(migratedMain).toContain(
-      'import { AttributionCompat, BasemapGalleryCompat, BasemapToggleCompat, BookmarksCompat, CompassCompat, CoordinateConversionCompat, DirectionsCompat, EditorCompat, ExpandCompat, FullscreenCompat, HomeCompat, LayerListCompat, LegendCompat, LocateCompat, MapCompat, MapViewCompat, MeasurementCompat, PopupCompat, RouteLayerCompat, ScaleBarCompat, SearchCompat, SketchCompat, TimeSliderCompat, TrackCompat, ZoomCompat } from "@honua/sdk-esri-compat";',
+      'import { AttributionCompat, BasemapGalleryCompat, BasemapToggleCompat, BookmarksCompat, CompassCompat, CoordinateConversionCompat, DirectionsCompat, EditorCompat, ExpandCompat, FullscreenCompat, HomeCompat, LayerListCompat, LegendCompat, LocateCompat, MapCompat, MapViewCompat, MeasurementCompat, PopupCompat, RouteLayerCompat, ScaleBarCompat, SearchCompat, SketchCompat, TimeSliderCompat, TrackCompat, ZoomCompat, registerHonuaWidgetKit } from "@honua/sdk-esri-compat";',
     );
     expect(migratedMain).toContain("const layerList = new LayerListCompat({ view });");
     expect(migratedMain).toContain("const legend = new LegendCompat({ view });");
@@ -1559,7 +1581,7 @@ describe("arcgis migration integration", () => {
 
     const migratedComponent = fs.readFileSync(path.join(workingCopy, "src", "ParcelMap.tsx"), "utf8");
     expect(migratedComponent).toContain(
-      'import { FeatureLayerCompat, LayerListCompat, LegendCompat, MapCompat, MapViewCompat, PopupCompat, SearchCompat } from "@honua/sdk-esri-compat";',
+      'import { FeatureLayerCompat, LayerListCompat, LegendCompat, MapCompat, MapViewCompat, PopupCompat, SearchCompat, registerHonuaWidgetKit } from "@honua/sdk-esri-compat";',
     );
     expect(migratedComponent).toContain('import { useEffect, useRef } from "react";');
     expect(migratedComponent).toContain("const parcels = new FeatureLayerCompat({");

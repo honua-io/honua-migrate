@@ -269,6 +269,7 @@ describe("migration cli target selection", () => {
     expect(fs.readFileSync(appFile)).toEqual(beforeApp);
     expect(fs.readFileSync(manifestPath)).toEqual(beforeManifest);
     expect(fs.readFileSync(appFile, "utf8")).not.toContain("@honua/sdk-esri-compat");
+    expect(fs.readFileSync(appFile, "utf8")).not.toContain("registerHonuaWidgetKit");
     const report = JSON.parse(fs.readFileSync(reportPath, "utf8")) as {
       codemodExecution: {
         writeMode: string;
@@ -329,6 +330,7 @@ describe("migration cli target selection", () => {
     const migrated = fs.readFileSync(appFile, "utf8");
     expect(migrated).toContain("MapCompat");
     expect(migrated).toContain("MapViewCompat");
+    expect(migrated).not.toContain("registerHonuaWidgetKit");
     expect(migrated).not.toBe(source);
     const report = JSON.parse(fs.readFileSync(reportPath, "utf8")) as {
       codemodExecution: { writeMode: string; applied: boolean; preview?: unknown };

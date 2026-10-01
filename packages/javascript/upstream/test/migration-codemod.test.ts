@@ -854,7 +854,11 @@ describe("runEsriCompatCodemod", () => {
     });
 
     const nextSource = fs.readFileSync(file, "utf8");
-    expect(nextSource).toContain('import { FeatureLayerCompat, FeatureTableCompat } from "@honua/sdk-esri-compat";');
+    expect(nextSource).toContain(
+      'import { FeatureLayerCompat, FeatureTableCompat, registerHonuaWidgetKit } from "@honua/sdk-esri-compat";',
+    );
+    expect(nextSource).toContain('registerHonuaWidgetKit(() => import("@honua/sdk-js/web-components"));');
+    expect(nextSource.indexOf("registerHonuaWidgetKit(")).toBeLessThan(nextSource.indexOf("new FeatureTableCompat("));
     expect(nextSource).toContain(
       "new FeatureTableCompat({ layer, container: 'feature-table', where: '1=1', objectIdField: 'OBJECTID' })",
     );
@@ -923,8 +927,10 @@ describe("runEsriCompatCodemod", () => {
 
     const nextSource = fs.readFileSync(file, "utf8");
     expect(nextSource).toContain(
-      'import { FeatureLayerCompat, FeatureTableCompat, MapViewCompat } from "@honua/sdk-esri-compat";',
+      'import { FeatureLayerCompat, FeatureTableCompat, MapViewCompat, registerHonuaWidgetKit } from "@honua/sdk-esri-compat";',
     );
+    expect(nextSource).toContain('registerHonuaWidgetKit(() => import("@honua/sdk-js/web-components"));');
+    expect(nextSource.indexOf("registerHonuaWidgetKit(")).toBeLessThan(nextSource.indexOf("new FeatureTableCompat("));
     expect(nextSource).toContain(
       "new MapViewCompat({ map, container: 'viewDiv', popup: { dockEnabled: true, dockOptions: { breakpoint: false } } })",
     );
@@ -1012,7 +1018,9 @@ describe("runEsriCompatCodemod", () => {
     });
 
     const nextSource = fs.readFileSync(file, "utf8");
-    expect(nextSource).toContain('import { LayerListCompat } from "@honua/sdk-esri-compat";');
+    expect(nextSource).toContain('import { LayerListCompat, registerHonuaWidgetKit } from "@honua/sdk-esri-compat";');
+    expect(nextSource).toContain('registerHonuaWidgetKit(() => import("@honua/sdk-js/web-components"));');
+    expect(nextSource.indexOf("registerHonuaWidgetKit(")).toBeLessThan(nextSource.indexOf("new LayerListCompat("));
     expect(nextSource).toContain("const layerList = new LayerListCompat({");
     expect(nextSource).toContain("includeHidden: true");
     expect(nextSource).toContain("autoRefresh: false");
@@ -1093,7 +1101,11 @@ describe("runEsriCompatCodemod", () => {
     });
 
     const nextSource = fs.readFileSync(file, "utf8");
-    expect(nextSource).toContain('import { FeatureFormCompat, FeatureLayerCompat } from "@honua/sdk-esri-compat";');
+    expect(nextSource).toContain(
+      'import { FeatureFormCompat, FeatureLayerCompat, registerHonuaWidgetKit } from "@honua/sdk-esri-compat";',
+    );
+    expect(nextSource).toContain('registerHonuaWidgetKit(() => import("@honua/sdk-js/web-components"));');
+    expect(nextSource.indexOf("registerHonuaWidgetKit(")).toBeLessThan(nextSource.indexOf("new FeatureFormCompat("));
     expect(nextSource).toContain(
       "new FeatureFormCompat({ layer, container: 'feature-form', feature: { attributes: { OBJECTID: 1 } }, fieldConfig: [{ name: 'status' }], groupDisplay: 'all', headingLevel: 3, visibleElements: { description: true } })",
     );
@@ -1175,7 +1187,11 @@ describe("runEsriCompatCodemod", () => {
     });
 
     const nextSource = fs.readFileSync(file, "utf8");
-    expect(nextSource).toContain('import { MapCompat, MapViewCompat, PrintCompat } from "@honua/sdk-esri-compat";');
+    expect(nextSource).toContain(
+      'import { MapCompat, MapViewCompat, PrintCompat, registerHonuaWidgetKit } from "@honua/sdk-esri-compat";',
+    );
+    expect(nextSource).toContain('registerHonuaWidgetKit(() => import("@honua/sdk-js/web-components"));');
+    expect(nextSource.indexOf("registerHonuaWidgetKit(")).toBeLessThan(nextSource.indexOf("new PrintCompat("));
     expect(nextSource).toContain(
       "new PrintCompat({ view, container: 'print-div', printServiceUrl: printUrl, templateOptions: { format: 'pdf', layout: 'a4-landscape' } })",
     );
@@ -1654,7 +1670,7 @@ describe("runEsriCompatCodemod", () => {
 
     const nextSource = fs.readFileSync(file, "utf8");
     expect(nextSource).toContain(
-      'import { AttributionCompat, BasemapGalleryCompat, BasemapToggleCompat, BookmarksCompat, CompassCompat, CoordinateConversionCompat, DirectionsCompat, EditorCompat, ExpandCompat, FullscreenCompat, HomeCompat, LayerListCompat, LegendCompat, LocateCompat, MeasurementCompat, PopupCompat, RouteLayerCompat, ScaleBarCompat, SearchCompat, SketchCompat, TimeSliderCompat, TrackCompat, ZoomCompat } from "@honua/sdk-esri-compat";',
+      'import { AttributionCompat, BasemapGalleryCompat, BasemapToggleCompat, BookmarksCompat, CompassCompat, CoordinateConversionCompat, DirectionsCompat, EditorCompat, ExpandCompat, FullscreenCompat, HomeCompat, LayerListCompat, LegendCompat, LocateCompat, MeasurementCompat, PopupCompat, RouteLayerCompat, ScaleBarCompat, SearchCompat, SketchCompat, TimeSliderCompat, TrackCompat, ZoomCompat, registerHonuaWidgetKit } from "@honua/sdk-esri-compat";',
     );
     expect(nextSource).toContain(
       "const routeLayer = new RouteLayerCompat({ stops: [{ name: 'Start', location: [-157.0, 21.3] }, { name: 'End', location: [-157.01, 21.31] }] });",
@@ -2075,6 +2091,7 @@ describe("runEsriCompatCodemod", () => {
     });
 
     expect(result.filesChanged).toBe(1);
+    expect(result.emittedWidgetKitRegistration).toBe(false);
     expect(result.metrics.totalCodemodScopedCallSites).toBe(18);
     expect(result.metrics.autoMigratedCallSites).toBe(18);
     expect(result.metrics.manualCallSites).toBe(0);
@@ -2195,6 +2212,7 @@ describe("runEsriCompatCodemod", () => {
     expect(nextSource).toContain("const fullscreen = new FullscreenCompat({ view });");
     expect(nextSource).toContain("const zoom = new ZoomCompat({ view });");
     expect(nextSource).toContain("const attribution = new AttributionCompat({ view });");
+    expect(nextSource).not.toContain("registerHonuaWidgetKit");
     expect(nextSource).not.toContain("@arcgis/core/Map");
     expect(nextSource).not.toContain("@arcgis/core/views/MapView");
     expect(nextSource).not.toContain("@arcgis/core/views/SceneView");

@@ -47,8 +47,7 @@ const DISPOSITION_DESCRIPTIONS = {
     "A Honua compat shim exists and the codemod rewrites to it, but the widget carries a large interaction " +
     "surface. Treat the migration as assisted and verify app-specific behavior by hand.",
   "app-platform":
-    "A native Honua app-platform element ships for this capability. " +
-    "(Reserved: no widget currently carries this disposition in this data version.)",
+    "A native Honua element covers this capability. The codemod does not rewrite the widget constructor.",
   "maplibre-plugin":
     "The capability is served by a MapLibre control or community plugin wired up by hand. " +
     "(Reserved: no widget currently carries this disposition; several `automated` rows note the MapLibre-native control underneath.)",
