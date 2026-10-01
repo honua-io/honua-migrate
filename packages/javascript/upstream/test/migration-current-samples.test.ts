@@ -44,17 +44,30 @@ function linkTypecheckNodeModules(dir: string): void {
   }
   const sibling = path.resolve(import.meta.dirname, "../../../../../honua-sdk-js");
   const siblingTypes = path.join(sibling, "dist/src/_deprecated/web-components.d.ts");
-  const installed = path.join(source, "@honua", "sdk-js");
-  const sdkJs = fs.existsSync(path.join(sibling, "package.json")) && fs.existsSync(siblingTypes) ? sibling : installed;
-  const types = path.join(sdkJs, "dist/src/_deprecated/web-components.d.ts");
-  if (!fs.existsSync(path.join(sdkJs, "package.json")) || !fs.existsSync(types)) {
-    throw new Error(`@honua/sdk-js web-components types are not built at ${types}`);
+  if (fs.existsSync(path.join(sibling, "package.json")) && fs.existsSync(siblingTypes)) {
+    const linked = path.join(honua, "sdk-js");
+    if (fs.existsSync(linked)) {
+      fs.rmSync(linked, { recursive: true, force: true });
+    }
+    fs.symlinkSync(sibling, linked);
+    return;
   }
-  const linked = path.join(honua, "sdk-js");
-  if (fs.existsSync(linked)) {
-    fs.rmSync(linked, { recursive: true, force: true });
-  }
-  fs.symlinkSync(sdkJs, linked);
+  // CI checks out honua-migrate alone. The published SDK pulls
+  // @mapbox/jsonlint-lines-primitives, which has no license metadata, so the
+  // typecheck maps the one dynamic import onto a local declaration instead.
+  fs.writeFileSync(
+    path.join(dir, "honua-sdk-js-web-components.d.ts"),
+    "export declare function defineHonuaWebComponents(registry?: CustomElementRegistry): void;\n",
+  );
+  const tsconfigPath = path.join(dir, "tsconfig.json");
+  const tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, "utf8")) as {
+    compilerOptions: { baseUrl?: string; paths?: Record<string, string[]> };
+  };
+  tsconfig.compilerOptions.baseUrl = ".";
+  tsconfig.compilerOptions.paths = {
+    "@honua/sdk-js/web-components": ["./honua-sdk-js-web-components.d.ts"],
+  };
+  fs.writeFileSync(tsconfigPath, `${JSON.stringify(tsconfig, null, 2)}\n`);
 }
 
 function migrate(name: string) {
