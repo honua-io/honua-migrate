@@ -42,12 +42,19 @@ function linkTypecheckNodeModules(dir: string): void {
   for (const name of fs.readdirSync(path.join(source, "@honua"))) {
     fs.symlinkSync(path.join(source, "@honua", name), path.join(honua, name));
   }
-  const sdkJs = path.resolve(import.meta.dirname, "../../../../../honua-sdk-js");
+  const sibling = path.resolve(import.meta.dirname, "../../../../../honua-sdk-js");
+  const siblingTypes = path.join(sibling, "dist/src/_deprecated/web-components.d.ts");
+  const installed = path.join(source, "@honua", "sdk-js");
+  const sdkJs = fs.existsSync(path.join(sibling, "package.json")) && fs.existsSync(siblingTypes) ? sibling : installed;
   const types = path.join(sdkJs, "dist/src/_deprecated/web-components.d.ts");
   if (!fs.existsSync(path.join(sdkJs, "package.json")) || !fs.existsSync(types)) {
     throw new Error(`@honua/sdk-js web-components types are not built at ${types}`);
   }
-  fs.symlinkSync(sdkJs, path.join(honua, "sdk-js"));
+  const linked = path.join(honua, "sdk-js");
+  if (fs.existsSync(linked)) {
+    fs.rmSync(linked, { recursive: true, force: true });
+  }
+  fs.symlinkSync(sdkJs, linked);
 }
 
 function migrate(name: string) {

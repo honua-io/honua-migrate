@@ -1018,15 +1018,9 @@ describe("runEsriCompatCodemod", () => {
     });
 
     const nextSource = fs.readFileSync(file, "utf8");
-    expect(nextSource).toContain(
-      'import { LayerListCompat, registerHonuaWidgetKit } from "@honua/sdk-esri-compat";',
-    );
-    expect(nextSource).toContain(
-      'registerHonuaWidgetKit(() => import("@honua/sdk-js/web-components"));',
-    );
-    expect(nextSource.indexOf("registerHonuaWidgetKit(")).toBeLessThan(
-      nextSource.indexOf("new LayerListCompat("),
-    );
+    expect(nextSource).toContain('import { LayerListCompat, registerHonuaWidgetKit } from "@honua/sdk-esri-compat";');
+    expect(nextSource).toContain('registerHonuaWidgetKit(() => import("@honua/sdk-js/web-components"));');
+    expect(nextSource.indexOf("registerHonuaWidgetKit(")).toBeLessThan(nextSource.indexOf("new LayerListCompat("));
     expect(nextSource).toContain("const layerList = new LayerListCompat({");
     expect(nextSource).toContain("includeHidden: true");
     expect(nextSource).toContain("autoRefresh: false");

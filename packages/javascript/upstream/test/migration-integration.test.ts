@@ -834,7 +834,9 @@ describe("arcgis migration integration", () => {
       'import { FeatureLayerCompat, FeatureTableCompat, registerHonuaWidgetKit } from "@honua/sdk-esri-compat";',
     );
     expect(migratedMain).toContain('registerHonuaWidgetKit(() => import("@honua/sdk-js/web-components"));');
-    expect(migratedMain.indexOf("registerHonuaWidgetKit(")).toBeLessThan(migratedMain.indexOf("new FeatureTableCompat("));
+    expect(migratedMain.indexOf("registerHonuaWidgetKit(")).toBeLessThan(
+      migratedMain.indexOf("new FeatureTableCompat("),
+    );
     expect(migratedMain).toContain("const parcels = new FeatureLayerCompat({");
     expect(migratedMain).toContain("const table = new FeatureTableCompat({");
     expect(migratedMain).not.toContain("@arcgis/core/layers/FeatureLayer");
@@ -877,7 +879,9 @@ describe("arcgis migration integration", () => {
       'import { FeatureLayerCompat, FeatureTableCompat, MapCompat, MapViewCompat, registerHonuaWidgetKit } from "@honua/sdk-esri-compat";',
     );
     expect(migratedMain).toContain('registerHonuaWidgetKit(() => import("@honua/sdk-js/web-components"));');
-    expect(migratedMain.indexOf("registerHonuaWidgetKit(")).toBeLessThan(migratedMain.indexOf("new FeatureTableCompat("));
+    expect(migratedMain.indexOf("registerHonuaWidgetKit(")).toBeLessThan(
+      migratedMain.indexOf("new FeatureTableCompat("),
+    );
     expect(migratedMain).toContain("const table = new FeatureTableCompat({");
     expect(migratedMain).toContain("relatedRecordsEnabled: true");
     expect(migratedMain).toContain("attachmentsEnabled: true");
@@ -944,7 +948,9 @@ describe("arcgis migration integration", () => {
       'import { FeatureFormCompat, FeatureLayerCompat, registerHonuaWidgetKit } from "@honua/sdk-esri-compat";',
     );
     expect(migratedMain).toContain('registerHonuaWidgetKit(() => import("@honua/sdk-js/web-components"));');
-    expect(migratedMain.indexOf("registerHonuaWidgetKit(")).toBeLessThan(migratedMain.indexOf("new FeatureFormCompat("));
+    expect(migratedMain.indexOf("registerHonuaWidgetKit(")).toBeLessThan(
+      migratedMain.indexOf("new FeatureFormCompat("),
+    );
     expect(migratedMain).toContain("const form = new FeatureFormCompat({");
     expect(migratedMain).not.toContain("@arcgis/core/widgets/FeatureForm");
   });
@@ -1313,12 +1319,8 @@ describe("arcgis migration integration", () => {
     expect(migratedMain).toContain(
       'import { FeatureLayerCompat, LayerListCompat, MapCompat, MapViewCompat, PopupTemplateCompat, registerHonuaWidgetKit } from "@honua/sdk-esri-compat";',
     );
-    expect(migratedMain).toContain(
-      'registerHonuaWidgetKit(() => import("@honua/sdk-js/web-components"));',
-    );
-    expect(migratedMain.indexOf("registerHonuaWidgetKit(")).toBeLessThan(
-      migratedMain.indexOf("new LayerListCompat("),
-    );
+    expect(migratedMain).toContain('registerHonuaWidgetKit(() => import("@honua/sdk-js/web-components"));');
+    expect(migratedMain.indexOf("registerHonuaWidgetKit(")).toBeLessThan(migratedMain.indexOf("new LayerListCompat("));
     expect(migratedMain).toContain("const layerList = new LayerListCompat({");
     expect(migratedMain).toContain("listItemCreatedFunction: (event) => {");
     expect(migratedMain).toContain('layerList.on("trigger-action", (event) => {');
