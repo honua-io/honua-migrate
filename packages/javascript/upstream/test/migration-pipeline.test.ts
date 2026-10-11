@@ -100,8 +100,8 @@ function runCli(args: readonly string[]): ReturnType<typeof spawnSync> {
 
 // The five packages a honua-compat migration adds to an app that declares none of them.
 const COMPAT_ADDITIONS: Array<[string, string, string, string, boolean]> = [
-  ["add", "dependencies", "@honua/sdk", "0.1.11-beta.0", false],
-  ["add", "dependencies", "@honua/sdk-esri-compat", "0.1.11-beta.0", false],
+  ["add", "dependencies", "@honua/sdk", "0.1.15", false],
+  ["add", "dependencies", "@honua/sdk-esri-compat", "0.1.15", false],
   ["add", "dependencies", "@bufbuild/protobuf", "^2.15.0", true],
   ["add", "dependencies", "@connectrpc/connect", "^2.2.0", true],
   ["add", "dependencies", "@connectrpc/connect-web", "^2.2.0", true],
@@ -236,8 +236,8 @@ describe("JS migration pipeline", () => {
         "@bufbuild/protobuf": "^2.15.0",
         "@connectrpc/connect": "^2.2.0",
         "@connectrpc/connect-web": "^2.2.0",
-        "@honua/sdk": "0.1.11-beta.0",
-        "@honua/sdk-esri-compat": "0.1.11-beta.0",
+        "@honua/sdk": "0.1.15",
+        "@honua/sdk-esri-compat": "0.1.15",
         "maplibre-gl": "^6.4.1",
       },
       devDependencies: {
@@ -332,7 +332,7 @@ describe("JS migration pipeline", () => {
           private: true,
           dependencies: {
             "@arcgis/core": "^4.34.8",
-            "@honua/sdk": "0.1.11-beta.0",
+            "@honua/sdk": "0.1.15",
             "@honua/sdk-esri-compat": "^0.1.2-beta.0",
           },
         },
@@ -346,7 +346,7 @@ describe("JS migration pipeline", () => {
 
     expect(plan.mode).toBe("complete-honua-conversion");
     expect(summarizeChanges(plan.dependencyChanges)).toEqual([
-      ["update", "dependencies", "@honua/sdk-esri-compat", "0.1.11-beta.0", false],
+      ["update", "dependencies", "@honua/sdk-esri-compat", "0.1.15", false],
       ["add", "dependencies", "@bufbuild/protobuf", "^2.15.0", true],
       ["add", "dependencies", "@connectrpc/connect", "^2.2.0", true],
       ["add", "dependencies", "@connectrpc/connect-web", "^2.2.0", true],
@@ -356,7 +356,7 @@ describe("JS migration pipeline", () => {
     expect(plan.dependencyChanges[0].reason).toBe(
       "The declared range does not select the compat tarball that contains the members the codemod emits.",
     );
-    expect(plan.patch).toContain('"@honua/sdk-esri-compat": "0.1.11-beta.0"');
+    expect(plan.patch).toContain('"@honua/sdk-esri-compat": "0.1.15"');
 
     const report = applyJsMigration({ appRoot: app, approvedDigest: plan.planDigest });
 
@@ -368,10 +368,36 @@ describe("JS migration pipeline", () => {
       "@bufbuild/protobuf": "^2.15.0",
       "@connectrpc/connect": "^2.2.0",
       "@connectrpc/connect-web": "^2.2.0",
-      "@honua/sdk": "0.1.11-beta.0",
-      "@honua/sdk-esri-compat": "0.1.11-beta.0",
+      "@honua/sdk": "0.1.15",
+      "@honua/sdk-esri-compat": "0.1.15",
       "maplibre-gl": "^6.4.1",
     });
+  });
+
+  it("advances the previously generated SDK and compat pins together", () => {
+    const app = writeApp({
+      "package.json": JSON.stringify({
+        private: true,
+        dependencies: {
+          "@honua/sdk": "0.1.11-beta.0",
+          "@honua/sdk-esri-compat": "0.1.11-beta.0",
+        },
+      }),
+      "src/main.ts": MAP_ONLY_SOURCE,
+    });
+    const plan = planJsMigration({ appRoot: app });
+    expect(
+      plan.dependencyChanges
+        .filter((change) => change.action === "update")
+        .map((change) => [change.name, change.version]),
+    ).toEqual([
+      ["@honua/sdk", "0.1.15"],
+      ["@honua/sdk-esri-compat", "0.1.15"],
+    ]);
+    applyJsMigration({ appRoot: app, approvedDigest: plan.planDigest });
+    const dependencies = JSON.parse(readTree(app)["package.json"]).dependencies;
+    expect(dependencies["@honua/sdk"]).toBe("0.1.15");
+    expect(dependencies["@honua/sdk-esri-compat"]).toBe("0.1.15");
   });
 
   it("leaves a hand-written compat pin in place when planning other dependency changes", () => {
@@ -381,7 +407,7 @@ describe("JS migration pipeline", () => {
           private: true,
           dependencies: {
             "@arcgis/core": "^4.34.8",
-            "@honua/sdk": "0.1.11-beta.0",
+            "@honua/sdk": "0.1.15",
             "@honua/sdk-esri-compat": "workspace:*",
           },
         },

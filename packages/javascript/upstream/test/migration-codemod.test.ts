@@ -4462,7 +4462,7 @@ describe("PR 172 review regressions", () => {
     expect(fs.readFileSync(path.join(src, "main.ts"), "utf8")).toContain("new LocatorCompat(");
     expect(
       JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).dependencies["@honua/sdk-esri-compat"],
-    ).toBe("0.1.11-beta.0");
+    ).toBe("0.1.15");
     expect(fs.existsSync(path.join(src, "package.json"))).toBe(false);
   });
 
@@ -4482,7 +4482,7 @@ describe("PR 172 review regressions", () => {
     ).toBe("workspace:*");
   });
 
-  it.each(["^0.1.2-beta.0", "^0.1.9-beta.0"])(
+  it.each(["^0.1.2-beta.0", "^0.1.9-beta.0", "0.1.11-beta.0"])(
     "replaces a stale %s pin when a later run adds no compat import",
     (staleRange) => {
       const root = makeTempProject();
@@ -4497,7 +4497,7 @@ describe("PR 172 review regressions", () => {
       expect(fs.readFileSync(path.join(root, "main.ts"), "utf8")).toBe(source);
       expect(
         JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).dependencies["@honua/sdk-esri-compat"],
-      ).toBe("0.1.11-beta.0");
+      ).toBe("0.1.15");
     },
   );
 
