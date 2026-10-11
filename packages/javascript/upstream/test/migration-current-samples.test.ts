@@ -220,7 +220,7 @@ describe("current ArcGIS sample corpus", () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8")) as {
       dependencies: Record<string, string>;
     };
-    expect(manifest.dependencies["@honua/sdk-esri-compat"]).toBe("0.1.11-beta.0");
+    expect(manifest.dependencies["@honua/sdk-esri-compat"]).toBe("0.1.15");
   });
 
   it("leaves Locator and a Point passed to it on Esri when the constructor is not only url", () => {
@@ -320,7 +320,7 @@ describe("current ArcGIS sample corpus", () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8")) as {
       dependencies: Record<string, string>;
     };
-    expect(manifest.dependencies["@honua/sdk-esri-compat"]).toBe("0.1.11-beta.0");
+    expect(manifest.dependencies["@honua/sdk-esri-compat"]).toBe("0.1.15");
   });
 
   it("removes a js.arcgis.com worker loader and keeps a config file that sets an api key", () => {
@@ -544,7 +544,7 @@ describe("current ArcGIS sample corpus", () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8")) as {
       dependencies: Record<string, string>;
     };
-    expect(manifest.dependencies["@honua/sdk-esri-compat"]).toBe("0.1.11-beta.0");
+    expect(manifest.dependencies["@honua/sdk-esri-compat"]).toBe("0.1.15");
     expect(codemodResult.errors).toBeUndefined();
     const html = fs.readFileSync(path.join(dir, "index.html"), "utf8");
     const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];

@@ -43,8 +43,8 @@ const NPM_SCRIPT_NAME = /^[A-Za-z0-9][A-Za-z0-9:._-]*$/;
 
 /** Packages the honua-compat output imports, at the ranges this engine is built and tested against. */
 export const HONUA_COMPAT_RUNTIME_DEPENDENCIES: Readonly<Record<string, string>> = {
-  "@honua/sdk": "0.1.11-beta.0",
-  "@honua/sdk-esri-compat": "0.1.11-beta.0",
+  "@honua/sdk": "0.1.15",
+  "@honua/sdk-esri-compat": "0.1.15",
 };
 
 export const SDK_JS_OPTIONAL_GRPC_PEERS_ISSUE = "https://github.com/honua-io/honua-sdk-js/issues/1715";
@@ -506,6 +506,14 @@ function planDependencyChanges(
   if (target === "honua-compat") {
     const declared = (name: string): boolean =>
       DEPENDENCY_SECTIONS.some((section) => dependencySection(manifest, section)[name] !== undefined);
+    const compatWillMatch = DEPENDENCY_SECTIONS.every((section) => {
+      const current = dependencySection(manifest, section)[DEFAULT_COMPAT_IMPORT_PATH];
+      return (
+        current === undefined ||
+        current === HONUA_COMPAT_RUNTIME_DEPENDENCIES[DEFAULT_COMPAT_IMPORT_PATH] ||
+        (section === "dependencies" && STALE_COMPAT_DEPENDENCY_RANGES.has(current))
+      );
+    });
     for (const [name, version] of Object.entries(HONUA_COMPAT_RUNTIME_DEPENDENCIES)) {
       if (!declared(name)) {
         changes.push({
@@ -518,16 +526,23 @@ function planDependencyChanges(
               ? "The migrated source imports @honua/sdk-esri-compat."
               : "@honua/sdk-esri-compat requires @honua/sdk as a peer dependency.",
         });
-      } else if (name === DEFAULT_COMPAT_IMPORT_PATH) {
+      } else {
         const current = dependencySection(manifest, "dependencies")[name];
-        if (current !== undefined && current !== version && STALE_COMPAT_DEPENDENCY_RANGES.has(current)) {
+        if (
+          current !== undefined &&
+          current !== version &&
+          STALE_COMPAT_DEPENDENCY_RANGES.has(current) &&
+          (name === DEFAULT_COMPAT_IMPORT_PATH || compatWillMatch)
+        ) {
           changes.push({
             action: "update",
             section: "dependencies",
             name,
             version,
             reason:
-              "The declared range does not select the compat tarball that contains the members the codemod emits.",
+              name === DEFAULT_COMPAT_IMPORT_PATH
+                ? "The declared range does not select the compat tarball that contains the members the codemod emits."
+                : "The previously generated SDK pin must advance with its compatible runtime peer.",
           });
         }
       }

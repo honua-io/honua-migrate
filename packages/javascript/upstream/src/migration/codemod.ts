@@ -18,9 +18,9 @@ const MAPLIBRE_IMPORT_PATH = "maplibre-gl";
 const MAPLIBRE_NAMESPACE = "maplibregl";
 const TODO_MARKER = "TODO(honua-migrate)";
 /** Exact compat tarball that contains every member this codemod emits.
- *  `^0.1.2-beta.0` and `^0.1.9-beta.0` do not select `0.1.11-beta.0`. */
-export const COMPAT_DEPENDENCY_RANGE = "0.1.11-beta.0";
-export const STALE_COMPAT_DEPENDENCY_RANGES = new Set(["^0.1.2-beta.0", "^0.1.9-beta.0"]);
+ *  `^0.1.2-beta.0` and `^0.1.9-beta.0` do not select `0.1.15`. */
+export const COMPAT_DEPENDENCY_RANGE = "0.1.15";
+export const STALE_COMPAT_DEPENDENCY_RANGES = new Set(["^0.1.2-beta.0", "^0.1.9-beta.0", "0.1.11-beta.0"]);
 const CJS_REQUIRE_MANUAL_REASON =
   "CommonJS require constructors are not auto-migrated; convert the module to ESM and rerun.";
 const ESRI_LEAFLET_UNSUPPORTED_CONSTRUCTOR_REASON =
@@ -1130,7 +1130,12 @@ function ensureCompatPackageDependency(
     return;
   }
   const current = manifest.dependencies?.[importPath];
-  if (current === range || (current && !STALE_COMPAT_DEPENDENCY_RANGES.has(current))) {
+  const sdk = manifest.dependencies?.["@honua/sdk"];
+  const upgradeSdk = sdk !== undefined && STALE_COMPAT_DEPENDENCY_RANGES.has(sdk);
+  if (
+    (current === range && !upgradeSdk) ||
+    (current && current !== range && !STALE_COMPAT_DEPENDENCY_RANGES.has(current))
+  ) {
     return;
   }
   // A missing dependency is added only when this run introduced the compat import.
@@ -1141,6 +1146,7 @@ function ensureCompatPackageDependency(
   manifest.dependencies = {
     ...(manifest.dependencies ?? {}),
     [importPath]: range,
+    ...(upgradeSdk ? { "@honua/sdk": range } : {}),
   };
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 }
