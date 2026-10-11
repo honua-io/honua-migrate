@@ -28,8 +28,8 @@
     "repository": "https://github.com/honua-io/honua-migrate",
     "packagePath": "packages/javascript",
     "npmPackage": "@honua/honua-migrate",
-    "version": "0.1.7-beta.0",
-    "releaseTag": "javascript-v0.1.7-beta.0",
+    "version": "0.2.0-beta.0",
+    "releaseTag": "javascript-v0.2.0-beta.0",
     "nodeEngine": ">=20.19.0"
   },
   "historyImport": {
@@ -65,9 +65,20 @@
     "sourceHead": "842ecf17c2effa86c0d4a931a71233ed713bae13"
   },
   "extracted": [
-    "scan", "widgets", "codemod", "reports", "gates", "matrix",
-    "runtime-matrix", "fixtures", "content", "content-webmap", "reconcile",
-    "demo", "corpus-evidence", "sample-corpus"
+    "scan",
+    "widgets",
+    "codemod",
+    "reports",
+    "gates",
+    "matrix",
+    "runtime-matrix",
+    "fixtures",
+    "content",
+    "content-webmap",
+    "reconcile",
+    "demo",
+    "corpus-evidence",
+    "sample-corpus"
   ],
   "publicSdkDependencies": [
     "@honua/sdk/map",
@@ -86,7 +97,10 @@
     "mutationAcknowledgement": "content export/import and demo require --acknowledge-mutations",
     "outputSafety": "CLI reports and artifact trees are atomic, no-clobber by default, and require --force to replace",
     "networkOperations": "read-only scans, reports, and reconciliation do not require mutation acknowledgement",
-    "localSafetyModules": ["artifact-safety.ts", "output-writer.ts"]
+    "localSafetyModules": [
+      "artifact-safety.ts",
+      "output-writer.ts"
+    ]
   },
   "executable": {
     "npmPackage": "@honua/honua-migrate",

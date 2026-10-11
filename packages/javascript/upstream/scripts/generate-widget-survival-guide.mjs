@@ -109,7 +109,7 @@ export function generateWidgetSurvivalGuideMarkdown(data) {
     "This document is generated from the versioned disposition data in " +
       `[\`upstream/src/migration/widget-dispositions.ts\`](${DATA_SOURCE}) ` +
       `(v${WIDGET_DISPOSITION_DATA_VERSION}); the \`honua-js-migrate widgets\` scanner consumes the same data, so ` +
-      "the scanner report and this guide cannot drift apart.",
+      "the scanner report and this guide cannot drift apart. <!-- x-release-please-version -->",
   );
   lines.push("");
   lines.push("## Pinned sources");
