@@ -158,8 +158,8 @@ the value it watches. A `Graphic` that receives a symbol still imported from
 
 A rewritten file declares `@honua/sdk-esri-compat` at exact `0.1.15`.
 That tarball contains the members the codemod emits, including `LocatorCompat`.
-`^0.1.2-beta.0` and `^0.1.9-beta.0` do not select it. A later codemod run, and
-the reviewed `migrate` plan, replace those two stale ranges on
+`^0.1.2-beta.0`, `^0.1.9-beta.0`, and the previously emitted `0.1.11-beta.0` do not select it. A later codemod run, and
+the reviewed `migrate` plan, replace those stale ranges on
 `@honua/sdk-esri-compat` and leave any other pin alone. A custom compat import
 path is not given this version.
 
