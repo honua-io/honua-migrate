@@ -506,6 +506,14 @@ function planDependencyChanges(
   if (target === "honua-compat") {
     const declared = (name: string): boolean =>
       DEPENDENCY_SECTIONS.some((section) => dependencySection(manifest, section)[name] !== undefined);
+    const compatWillMatch = DEPENDENCY_SECTIONS.every((section) => {
+      const current = dependencySection(manifest, section)[DEFAULT_COMPAT_IMPORT_PATH];
+      return (
+        current === undefined ||
+        current === HONUA_COMPAT_RUNTIME_DEPENDENCIES[DEFAULT_COMPAT_IMPORT_PATH] ||
+        (section === "dependencies" && STALE_COMPAT_DEPENDENCY_RANGES.has(current))
+      );
+    });
     for (const [name, version] of Object.entries(HONUA_COMPAT_RUNTIME_DEPENDENCIES)) {
       if (!declared(name)) {
         changes.push({
@@ -520,7 +528,12 @@ function planDependencyChanges(
         });
       } else {
         const current = dependencySection(manifest, "dependencies")[name];
-        if (current !== undefined && current !== version && STALE_COMPAT_DEPENDENCY_RANGES.has(current)) {
+        if (
+          current !== undefined &&
+          current !== version &&
+          STALE_COMPAT_DEPENDENCY_RANGES.has(current) &&
+          (name === DEFAULT_COMPAT_IMPORT_PATH || compatWillMatch)
+        ) {
           changes.push({
             action: "update",
             section: "dependencies",

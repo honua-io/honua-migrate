@@ -405,6 +405,30 @@ describe("JS migration pipeline", () => {
     expect(dependencies["@honua/sdk-esri-compat"]).toBe("0.1.15");
   });
 
+  it.each([
+    ["dependencies", "workspace:*"],
+    ["dependencies", "0.1.14"],
+    ["devDependencies", "workspace:*"],
+    ["devDependencies", "0.1.11-beta.0"],
+  ])("preserves the SDK peer beside an unchanged %s compat pin %s", (section, compat) => {
+    const app = writeApp({
+      "package.json": JSON.stringify({
+        dependencies: { "@honua/sdk": "0.1.11-beta.0" },
+        ...(section === "dependencies"
+          ? { dependencies: { "@honua/sdk": "0.1.11-beta.0", "@honua/sdk-esri-compat": compat } }
+          : { [section]: { "@honua/sdk-esri-compat": compat } }),
+      }),
+      "src/main.ts": MAP_ONLY_SOURCE,
+    });
+    const plan = planJsMigration({ appRoot: app });
+    expect(plan.dependencyChanges.some((change) => change.name === "@honua/sdk")).toBe(false);
+    expect(plan.dependencyChanges.some((change) => change.name === "@honua/sdk-esri-compat")).toBe(false);
+    applyJsMigration({ appRoot: app, approvedDigest: plan.planDigest });
+    const manifest = JSON.parse(readTree(app)["package.json"]);
+    expect(manifest.dependencies["@honua/sdk"]).toBe("0.1.11-beta.0");
+    expect(manifest[section]["@honua/sdk-esri-compat"]).toBe(compat);
+  });
+
   it("leaves a hand-written compat pin in place when planning other dependency changes", () => {
     const app = writeApp({
       "package.json": `${JSON.stringify(
