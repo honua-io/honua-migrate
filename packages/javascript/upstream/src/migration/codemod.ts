@@ -1132,7 +1132,10 @@ function ensureCompatPackageDependency(
   const current = manifest.dependencies?.[importPath];
   const sdk = manifest.dependencies?.["@honua/sdk"];
   const upgradeSdk = sdk !== undefined && STALE_COMPAT_DEPENDENCY_RANGES.has(sdk);
-  if ((current === range && !upgradeSdk) || (current && current !== range && !STALE_COMPAT_DEPENDENCY_RANGES.has(current))) {
+  if (
+    (current === range && !upgradeSdk) ||
+    (current && current !== range && !STALE_COMPAT_DEPENDENCY_RANGES.has(current))
+  ) {
     return;
   }
   // A missing dependency is added only when this run introduced the compat import.

@@ -112,15 +112,20 @@ const MAP_ONLY_SOURCE =
   'import Map from "@arcgis/core/Map";\n\nexport const map = new Map({ basemap: "streets-vector" });\n';
 
 describe("JS migration pipeline", () => {
-  it("plans the runtime ranges this package is built and browser-tested against", () => {
+  it("pins generated runtimes to the tested stable dependency floor", () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(PACKAGE_ROOT, "package.json"), "utf8")) as {
       dependencies: Record<string, string>;
       devDependencies: Record<string, string>;
     };
+    const lock = JSON.parse(fs.readFileSync(path.join(PACKAGE_ROOT, "package-lock.json"), "utf8")) as {
+      packages: Record<string, { version?: string }>;
+    };
 
     expect(COMPAT_DEPENDENCY_RANGE).toBe(HONUA_COMPAT_RUNTIME_DEPENDENCIES["@honua/sdk-esri-compat"]);
-    for (const [name, range] of Object.entries(HONUA_COMPAT_RUNTIME_DEPENDENCIES)) {
-      expect(manifest.dependencies[name], name).toBe(range);
+    for (const [name, version] of Object.entries(HONUA_COMPAT_RUNTIME_DEPENDENCIES)) {
+      expect(version, name).toMatch(/^\d+\.\d+\.\d+$/);
+      expect(manifest.dependencies[name], name).toBe(`^${version}`);
+      expect(lock.packages[`node_modules/${name}`]?.version, name).toBe(version);
     }
     for (const [name, range] of Object.entries(HONUA_COMPAT_BUNDLER_WORKAROUND_DEPENDENCIES)) {
       expect(manifest.devDependencies[name], name).toBe(range);
