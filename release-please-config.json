@@ -19,7 +19,20 @@
       "component": "javascript",
       "tag-separator": "-",
       "include-component-in-tag": true,
-      "bump-minor-pre-major": true
+      "bump-minor-pre-major": true,
+      "extra-files": [
+        "docs/widget-survival-guide.md",
+        {
+          "type": "json",
+          "path": "DEPENDENCY_PROVENANCE.json",
+          "jsonpath": "$.currentOwner.version"
+        },
+        {
+          "type": "json",
+          "path": "DEPENDENCY_PROVENANCE.json",
+          "jsonpath": "$.currentOwner.releaseTag"
+        }
+      ]
     },
     "packages/maui": {
       "release-type": "simple",

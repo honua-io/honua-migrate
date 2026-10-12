@@ -17,7 +17,10 @@ describe("standalone package boundary", () => {
       dependencies: Record<string, string>;
     };
 
-    expect(packageJson.version).toBe("0.1.7-beta.0");
+    const releaseManifest = JSON.parse(
+      fs.readFileSync(path.resolve(packageRoot, "../..", ".release-please-manifest.json"), "utf8"),
+    ) as Record<string, string>;
+    expect(packageJson.version).toBe(releaseManifest["packages/javascript"]);
     expect(packageJson.repository).toEqual({
       type: "git",
       url: "git+https://github.com/honua-io/honua-migrate.git",
@@ -33,6 +36,9 @@ describe("standalone package boundary", () => {
   });
 
   it("records the historical source separately from the current release owner", () => {
+    const packageJson = JSON.parse(fs.readFileSync(path.join(packageRoot, "package.json"), "utf8")) as {
+      version: string;
+    };
     const provenance = JSON.parse(fs.readFileSync(path.join(packageRoot, "DEPENDENCY_PROVENANCE.json"), "utf8")) as {
       source: { repository: string };
       currentOwner: {
@@ -50,8 +56,8 @@ describe("standalone package boundary", () => {
       repository: "https://github.com/honua-io/honua-migrate",
       packagePath: "packages/javascript",
       npmPackage: "@honua/honua-migrate",
-      version: "0.1.7-beta.0",
-      releaseTag: "javascript-v0.1.7-beta.0",
+      version: packageJson.version,
+      releaseTag: `javascript-v${packageJson.version}`,
       nodeEngine: ">=20.19.0",
     });
   });
