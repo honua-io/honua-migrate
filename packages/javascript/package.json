@@ -35,6 +35,7 @@
     "build": "npm run clean --silent && tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "test": "npm run build --silent && vitest run",
+    "test:imported-app": "node --test upstream/test/imported-app-browser.test.mjs",
     "lint": "biome check upstream/src upstream/test",
     "docs:widget-guide": "npm run build --silent && node upstream/scripts/generate-widget-survival-guide.mjs write",
     "docs:widget-guide:check": "npm run build --silent && node upstream/scripts/generate-widget-survival-guide.mjs check",
