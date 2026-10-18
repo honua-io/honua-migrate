@@ -9,6 +9,7 @@ import {
   type CodemodTarget,
   runEsriCompatCodemod,
   STALE_COMPAT_DEPENDENCY_RANGES,
+  unmanagedCompatDeclarations,
   unmanagedSdkDeclarations,
 } from "./codemod.js";
 import { writeOutputFilesAtomically } from "./output-writer.js";
@@ -520,12 +521,12 @@ function planDependencyChanges(
   }
 
   if (target === "honua-compat") {
-    const sdkHolds = unmanagedSdkDeclarations(manifest);
+    const sdkHolds = [...unmanagedSdkDeclarations(manifest), ...unmanagedCompatDeclarations(manifest)];
     if (sdkHolds.length > 0) {
       holds.push({
         stage: "dependencies",
-        message: `SDK and compat runtime updates are held because custom SDK declarations remain: ${sdkHolds.join("; ")}.`,
-        action: `Review and align every @honua/sdk declaration with compat's exact peer ${COMPAT_DEPENDENCY_RANGE}, then plan again.`,
+        message: `SDK and compat runtime updates are held because custom runtime declarations remain: ${sdkHolds.join("; ")}.`,
+        action: `Review and align the SDK/compat declarations with the exact runtime pair ${COMPAT_DEPENDENCY_RANGE}, then plan again.`,
       });
     }
     const declared = (name: string): boolean =>

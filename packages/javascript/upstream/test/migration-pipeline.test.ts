@@ -536,6 +536,41 @@ describe("JS migration pipeline", () => {
     expect(JSON.parse(readTree(app)["package.json"]).dependencies["@honua/sdk-esri-compat"]).toBe("workspace:*");
   });
 
+  it.each(["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"])(
+    "does not add an incompatible SDK beside a custom compat declaration in %s",
+    (section) => {
+      const app = writeApp({
+        "package.json": JSON.stringify({ [section]: { "@honua/sdk-esri-compat": "workspace:*" } }),
+        "src/main.ts": MAP_ONLY_SOURCE,
+      });
+      const plan = planJsMigration({ appRoot: app });
+      expect(
+        plan.dependencyChanges.some((change) => ["@honua/sdk", "@honua/sdk-esri-compat"].includes(change.name)),
+      ).toBe(false);
+      expect(plan.holds.some((hold) => hold.message.includes(`${section}: @honua/sdk-esri-compat workspace:*`))).toBe(
+        true,
+      );
+      const report = applyJsMigration({ appRoot: app, approvedDigest: plan.planDigest });
+      const manifest = JSON.parse(readTree(app)["package.json"]);
+      expect(manifest[section]["@honua/sdk-esri-compat"]).toBe("workspace:*");
+      expect(manifest.dependencies?.["@honua/sdk"]).toBeUndefined();
+      expect(report.verdict).toBe("unvalidated");
+    },
+  );
+
+  it("leaves the whole reviewed app unchanged when a custom SDK prevents declaring compat", () => {
+    const app = writeApp({
+      "package.json": JSON.stringify({ dependencies: { "@honua/sdk": "~0.1.15" } }),
+      "src/main.ts": MAP_ONLY_SOURCE,
+    });
+    const before = readTree(app);
+    const plan = planJsMigration({ appRoot: app });
+    expect(plan.patch).toBe("");
+    expect(plan.sourceChanges).toEqual([]);
+    applyJsMigration({ appRoot: app, approvedDigest: plan.planDigest });
+    expect(readTree(app)).toEqual(before);
+  });
+
   it.each([
     ["dependencies", "~0.1.15"],
     ["dependencies", ">=0.1.0 <0.2.0"],

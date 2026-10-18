@@ -30,17 +30,25 @@ export const STALE_COMPAT_DEPENDENCY_RANGES = new Set([
 
 /** Custom SDK declarations need review before changing compat's exact runtime peer. */
 export function unmanagedSdkDeclarations(manifest: Record<string, unknown>): string[] {
+  return unmanagedRuntimeDeclarations(manifest, "@honua/sdk");
+}
+
+export function unmanagedCompatDeclarations(manifest: Record<string, unknown>): string[] {
+  return unmanagedRuntimeDeclarations(manifest, DEFAULT_COMPAT_IMPORT_PATH);
+}
+
+function unmanagedRuntimeDeclarations(manifest: Record<string, unknown>, name: string): string[] {
   const declarations: string[] = [];
   for (const section of ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"]) {
     const values = manifest[section];
     if (!values || typeof values !== "object" || Array.isArray(values)) continue;
-    const sdk = (values as Record<string, unknown>)["@honua/sdk"];
+    const sdk = (values as Record<string, unknown>)[name];
     if (
       sdk !== undefined &&
       sdk !== COMPAT_DEPENDENCY_RANGE &&
       !(section === "dependencies" && typeof sdk === "string" && STALE_COMPAT_DEPENDENCY_RANGES.has(sdk))
     ) {
-      declarations.push(`${section}: @honua/sdk ${String(sdk)}`);
+      declarations.push(`${section}: ${name} ${String(sdk)}`);
     }
   }
   return declarations;
@@ -884,6 +892,11 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
   const manualTodos: MigrationTodo[] = [];
   const residualArcGisModuleSites: ArcGisImportHit[] = [];
   const errors: CodemodFileError[] = [];
+  const dependencyHold =
+    target === "honua-compat" && compatImportPath === DEFAULT_COMPAT_IMPORT_PATH
+      ? missingCompatWithCustomSdk(rootDir)
+      : undefined;
+  if (dependencyHold) errors.push(dependencyHold);
   let emittedWidgetKitRegistration = false;
 
   for (const file of files) {
@@ -896,6 +909,10 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
         stage: "read",
         message: error instanceof Error ? error.message : String(error),
       });
+      continue;
+    }
+    if (dependencyHold) {
+      residualArcGisModuleSites.push(...findArcGisModuleSites(source, file));
       continue;
     }
 
@@ -1122,6 +1139,34 @@ function rewriteRewrittenEsriNamespaceTypes(sourceFile: ts.SourceFile, compatSym
     });
   });
   return edits;
+}
+
+function missingCompatWithCustomSdk(rootDir: string): CodemodFileError | undefined {
+  let dir = path.resolve(rootDir);
+  while (!fs.existsSync(path.join(dir, "package.json"))) {
+    const parent = path.dirname(dir);
+    if (parent === dir) return undefined;
+    dir = parent;
+  }
+  const file = path.join(dir, "package.json");
+  let manifest: Record<string, unknown>;
+  try {
+    manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+    if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) return undefined;
+  } catch {
+    return undefined;
+  }
+  const declared = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"].some((section) => {
+    const values = manifest[section];
+    return values && typeof values === "object" && DEFAULT_COMPAT_IMPORT_PATH in values;
+  });
+  const holds = unmanagedSdkDeclarations(manifest);
+  if (declared || holds.length === 0) return undefined;
+  return {
+    file,
+    stage: "transform",
+    message: `Source conversion is held: ${DEFAULT_COMPAT_IMPORT_PATH} is undeclared and custom SDK declarations need review (${holds.join("; ")}). Align the runtime pair with ${COMPAT_DEPENDENCY_RANGE} before converting. No files were changed.`,
+  };
 }
 
 function ensureCompatPackageDependency(

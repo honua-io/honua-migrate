@@ -4541,6 +4541,29 @@ describe("PR 172 review regressions", () => {
     expect(JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"))).toEqual(manifest);
   });
 
+  it.each([false, true])(
+    "holds source conversion before introducing an undeclared compat import (write=%s)",
+    (write) => {
+      const root = makeTempProject();
+      const manifest = JSON.stringify({ dependencies: { "@honua/sdk": "~0.1.15" } });
+      const source = 'import Map from "@arcgis/core/Map";\nexport const map = new Map({});\n';
+      fs.writeFileSync(path.join(root, "package.json"), manifest);
+      fs.writeFileSync(path.join(root, "main.ts"), source);
+      const result = runEsriCompatCodemod({ rootDir: root, write });
+      expect(result.filesChanged).toBe(0);
+      expect(result.errors).toEqual([
+        expect.objectContaining({
+          file: path.join(root, "package.json"),
+          stage: "transform",
+          message: expect.stringContaining("Source conversion is held"),
+        }),
+      ]);
+      expect(result.residualArcGisModuleSites).toHaveLength(1);
+      expect(fs.readFileSync(path.join(root, "main.ts"), "utf8")).toBe(source);
+      expect(fs.readFileSync(path.join(root, "package.json"), "utf8")).toBe(manifest);
+    },
+  );
+
   it.each([
     ["dependencies", "~0.1.15"],
     ["dependencies", ">=0.1.0 <0.2.0"],
