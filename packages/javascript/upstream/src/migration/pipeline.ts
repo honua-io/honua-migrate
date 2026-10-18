@@ -117,7 +117,7 @@ export interface JsMigrationPlan {
   compatImportPath: string;
   /** SHA-256 over the hashed input tree, the planned outputs and the dependency changes. */
   planDigest: string;
-  /** `conversion.recommendedMode` of the report; only the two conversion modes change files. */
+  /** Source conversion mode; an already-converted app can still need a reviewed dependency update. */
   mode: JsConversionMode | null;
   rationale: string;
   /** Files under the application root, excluding node_modules, dist and .git. */
@@ -489,7 +489,17 @@ function planDependencyChanges(
   holds: JsPlanHold[],
 ): JsDependencyChange[] {
   if (mode === null) {
-    return [];
+    const compat = dependencySection(manifest, "dependencies")[DEFAULT_COMPAT_IMPORT_PATH];
+    // A plain app or a custom compat pin is not an invitation to install Honua.
+    // Previously generated apps still need dependency planning after their last
+    // ArcGIS import has been converted.
+    if (
+      target !== "honua-compat" ||
+      compat === undefined ||
+      (compat !== COMPAT_DEPENDENCY_RANGE && !STALE_COMPAT_DEPENDENCY_RANGES.has(compat))
+    ) {
+      return [];
+    }
   }
   const changes: JsDependencyChange[] = [];
   const arcgisDependencies = report.usageInventory.residualArcGisDependencies;
@@ -701,7 +711,7 @@ function codemodStage(
 
 function dependencyStage(plan: JsMigrationPlan): JsPipelineStage {
   const dependencyHolds = plan.holds.filter((hold) => hold.stage === "dependencies");
-  if (!isConversionMode(plan.mode)) {
+  if (!isConversionMode(plan.mode) && !plan.manifest?.changed) {
     return { stage: "dependencies", status: "not-run", detail: "Not run: the plan converts no source." };
   }
   if (!plan.manifest || (dependencyHolds.length > 0 && !plan.manifest.changed)) {
@@ -892,9 +902,9 @@ function buildResidualWork(
   for (const hold of plan.holds) {
     items.push({ source: "hold", message: hold.message, action: hold.action });
   }
-  if (isConversionMode(plan.mode)) {
+  if (isConversionMode(plan.mode) || plan.manifest?.changed) {
     for (const stage of stages) {
-      if (stage.status === "passed" || stage.stage === "review") {
+      if (stage.status === "passed" || stage.stage === "review" || (stage.stage === "codemod" && plan.mode === null)) {
         continue;
       }
       items.push({ source: "stage", message: `${stage.stage}: ${stage.detail}`, action: stageAction(stage) });
