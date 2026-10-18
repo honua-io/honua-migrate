@@ -4529,6 +4529,33 @@ describe("PR 172 review regressions", () => {
     });
   });
 
+  it("does not report a conversion hold for a plain app with a custom SDK", () => {
+    const root = makeTempProject();
+    fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ dependencies: { "@honua/sdk": "~0.1.15" } }));
+    fs.writeFileSync(path.join(root, "main.ts"), "export const value = 1;\n");
+    const result = runEsriCompatCodemod({ rootDir: root, write: true });
+    expect(result.errors).toBeUndefined();
+    expect(result.filesChanged).toBe(0);
+  });
+
+  it.each(["peerDependencies", "optionalDependencies"])(
+    "preserves custom compat in %s during source conversion",
+    (section) => {
+      const root = makeTempProject();
+      const manifest = {
+        dependencies: { "@honua/sdk": "0.1.15" },
+        [section]: { "@honua/sdk-esri-compat": "workspace:*" },
+      };
+      fs.writeFileSync(path.join(root, "package.json"), JSON.stringify(manifest));
+      fs.writeFileSync(
+        path.join(root, "main.ts"),
+        'import Map from "@arcgis/core/Map";\nexport const map = new Map({});\n',
+      );
+      runEsriCompatCodemod({ rootDir: root, write: true });
+      expect(JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"))).toEqual(manifest);
+    },
+  );
+
   it("does not add a compat dependency when a later run adds no import and none is declared", () => {
     const root = makeTempProject();
     const manifest = { private: true };

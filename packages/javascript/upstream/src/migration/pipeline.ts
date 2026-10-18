@@ -310,6 +310,8 @@ function prepareJsMigration(options: JsMigrationPlanOptions): PreparedJsMigratio
   const outputs = new Map<string, Buffer>();
   if (converts) {
     for (const [file, contents] of runCodemodOnCopy(snapshot, compatImportPath, target)) {
+      // The dependency planner is the sole authority for the reviewed manifest.
+      if (file === MANIFEST) continue;
       const before = snapshot.get(file);
       if (!before || !before.equals(contents)) {
         outputs.set(file, contents);

@@ -896,7 +896,6 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
     target === "honua-compat" && compatImportPath === DEFAULT_COMPAT_IMPORT_PATH
       ? missingCompatWithCustomSdk(rootDir)
       : undefined;
-  if (dependencyHold) errors.push(dependencyHold);
   let emittedWidgetKitRegistration = false;
 
   for (const file of files) {
@@ -912,7 +911,9 @@ export function runEsriCompatCodemod(options: EsriCompatCodemodOptions): EsriCom
       continue;
     }
     if (dependencyHold) {
-      residualArcGisModuleSites.push(...findArcGisModuleSites(source, file));
+      const sites = findArcGisModuleSites(source, file);
+      if (sites.length > 0 && !errors.includes(dependencyHold)) errors.push(dependencyHold);
+      residualArcGisModuleSites.push(...sites);
       continue;
     }
 
@@ -1199,7 +1200,7 @@ function ensureCompatPackageDependency(
     return;
   }
   const current = manifest.dependencies?.[importPath];
-  if (unmanagedSdkDeclarations(manifest).length > 0) {
+  if (unmanagedSdkDeclarations(manifest).length > 0 || unmanagedCompatDeclarations(manifest).length > 0) {
     return;
   }
   const sdk = manifest.dependencies?.["@honua/sdk"];

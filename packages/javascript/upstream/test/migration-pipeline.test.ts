@@ -571,6 +571,31 @@ describe("JS migration pipeline", () => {
     expect(readTree(app)).toEqual(before);
   });
 
+  it.each(["peerDependencies", "optionalDependencies"])(
+    "does not leak a staged codemod manifest past a runtime hold in %s",
+    (section) => {
+      const app = writeApp({
+        "package.json": JSON.stringify({
+          dependencies: {
+            "@honua/sdk": "0.1.15",
+            ...HONUA_COMPAT_BUNDLER_WORKAROUND_DEPENDENCIES,
+            "maplibre-gl": "^6.4.1",
+          },
+          [section]: { "@honua/sdk-esri-compat": "workspace:*" },
+        }),
+        "src/main.ts": MAP_ONLY_SOURCE,
+      });
+      const manifest = readTree(app)["package.json"];
+      const plan = planJsMigration({ appRoot: app });
+      expect(plan.dependencyChanges).toEqual([]);
+      expect(plan.manifest?.changed).toBe(false);
+      expect(plan.patch).not.toContain("package.json");
+      expect(plan.sourceChanges).toHaveLength(1);
+      applyJsMigration({ appRoot: app, approvedDigest: plan.planDigest });
+      expect(readTree(app)["package.json"]).toBe(manifest);
+    },
+  );
+
   it.each([
     ["dependencies", "~0.1.15"],
     ["dependencies", ">=0.1.0 <0.2.0"],
