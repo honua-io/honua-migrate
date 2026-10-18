@@ -63,3 +63,6 @@ jobs:
         if: steps.changed.outputs.value == 'true'
       - run: npm test
         if: steps.changed.outputs.value == 'true'
+      - name: Verify imported-app browser evidence and false-success controls
+        run: npm run test:imported-app
+        if: steps.changed.outputs.value == 'true'
