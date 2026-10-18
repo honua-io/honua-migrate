@@ -1,3 +1,9 @@
+---
+type: guide
+title: "Verify a migrated app against imported services"
+description: "Observe real browser requests and visible behavior against frozen import mappings without treating synthetic controls as release proof."
+tags: [javascript, migration, testing]
+---
 # Verify a migrated app against imported services
 
 The existing migration pipeline can run an app's own browser script. That alone

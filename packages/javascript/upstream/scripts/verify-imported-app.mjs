@@ -81,9 +81,8 @@ export function validateInputs(manifest, receipt) {
   return { layer, imported };
 }
 
-function queryMatches(response, query, layer) {
-  const request = response.request();
-  const url = new URL(response.url());
+function queryMatches(request, query, layer) {
+  const url = new URL(request.url());
   if (`${url.origin}${url.pathname}` !== `${layer}/query` || !["GET", "POST"].includes(request.method())) return false;
   const parameters = request.method() === "POST" ? new URLSearchParams(request.postData() ?? "") : url.searchParams;
   return Object.entries(query.parameters).every(([key, value]) => parameters.getAll(key).length === 1 && parameters.get(key) === value);
@@ -114,6 +113,7 @@ export async function verifyImportedApp({ manifest, receipt, browser }) {
   const failures = [];
   let activeStep = -1;
   const captured = manifest.steps.map(() => []);
+  const requests = new Map();
   const report = { schema: "honua.imported-app-browser-observation/v1", appId: manifest.appId,
     qualification: false, scope: "browser-behavior-only", originalSourceSha: manifest.originalSourceSha,
     baselineDigest: manifest.baselineDigest, importReceiptDigest: manifest.importReceiptDigest,
@@ -140,7 +140,23 @@ export async function verifyImportedApp({ manifest, receipt, browser }) {
     page.on("websocket", () => violations.push("undeclared-websocket"));
     page.on("pageerror", () => violations.push("browser-error"));
     page.on("console", (message) => { if (message.type() === "error") violations.push("browser-console-error"); });
-    page.on("response", (response) => { if (activeStep >= 0) captured[activeStep].push(response); });
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (`${url.origin}${url.pathname}` !== `${layer}/query`) return;
+      if (activeStep < 0) { violations.push("query-outside-step"); return; }
+      const entry = { request, finished: false, failed: false };
+      requests.set(request, entry);
+      captured[activeStep].push(entry);
+    });
+    page.on("response", (response) => {
+      const entry = requests.get(response.request());
+      if (entry) entry.response = response;
+    });
+    page.on("requestfinished", (request) => { const entry = requests.get(request); if (entry) entry.finished = true; });
+    page.on("requestfailed", (request) => {
+      const entry = requests.get(request);
+      if (entry) { entry.failed = true; violations.push("query-failed"); }
+    });
     for (const [index, step] of manifest.steps.entries()) {
       activeStep = index;
       const observation = report.steps[index];
@@ -161,22 +177,21 @@ export async function verifyImportedApp({ manifest, receipt, browser }) {
           }, assertion, { timeout: manifest.timeoutMs });
         }
         const deadline = performance.now() + manifest.timeoutMs;
-        while (!step.queries.every((query) => captured[index].some((response) => queryMatches(response, query, layer)))) {
+        while (!step.queries.every((query) => captured[index].some((entry) => queryMatches(entry.request, query, layer)))
+          || captured[index].some((entry) => !entry.finished)) {
+          require(!captured[index].some((entry) => entry.failed), "app-query-failed");
           require(performance.now() < deadline, "missing-app-query");
           await new Promise((resolve) => setTimeout(resolve, 25));
         }
         const used = new Set();
         observation.queries = [];
         for (const query of step.queries) {
-          const matches = captured[index].filter((response) => queryMatches(response, query, layer));
+          const matches = captured[index].filter((entry) => queryMatches(entry.request, query, layer));
           require(matches.length === 1 && !used.has(matches[0]), "ambiguous-app-query");
           used.add(matches[0]);
-          observation.queries.push(await verifyResponse(matches[0], query.expected));
+          observation.queries.push(await verifyResponse(matches[0].response, query.expected));
         }
-        require(captured[index].filter((response) => {
-          const url = new URL(response.url());
-          return `${url.origin}${url.pathname}` === `${layer}/query`;
-        }).length === used.size, "unaccounted-app-query");
+        require(captured[index].length === used.size && captured[index].every((entry) => entry.finished && !entry.failed), "unaccounted-app-query");
         require(violations.length === 0, "browser-network-or-runtime-failure");
         observation.result = "pass";
       } catch {

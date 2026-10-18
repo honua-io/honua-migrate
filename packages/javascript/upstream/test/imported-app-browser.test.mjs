@@ -41,6 +41,14 @@ async function exercise(mode) {
     const url = new URL(request.url, "http://localhost");
     requests.push(url.pathname);
     if (url.pathname.endsWith("/query")) {
+      if (url.searchParams.get("where") === "extra") {
+        if (mode === "pending-query") return;
+        if (mode === "failed-query") { response.destroy(); return; }
+      }
+      if (mode === "cross-step-query" && url.searchParams.get("where") === "OBJECTID=12") {
+        setTimeout(() => response.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify(payload([features[1]]))), 250);
+        return;
+      }
       let rows = url.searchParams.get("where") === "1=1" ? features : [features[1]];
       if (mode === "lost-attribute") rows = rows.map((item) => ({ ...item, attributes: { OBJECTID: item.attributes.OBJECTID } }));
       if (mode === "wrong-geometry") rows = rows.map((item) => ({ ...item, geometry: { x: 99, y: 99 } }));
@@ -53,7 +61,10 @@ async function exercise(mode) {
       response.writeHead(200, { "Content-Type": "text/html" });
       response.end(`<!doctype html><div id="rows"></div><button id="filter">Filter</button><script>
         async function load(where) {
-          ${mode === "no-query" ? "" : `await fetch('${mode === "backend-fallback" ? "https://undeclared.invalid/FeatureServer/0" : "/rest/services/imported-run-123/FeatureServer/7"}/query?where=' + encodeURIComponent(where)).then(r => r.json()).catch(() => {});`}
+          ${["pending-query", "failed-query"].includes(mode)
+            ? "if(where === '1=1') fetch('/rest/services/imported-run-123/FeatureServer/7/query?where=extra').catch(() => {});" : ""}
+          ${mode === "cross-step-query" ? "if(where === '1=1') fetch('/rest/services/imported-run-123/FeatureServer/7/query?where=OBJECTID%3D12').catch(() => {});" : ""}
+          ${mode === "no-query" ? "" : `${mode === "cross-step-query" ? "if(where === '1=1')" : ""} await fetch('${mode === "backend-fallback" ? "https://undeclared.invalid/FeatureServer/0" : "/rest/services/imported-run-123/FeatureServer/7"}/query?where=' + encodeURIComponent(where)).then(r => r.json()).catch(() => {});`}
           // A lying UI is intentional: independently observed data must reject it.
           document.querySelector('#rows').textContent = ${mode === "wrong-ui" ? "'Incorrect'" : "where === '1=1' ? 'Alpha,Beta' : 'Beta'"};
         }
@@ -85,7 +96,8 @@ test("real browser proves app-issued exact imported-layer reads plus visible loa
   assert.equal(report.networkViolationCount, 0);
 });
 
-for (const mode of ["no-query", "lost-attribute", "wrong-geometry", "extra-record", "error-envelope", "wrong-ui", "backend-fallback", "arcgis-runtime"]) {
+for (const mode of ["no-query", "lost-attribute", "wrong-geometry", "extra-record", "error-envelope", "wrong-ui", "backend-fallback", "arcgis-runtime",
+  "pending-query", "failed-query", "cross-step-query"]) {
   test(`real browser refuses ${mode}, including a UI that pretends the query succeeded`, async () => {
     const { report } = await exercise(mode);
     assert.equal(report.result, "fail");
