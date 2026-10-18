@@ -4,7 +4,14 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { type CodemodTarget, runEsriCompatCodemod, STALE_COMPAT_DEPENDENCY_RANGES } from "./codemod.js";
+import {
+  COMPAT_DEPENDENCY_RANGE,
+  type CodemodTarget,
+  runEsriCompatCodemod,
+  STALE_COMPAT_DEPENDENCY_RANGES,
+  unmanagedCompatDeclarations,
+  unmanagedSdkDeclarations,
+} from "./codemod.js";
 import { writeOutputFilesAtomically } from "./output-writer.js";
 import { buildJsMigrationReport, type JsConversionMode, type JsMigrationReport } from "./report.js";
 import { type ArcGisDependencySection, scanArcGisUsage } from "./scanner.js";
@@ -43,8 +50,8 @@ const NPM_SCRIPT_NAME = /^[A-Za-z0-9][A-Za-z0-9:._-]*$/;
 
 /** Packages the honua-compat output imports, at the ranges this engine is built and tested against. */
 export const HONUA_COMPAT_RUNTIME_DEPENDENCIES: Readonly<Record<string, string>> = {
-  "@honua/sdk": "0.1.15",
-  "@honua/sdk-esri-compat": "0.1.15",
+  "@honua/sdk": COMPAT_DEPENDENCY_RANGE,
+  "@honua/sdk-esri-compat": COMPAT_DEPENDENCY_RANGE,
 };
 
 export const SDK_JS_OPTIONAL_GRPC_PEERS_ISSUE = "https://github.com/honua-io/honua-sdk-js/issues/1715";
@@ -112,7 +119,7 @@ export interface JsMigrationPlan {
   compatImportPath: string;
   /** SHA-256 over the hashed input tree, the planned outputs and the dependency changes. */
   planDigest: string;
-  /** `conversion.recommendedMode` of the report; only the two conversion modes change files. */
+  /** Source conversion mode; an already-converted app can still need a reviewed dependency update. */
   mode: JsConversionMode | null;
   rationale: string;
   /** Files under the application root, excluding node_modules, dist and .git. */
@@ -303,6 +310,8 @@ function prepareJsMigration(options: JsMigrationPlanOptions): PreparedJsMigratio
   const outputs = new Map<string, Buffer>();
   if (converts) {
     for (const [file, contents] of runCodemodOnCopy(snapshot, compatImportPath, target)) {
+      // The dependency planner is the sole authority for the reviewed manifest.
+      if (file === MANIFEST) continue;
       const before = snapshot.get(file);
       if (!before || !before.equals(contents)) {
         outputs.set(file, contents);
@@ -484,7 +493,15 @@ function planDependencyChanges(
   holds: JsPlanHold[],
 ): JsDependencyChange[] {
   if (mode === null) {
-    return [];
+    const declaresCompat = DEPENDENCY_SECTIONS.some(
+      (section) => dependencySection(manifest, section)[DEFAULT_COMPAT_IMPORT_PATH] !== undefined,
+    );
+    // A plain app is not an invitation to install Honua.
+    // Previously generated apps still need dependency planning after their last
+    // ArcGIS import has been converted.
+    if (target !== "honua-compat" || !declaresCompat) {
+      return [];
+    }
   }
   const changes: JsDependencyChange[] = [];
   const arcgisDependencies = report.usageInventory.residualArcGisDependencies;
@@ -504,6 +521,17 @@ function planDependencyChanges(
   }
 
   if (target === "honua-compat") {
+    const sdkHolds = [...unmanagedSdkDeclarations(manifest), ...unmanagedCompatDeclarations(manifest)];
+    if (sdkHolds.length > 0) {
+      holds.push({
+        stage: "dependencies",
+        message: `SDK and compat runtime updates are held because custom runtime declarations remain: ${sdkHolds.join("; ")}.`,
+        action: `Review and align the SDK/compat declarations with the exact runtime pair ${COMPAT_DEPENDENCY_RANGE}, then plan again.`,
+      });
+      // An already-converted app with a held pair needs an explicit review,
+      // not unrelated auxiliary dependency additions.
+      if (mode === null) return [];
+    }
     const declared = (name: string): boolean =>
       DEPENDENCY_SECTIONS.some((section) => dependencySection(manifest, section)[name] !== undefined);
     const compatWillMatch = DEPENDENCY_SECTIONS.every((section) => {
@@ -515,6 +543,7 @@ function planDependencyChanges(
       );
     });
     for (const [name, version] of Object.entries(HONUA_COMPAT_RUNTIME_DEPENDENCIES)) {
+      if (sdkHolds.length > 0) continue;
       if (!declared(name)) {
         changes.push({
           action: "add",
@@ -696,7 +725,7 @@ function codemodStage(
 
 function dependencyStage(plan: JsMigrationPlan): JsPipelineStage {
   const dependencyHolds = plan.holds.filter((hold) => hold.stage === "dependencies");
-  if (!isConversionMode(plan.mode)) {
+  if (!isConversionMode(plan.mode) && !plan.manifest?.changed) {
     return { stage: "dependencies", status: "not-run", detail: "Not run: the plan converts no source." };
   }
   if (!plan.manifest || (dependencyHolds.length > 0 && !plan.manifest.changed)) {
@@ -887,9 +916,9 @@ function buildResidualWork(
   for (const hold of plan.holds) {
     items.push({ source: "hold", message: hold.message, action: hold.action });
   }
-  if (isConversionMode(plan.mode)) {
+  if (isConversionMode(plan.mode) || plan.manifest?.changed) {
     for (const stage of stages) {
-      if (stage.status === "passed" || stage.stage === "review") {
+      if (stage.status === "passed" || stage.stage === "review" || (stage.stage === "codemod" && plan.mode === null)) {
         continue;
       }
       items.push({ source: "stage", message: `${stage.stage}: ${stage.detail}`, action: stageAction(stage) });

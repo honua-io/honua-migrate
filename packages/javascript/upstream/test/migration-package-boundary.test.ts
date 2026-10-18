@@ -28,7 +28,13 @@ describe("standalone package boundary", () => {
     });
     expect(packageJson.homepage).toBe("https://github.com/honua-io/honua-migrate#readme");
     expect(packageJson.bugs).toEqual({ url: "https://github.com/honua-io/honua-migrate/issues" });
-    expect(packageJson.engines).toEqual({ node: ">=20.19.0" });
+    expect(packageJson.engines).toEqual({ node: ">=22.12.0" });
+    for (const dependency of ["@honua/sdk", "@honua/sdk-esri-compat"]) {
+      const installed = JSON.parse(
+        fs.readFileSync(path.join(packageRoot, "node_modules", dependency, "package.json"), "utf8"),
+      );
+      expect(installed.engines, dependency).toEqual(packageJson.engines);
+    }
     expect(packageJson.bin).toEqual({ "honua-js-migrate": "./dist/migration/cli.js" });
     expect(packageJson.bin).not.toHaveProperty("honua-migrate");
     expect(packageJson.dependencies).toHaveProperty("@honua/sdk");
@@ -58,7 +64,7 @@ describe("standalone package boundary", () => {
       npmPackage: "@honua/honua-migrate",
       version: packageJson.version,
       releaseTag: `javascript-v${packageJson.version}`,
-      nodeEngine: ">=20.19.0",
+      nodeEngine: ">=22.12.0",
     });
   });
 

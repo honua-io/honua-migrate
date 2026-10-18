@@ -4462,7 +4462,7 @@ describe("PR 172 review regressions", () => {
     expect(fs.readFileSync(path.join(src, "main.ts"), "utf8")).toContain("new LocatorCompat(");
     expect(
       JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).dependencies["@honua/sdk-esri-compat"],
-    ).toBe("0.1.15");
+    ).toBe("0.2.3");
     expect(fs.existsSync(path.join(src, "package.json"))).toBe(false);
   });
 
@@ -4482,7 +4482,7 @@ describe("PR 172 review regressions", () => {
     ).toBe("workspace:*");
   });
 
-  it.each(["^0.1.2-beta.0", "^0.1.9-beta.0", "0.1.11-beta.0"])(
+  it.each(["^0.1.2-beta.0", "^0.1.9-beta.0", "0.1.11-beta.0", "0.1.15", "^0.1.15"])(
     "replaces a stale %s pin when a later run adds no compat import",
     (staleRange) => {
       const root = makeTempProject();
@@ -4497,17 +4497,23 @@ describe("PR 172 review regressions", () => {
       expect(fs.readFileSync(path.join(root, "main.ts"), "utf8")).toBe(source);
       expect(
         JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).dependencies["@honua/sdk-esri-compat"],
-      ).toBe("0.1.15");
+      ).toBe("0.2.3");
     },
   );
 
-  it.each(["0.1.11-beta.0", "0.1.15"])("keeps the previously generated SDK peer aligned with compat %s", (compat) => {
+  it.each([
+    ["0.1.11-beta.0", "0.1.11-beta.0"],
+    ["0.1.11-beta.0", "0.1.15"],
+    ["0.1.11-beta.0", "0.2.3"],
+    ["^0.1.15", "0.1.15"],
+    ["^0.1.15", "0.2.3"],
+  ])("keeps SDK %s aligned with compat %s", (sdk, compat) => {
     const root = makeTempProject();
     fs.writeFileSync(
       path.join(root, "package.json"),
       JSON.stringify({
         dependencies: {
-          "@honua/sdk": "0.1.11-beta.0",
+          "@honua/sdk": sdk,
           "@honua/sdk-esri-compat": compat,
         },
       }),
@@ -4518,10 +4524,37 @@ describe("PR 172 review regressions", () => {
     );
     runEsriCompatCodemod({ rootDir: root, write: true });
     expect(JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).dependencies).toEqual({
-      "@honua/sdk": "0.1.15",
-      "@honua/sdk-esri-compat": "0.1.15",
+      "@honua/sdk": "0.2.3",
+      "@honua/sdk-esri-compat": "0.2.3",
     });
   });
+
+  it("does not report a conversion hold for a plain app with a custom SDK", () => {
+    const root = makeTempProject();
+    fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ dependencies: { "@honua/sdk": "~0.1.15" } }));
+    fs.writeFileSync(path.join(root, "main.ts"), "export const value = 1;\n");
+    const result = runEsriCompatCodemod({ rootDir: root, write: true });
+    expect(result.errors).toBeUndefined();
+    expect(result.filesChanged).toBe(0);
+  });
+
+  it.each(["peerDependencies", "optionalDependencies"])(
+    "preserves custom compat in %s during source conversion",
+    (section) => {
+      const root = makeTempProject();
+      const manifest = {
+        dependencies: { "@honua/sdk": "0.1.15" },
+        [section]: { "@honua/sdk-esri-compat": "workspace:*" },
+      };
+      fs.writeFileSync(path.join(root, "package.json"), JSON.stringify(manifest));
+      fs.writeFileSync(
+        path.join(root, "main.ts"),
+        'import Map from "@arcgis/core/Map";\nexport const map = new Map({});\n',
+      );
+      runEsriCompatCodemod({ rootDir: root, write: true });
+      expect(JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"))).toEqual(manifest);
+    },
+  );
 
   it("does not add a compat dependency when a later run adds no import and none is declared", () => {
     const root = makeTempProject();
@@ -4531,6 +4564,50 @@ describe("PR 172 review regressions", () => {
       path.join(root, "main.ts"),
       'import { MapCompat } from "@honua/sdk-esri-compat";\nexport const map = new MapCompat({ basemap: "streets-vector" });\n',
     );
+    runEsriCompatCodemod({ rootDir: root, write: true });
+    expect(JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"))).toEqual(manifest);
+  });
+
+  it.each([false, true])(
+    "holds source conversion before introducing an undeclared compat import (write=%s)",
+    (write) => {
+      const root = makeTempProject();
+      const manifest = JSON.stringify({ dependencies: { "@honua/sdk": "~0.1.15" } });
+      const source = 'import Map from "@arcgis/core/Map";\nexport const map = new Map({});\n';
+      fs.writeFileSync(path.join(root, "package.json"), manifest);
+      fs.writeFileSync(path.join(root, "main.ts"), source);
+      const result = runEsriCompatCodemod({ rootDir: root, write });
+      expect(result.filesChanged).toBe(0);
+      expect(result.errors).toEqual([
+        expect.objectContaining({
+          file: path.join(root, "package.json"),
+          stage: "transform",
+          message: expect.stringContaining("Source conversion is held"),
+        }),
+      ]);
+      expect(result.residualArcGisModuleSites).toHaveLength(1);
+      expect(fs.readFileSync(path.join(root, "main.ts"), "utf8")).toBe(source);
+      expect(fs.readFileSync(path.join(root, "package.json"), "utf8")).toBe(manifest);
+    },
+  );
+
+  it.each([
+    ["dependencies", "~0.1.15"],
+    ["dependencies", ">=0.1.0 <0.2.0"],
+    ["dependencies", "workspace:*"],
+    ["devDependencies", "^0.1.15"],
+    ["peerDependencies", "0.1.x"],
+    ["optionalDependencies", "0.1.15"],
+  ])("holds compat when a custom SDK remains in %s at %s", (section, sdk) => {
+    const root = makeTempProject();
+    const manifest = {
+      dependencies: { "@honua/sdk-esri-compat": "0.1.15" },
+      ...(section === "dependencies"
+        ? { dependencies: { "@honua/sdk-esri-compat": "0.1.15", "@honua/sdk": sdk } }
+        : { [section]: { "@honua/sdk": sdk } }),
+    };
+    fs.writeFileSync(path.join(root, "package.json"), JSON.stringify(manifest));
+    fs.writeFileSync(path.join(root, "main.ts"), 'import { MapCompat } from "@honua/sdk-esri-compat";\n');
     runEsriCompatCodemod({ rootDir: root, write: true });
     expect(JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"))).toEqual(manifest);
   });

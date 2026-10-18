@@ -11,7 +11,8 @@ npx honua-js-migrate scan ./src
 npx honua-js-migrate codemod ./src --write --report migration-report.json
 ```
 
-The JavaScript package supports Node.js 20.19 and newer.
+The JavaScript package supports Node.js 22.12 and newer, matching its SDK 0.2 dependencies.
+Node 20 users must retain the previously published migration release until upgrading Node.
 
 ## Reading the migration report
 
@@ -156,9 +157,9 @@ and `Locate` moves to `LocateCompat`. Any other `init` call stays, and so does
 the value it watches. A `Graphic` that receives a symbol still imported from
 `@arcgis/core` stays `new Graphic`.
 
-A rewritten file declares `@honua/sdk-esri-compat` at exact `0.1.15`.
+A rewritten file declares `@honua/sdk-esri-compat` at exact `0.2.3`.
 That tarball contains the members the codemod emits, including `LocatorCompat`.
-`^0.1.2-beta.0`, `^0.1.9-beta.0`, and the previously emitted `0.1.11-beta.0` do not select it. A later codemod run, and
+`^0.1.2-beta.0`, `^0.1.9-beta.0`, and the previously emitted `0.1.11-beta.0`, `0.1.15`, and its compatible `^0.1.15` range do not select it. A later codemod run, and
 the reviewed `migrate` plan, replace those stale ranges on
 `@honua/sdk-esri-compat` and leave any other pin alone. A custom compat import
 path is not given this version.
