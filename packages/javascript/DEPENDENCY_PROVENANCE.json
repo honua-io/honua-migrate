@@ -30,7 +30,7 @@
     "npmPackage": "@honua/honua-migrate",
     "version": "0.2.0-beta.0",
     "releaseTag": "javascript-v0.2.0-beta.0",
-    "nodeEngine": ">=20.19.0"
+    "nodeEngine": ">=22.12.0"
   },
   "historyImport": {
     "method": "git format-patch --root with path filters, applied by git am --directory=packages/javascript/upstream",

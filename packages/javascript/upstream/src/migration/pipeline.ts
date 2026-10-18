@@ -4,7 +4,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { type CodemodTarget, runEsriCompatCodemod, STALE_COMPAT_DEPENDENCY_RANGES } from "./codemod.js";
+import {
+  type CodemodTarget,
+  COMPAT_DEPENDENCY_RANGE,
+  runEsriCompatCodemod,
+  STALE_COMPAT_DEPENDENCY_RANGES,
+} from "./codemod.js";
 import { writeOutputFilesAtomically } from "./output-writer.js";
 import { buildJsMigrationReport, type JsConversionMode, type JsMigrationReport } from "./report.js";
 import { type ArcGisDependencySection, scanArcGisUsage } from "./scanner.js";
@@ -43,8 +48,8 @@ const NPM_SCRIPT_NAME = /^[A-Za-z0-9][A-Za-z0-9:._-]*$/;
 
 /** Packages the honua-compat output imports, at the ranges this engine is built and tested against. */
 export const HONUA_COMPAT_RUNTIME_DEPENDENCIES: Readonly<Record<string, string>> = {
-  "@honua/sdk": "0.1.15",
-  "@honua/sdk-esri-compat": "0.1.15",
+  "@honua/sdk": COMPAT_DEPENDENCY_RANGE,
+  "@honua/sdk-esri-compat": COMPAT_DEPENDENCY_RANGE,
 };
 
 export const SDK_JS_OPTIONAL_GRPC_PEERS_ISSUE = "https://github.com/honua-io/honua-sdk-js/issues/1715";

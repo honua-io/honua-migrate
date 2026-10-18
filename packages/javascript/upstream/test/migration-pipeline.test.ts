@@ -23,6 +23,11 @@ import { getPreparedMigrationCliPath } from "./prepared-sdk-artifacts.js";
 const FIXTURES_ROOT = path.join(import.meta.dirname, "fixtures");
 const PACKAGE_ROOT = path.resolve(getProjectRoot(), "..");
 const PIPELINE_FIXTURE = "js-migration-pipeline-app";
+// The isolated app still installs its browser driver from the public registry.
+// Match CI's locked driver so both use the Chromium revision CI installed.
+const PIPELINE_PLAYWRIGHT_VERSION: string = JSON.parse(
+  fs.readFileSync(path.join(PACKAGE_ROOT, "package-lock.json"), "utf8"),
+).packages["node_modules/playwright-core"].version;
 const tempDirs: string[] = [];
 
 afterEach(() => {
@@ -40,6 +45,12 @@ function tempRoot(): string {
 function copyFixture(name: string): string {
   const app = path.join(tempRoot(), name);
   fs.cpSync(path.join(FIXTURES_ROOT, name), app, { recursive: true });
+  if (name === PIPELINE_FIXTURE) {
+    const manifestPath = path.join(app, "package.json");
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    manifest.devDependencies["playwright-core"] = PIPELINE_PLAYWRIGHT_VERSION;
+    fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  }
   return app;
 }
 
@@ -100,8 +111,8 @@ function runCli(args: readonly string[]): ReturnType<typeof spawnSync> {
 
 // The five packages a honua-compat migration adds to an app that declares none of them.
 const COMPAT_ADDITIONS: Array<[string, string, string, string, boolean]> = [
-  ["add", "dependencies", "@honua/sdk", "0.1.15", false],
-  ["add", "dependencies", "@honua/sdk-esri-compat", "0.1.15", false],
+  ["add", "dependencies", "@honua/sdk", "0.2.3", false],
+  ["add", "dependencies", "@honua/sdk-esri-compat", "0.2.3", false],
   ["add", "dependencies", "@bufbuild/protobuf", "^2.15.0", true],
   ["add", "dependencies", "@connectrpc/connect", "^2.2.0", true],
   ["add", "dependencies", "@connectrpc/connect-web", "^2.2.0", true],
@@ -241,12 +252,12 @@ describe("JS migration pipeline", () => {
         "@bufbuild/protobuf": "^2.15.0",
         "@connectrpc/connect": "^2.2.0",
         "@connectrpc/connect-web": "^2.2.0",
-        "@honua/sdk": "0.1.15",
-        "@honua/sdk-esri-compat": "0.1.15",
+        "@honua/sdk": "0.2.3",
+        "@honua/sdk-esri-compat": "0.2.3",
         "maplibre-gl": "^6.4.1",
       },
       devDependencies: {
-        "playwright-core": "1.63.0",
+        "playwright-core": PIPELINE_PLAYWRIGHT_VERSION,
         vite: "8.1.5",
       },
     });
@@ -284,10 +295,11 @@ describe("JS migration pipeline", () => {
       "--report",
       reportPath,
     ]);
-    expect(applyRun.status, `${applyRun.stdout}${applyRun.stderr}`).toBe(0);
+    const reportText = fs.existsSync(reportPath) ? fs.readFileSync(reportPath, "utf8") : "No pipeline report produced.";
+    expect(applyRun.status, `${applyRun.stdout}${applyRun.stderr}\n${reportText}`).toBe(0);
     expect(applyRun.stdout).toContain("verdict=browser-validated\n");
 
-    const report = JSON.parse(fs.readFileSync(reportPath, "utf8")) as JsMigrationPipelineReport;
+    const report = JSON.parse(reportText) as JsMigrationPipelineReport;
     expect(stageStatuses(report)).toEqual([
       ["review", "passed"],
       ["codemod", "passed"],
@@ -337,7 +349,7 @@ describe("JS migration pipeline", () => {
           private: true,
           dependencies: {
             "@arcgis/core": "^4.34.8",
-            "@honua/sdk": "0.1.15",
+            "@honua/sdk": "0.2.3",
             "@honua/sdk-esri-compat": "^0.1.2-beta.0",
           },
         },
@@ -351,7 +363,7 @@ describe("JS migration pipeline", () => {
 
     expect(plan.mode).toBe("complete-honua-conversion");
     expect(summarizeChanges(plan.dependencyChanges)).toEqual([
-      ["update", "dependencies", "@honua/sdk-esri-compat", "0.1.15", false],
+      ["update", "dependencies", "@honua/sdk-esri-compat", "0.2.3", false],
       ["add", "dependencies", "@bufbuild/protobuf", "^2.15.0", true],
       ["add", "dependencies", "@connectrpc/connect", "^2.2.0", true],
       ["add", "dependencies", "@connectrpc/connect-web", "^2.2.0", true],
@@ -361,7 +373,7 @@ describe("JS migration pipeline", () => {
     expect(plan.dependencyChanges[0].reason).toBe(
       "The declared range does not select the compat tarball that contains the members the codemod emits.",
     );
-    expect(plan.patch).toContain('"@honua/sdk-esri-compat": "0.1.15"');
+    expect(plan.patch).toContain('"@honua/sdk-esri-compat": "0.2.3"');
 
     const report = applyJsMigration({ appRoot: app, approvedDigest: plan.planDigest });
 
@@ -373,19 +385,19 @@ describe("JS migration pipeline", () => {
       "@bufbuild/protobuf": "^2.15.0",
       "@connectrpc/connect": "^2.2.0",
       "@connectrpc/connect-web": "^2.2.0",
-      "@honua/sdk": "0.1.15",
-      "@honua/sdk-esri-compat": "0.1.15",
+      "@honua/sdk": "0.2.3",
+      "@honua/sdk-esri-compat": "0.2.3",
       "maplibre-gl": "^6.4.1",
     });
   });
 
-  it("advances the previously generated SDK and compat pins together", () => {
+  it.each(["0.1.11-beta.0", "0.1.15"])("advances the previously generated %s SDK and compat pins together", (version) => {
     const app = writeApp({
       "package.json": JSON.stringify({
         private: true,
         dependencies: {
-          "@honua/sdk": "0.1.11-beta.0",
-          "@honua/sdk-esri-compat": "0.1.11-beta.0",
+          "@honua/sdk": version,
+          "@honua/sdk-esri-compat": version,
         },
       }),
       "src/main.ts": MAP_ONLY_SOURCE,
@@ -396,13 +408,13 @@ describe("JS migration pipeline", () => {
         .filter((change) => change.action === "update")
         .map((change) => [change.name, change.version]),
     ).toEqual([
-      ["@honua/sdk", "0.1.15"],
-      ["@honua/sdk-esri-compat", "0.1.15"],
+      ["@honua/sdk", "0.2.3"],
+      ["@honua/sdk-esri-compat", "0.2.3"],
     ]);
     applyJsMigration({ appRoot: app, approvedDigest: plan.planDigest });
     const dependencies = JSON.parse(readTree(app)["package.json"]).dependencies;
-    expect(dependencies["@honua/sdk"]).toBe("0.1.15");
-    expect(dependencies["@honua/sdk-esri-compat"]).toBe("0.1.15");
+    expect(dependencies["@honua/sdk"]).toBe("0.2.3");
+    expect(dependencies["@honua/sdk-esri-compat"]).toBe("0.2.3");
   });
 
   it.each([
