@@ -20,7 +20,13 @@ const TODO_MARKER = "TODO(honua-migrate)";
 /** Exact compat tarball that contains every member this codemod emits.
  *  Previously generated 0.1 pins do not select the SDK 0.2 runtime. */
 export const COMPAT_DEPENDENCY_RANGE = "0.2.3";
-export const STALE_COMPAT_DEPENDENCY_RANGES = new Set(["^0.1.2-beta.0", "^0.1.9-beta.0", "0.1.11-beta.0", "0.1.15"]);
+export const STALE_COMPAT_DEPENDENCY_RANGES = new Set([
+  "^0.1.2-beta.0",
+  "^0.1.9-beta.0",
+  "0.1.11-beta.0",
+  "0.1.15",
+  "^0.1.15",
+]);
 const CJS_REQUIRE_MANUAL_REASON =
   "CommonJS require constructors are not auto-migrated; convert the module to ESM and rerun.";
 const ESRI_LEAFLET_UNSUPPORTED_CONSTRUCTOR_REASON =
