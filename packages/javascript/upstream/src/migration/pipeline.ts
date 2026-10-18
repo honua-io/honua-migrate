@@ -9,6 +9,7 @@ import {
   type CodemodTarget,
   runEsriCompatCodemod,
   STALE_COMPAT_DEPENDENCY_RANGES,
+  unmanagedSdkDeclarations,
 } from "./codemod.js";
 import { writeOutputFilesAtomically } from "./output-writer.js";
 import { buildJsMigrationReport, type JsConversionMode, type JsMigrationReport } from "./report.js";
@@ -519,6 +520,14 @@ function planDependencyChanges(
   }
 
   if (target === "honua-compat") {
+    const sdkHolds = unmanagedSdkDeclarations(manifest);
+    if (sdkHolds.length > 0) {
+      holds.push({
+        stage: "dependencies",
+        message: `SDK and compat runtime updates are held because custom SDK declarations remain: ${sdkHolds.join("; ")}.`,
+        action: `Review and align every @honua/sdk declaration with compat's exact peer ${COMPAT_DEPENDENCY_RANGE}, then plan again.`,
+      });
+    }
     const declared = (name: string): boolean =>
       DEPENDENCY_SECTIONS.some((section) => dependencySection(manifest, section)[name] !== undefined);
     const compatWillMatch = DEPENDENCY_SECTIONS.every((section) => {
@@ -530,6 +539,7 @@ function planDependencyChanges(
       );
     });
     for (const [name, version] of Object.entries(HONUA_COMPAT_RUNTIME_DEPENDENCIES)) {
+      if (sdkHolds.length > 0) continue;
       if (!declared(name)) {
         changes.push({
           action: "add",

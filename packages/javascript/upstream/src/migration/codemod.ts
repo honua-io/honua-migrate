@@ -27,6 +27,24 @@ export const STALE_COMPAT_DEPENDENCY_RANGES = new Set([
   "0.1.15",
   "^0.1.15",
 ]);
+
+/** Custom SDK declarations need review before changing compat's exact runtime peer. */
+export function unmanagedSdkDeclarations(manifest: Record<string, unknown>): string[] {
+  const declarations: string[] = [];
+  for (const section of ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"]) {
+    const values = manifest[section];
+    if (!values || typeof values !== "object" || Array.isArray(values)) continue;
+    const sdk = (values as Record<string, unknown>)["@honua/sdk"];
+    if (
+      sdk !== undefined &&
+      sdk !== COMPAT_DEPENDENCY_RANGE &&
+      !(section === "dependencies" && typeof sdk === "string" && STALE_COMPAT_DEPENDENCY_RANGES.has(sdk))
+    ) {
+      declarations.push(`${section}: @honua/sdk ${String(sdk)}`);
+    }
+  }
+  return declarations;
+}
 const CJS_REQUIRE_MANUAL_REASON =
   "CommonJS require constructors are not auto-migrated; convert the module to ESM and rerun.";
 const ESRI_LEAFLET_UNSUPPORTED_CONSTRUCTOR_REASON =
@@ -1136,6 +1154,9 @@ function ensureCompatPackageDependency(
     return;
   }
   const current = manifest.dependencies?.[importPath];
+  if (unmanagedSdkDeclarations(manifest).length > 0) {
+    return;
+  }
   const sdk = manifest.dependencies?.["@honua/sdk"];
   const upgradeSdk = sdk !== undefined && STALE_COMPAT_DEPENDENCY_RANGES.has(sdk);
   if (

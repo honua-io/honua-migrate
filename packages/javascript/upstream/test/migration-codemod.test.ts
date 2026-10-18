@@ -4541,6 +4541,27 @@ describe("PR 172 review regressions", () => {
     expect(JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"))).toEqual(manifest);
   });
 
+  it.each([
+    ["dependencies", "~0.1.15"],
+    ["dependencies", ">=0.1.0 <0.2.0"],
+    ["dependencies", "workspace:*"],
+    ["devDependencies", "^0.1.15"],
+    ["peerDependencies", "0.1.x"],
+    ["optionalDependencies", "0.1.15"],
+  ])("holds compat when a custom SDK remains in %s at %s", (section, sdk) => {
+    const root = makeTempProject();
+    const manifest = {
+      dependencies: { "@honua/sdk-esri-compat": "0.1.15" },
+      ...(section === "dependencies"
+        ? { dependencies: { "@honua/sdk-esri-compat": "0.1.15", "@honua/sdk": sdk } }
+        : { [section]: { "@honua/sdk": sdk } }),
+    };
+    fs.writeFileSync(path.join(root, "package.json"), JSON.stringify(manifest));
+    fs.writeFileSync(path.join(root, "main.ts"), 'import { MapCompat } from "@honua/sdk-esri-compat";\n');
+    runEsriCompatCodemod({ rootDir: root, write: true });
+    expect(JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"))).toEqual(manifest);
+  });
+
   it("does not rewrite a custom compat import path to the published compat version", () => {
     const root = makeTempProject();
     fs.writeFileSync(

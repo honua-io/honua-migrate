@@ -536,6 +536,36 @@ describe("JS migration pipeline", () => {
     expect(JSON.parse(readTree(app)["package.json"]).dependencies["@honua/sdk-esri-compat"]).toBe("workspace:*");
   });
 
+  it.each([
+    ["dependencies", "~0.1.15"],
+    ["dependencies", ">=0.1.0 <0.2.0"],
+    ["dependencies", "workspace:*"],
+    ["devDependencies", "^0.1.15"],
+    ["peerDependencies", "0.1.x"],
+    ["optionalDependencies", "0.1.15"],
+  ])("reports a held runtime pair for a custom SDK in %s at %s", (section, sdk) => {
+    const manifest = {
+      dependencies: { "@honua/sdk-esri-compat": "0.1.15" },
+      ...(section === "dependencies"
+        ? { dependencies: { "@honua/sdk-esri-compat": "0.1.15", "@honua/sdk": sdk } }
+        : { [section]: { "@honua/sdk": sdk } }),
+    };
+    const app = writeApp({ "package.json": JSON.stringify(manifest), "src/main.ts": MAP_ONLY_SOURCE });
+    const before = readTree(app);
+    const plan = planJsMigration({ appRoot: app });
+    expect(readTree(app)).toEqual(before);
+    expect(
+      plan.dependencyChanges.some((change) => ["@honua/sdk", "@honua/sdk-esri-compat"].includes(change.name)),
+    ).toBe(false);
+    expect(plan.holds.some((hold) => hold.message.includes(`${section}: @honua/sdk ${sdk}`))).toBe(true);
+    const report = applyJsMigration({ appRoot: app, approvedDigest: plan.planDigest });
+    const after = JSON.parse(readTree(app)["package.json"]);
+    expect(after.dependencies["@honua/sdk-esri-compat"]).toBe("0.1.15");
+    expect(after[section]["@honua/sdk"]).toBe(sdk);
+    expect(report.residualWork.some((item) => item.source === "hold" && item.action.includes("0.2.3"))).toBe(true);
+    expect(report.verdict).toBe("unvalidated");
+  });
+
   it("refuses a digest the current tree no longer produces and writes nothing", () => {
     const app = copyFixture(PIPELINE_FIXTURE);
     const plan = planJsMigration({ appRoot: app });
