@@ -204,6 +204,14 @@ export async function verifyImportedApp({ manifest, receipt, browser }) {
     // Close the owned context before deciding success; no listener outlives the
     // observation. This does not claim absence of errors after the tested flow.
   } finally { await context.close(); }
+  for (const [index, entries] of captured.entries()) {
+    const step = report.steps[index];
+    if (step.result === "pass" && (entries.length !== step.queries.length
+      || entries.some((entry) => !entry.finished || entry.failed))) {
+      step.result = "fail";
+      step.reason = "unaccounted-app-query";
+    }
+  }
   report.completedAt = new Date().toISOString();
   report.networkViolationCount = violations.length;
   report.result = failures.length === 0 && violations.length === 0 && report.steps.every((step) => step.result === "pass") ? "pass" : "fail";
