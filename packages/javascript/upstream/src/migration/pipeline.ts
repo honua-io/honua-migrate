@@ -493,15 +493,13 @@ function planDependencyChanges(
   holds: JsPlanHold[],
 ): JsDependencyChange[] {
   if (mode === null) {
-    const compat = dependencySection(manifest, "dependencies")[DEFAULT_COMPAT_IMPORT_PATH];
-    // A plain app or a custom compat pin is not an invitation to install Honua.
+    const declaresCompat = DEPENDENCY_SECTIONS.some(
+      (section) => dependencySection(manifest, section)[DEFAULT_COMPAT_IMPORT_PATH] !== undefined,
+    );
+    // A plain app is not an invitation to install Honua.
     // Previously generated apps still need dependency planning after their last
     // ArcGIS import has been converted.
-    if (
-      target !== "honua-compat" ||
-      compat === undefined ||
-      (compat !== COMPAT_DEPENDENCY_RANGE && !STALE_COMPAT_DEPENDENCY_RANGES.has(compat))
-    ) {
+    if (target !== "honua-compat" || !declaresCompat) {
       return [];
     }
   }
@@ -530,6 +528,9 @@ function planDependencyChanges(
         message: `SDK and compat runtime updates are held because custom runtime declarations remain: ${sdkHolds.join("; ")}.`,
         action: `Review and align the SDK/compat declarations with the exact runtime pair ${COMPAT_DEPENDENCY_RANGE}, then plan again.`,
       });
+      // An already-converted app with a held pair needs an explicit review,
+      // not unrelated auxiliary dependency additions.
+      if (mode === null) return [];
     }
     const declared = (name: string): boolean =>
       DEPENDENCY_SECTIONS.some((section) => dependencySection(manifest, section)[name] !== undefined);

@@ -571,6 +571,29 @@ describe("JS migration pipeline", () => {
     expect(readTree(app)).toEqual(before);
   });
 
+  it.each(["devDependencies", "peerDependencies", "optionalDependencies"])(
+    "reports an explicit runtime hold for a converted app with stale compat in %s",
+    (section) => {
+      const app = writeApp({
+        "package.json": JSON.stringify({
+          dependencies: { "@honua/sdk": "0.1.15" },
+          [section]: { "@honua/sdk-esri-compat": "0.1.15" },
+        }),
+        "src/main.ts": 'import { MapCompat } from "@honua/sdk-esri-compat";\nexport const map = new MapCompat({});\n',
+      });
+      const before = readTree(app);
+      const plan = planJsMigration({ appRoot: app });
+      expect(plan.mode).toBeNull();
+      expect(plan.dependencyChanges).toEqual([]);
+      expect(plan.patch).toBe("");
+      expect(plan.holds.some((hold) => hold.message.includes(`${section}: @honua/sdk-esri-compat 0.1.15`))).toBe(true);
+      const report = applyJsMigration({ appRoot: app, approvedDigest: plan.planDigest });
+      expect(report.residualWork.some((item) => item.source === "hold" && item.action.includes("0.2.3"))).toBe(true);
+      expect(report.verdict).toBe("unvalidated");
+      expect(readTree(app)).toEqual(before);
+    },
+  );
+
   it.each(["peerDependencies", "optionalDependencies"])(
     "does not leak a staged codemod manifest past a runtime hold in %s",
     (section) => {
