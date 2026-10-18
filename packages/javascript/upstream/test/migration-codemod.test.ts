@@ -4501,27 +4501,30 @@ describe("PR 172 review regressions", () => {
     },
   );
 
-  it.each(["0.1.11-beta.0", "0.1.15", "0.2.3"])("keeps the previously generated SDK peer aligned with compat %s", (compat) => {
-    const root = makeTempProject();
-    fs.writeFileSync(
-      path.join(root, "package.json"),
-      JSON.stringify({
-        dependencies: {
-          "@honua/sdk": "0.1.11-beta.0",
-          "@honua/sdk-esri-compat": compat,
-        },
-      }),
-    );
-    fs.writeFileSync(
-      path.join(root, "main.ts"),
-      'import { MapCompat } from "@honua/sdk-esri-compat";\nexport const map = new MapCompat({ basemap: "streets-vector" });\n',
-    );
-    runEsriCompatCodemod({ rootDir: root, write: true });
-    expect(JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).dependencies).toEqual({
-      "@honua/sdk": "0.2.3",
-      "@honua/sdk-esri-compat": "0.2.3",
-    });
-  });
+  it.each(["0.1.11-beta.0", "0.1.15", "0.2.3"])(
+    "keeps the previously generated SDK peer aligned with compat %s",
+    (compat) => {
+      const root = makeTempProject();
+      fs.writeFileSync(
+        path.join(root, "package.json"),
+        JSON.stringify({
+          dependencies: {
+            "@honua/sdk": "0.1.11-beta.0",
+            "@honua/sdk-esri-compat": compat,
+          },
+        }),
+      );
+      fs.writeFileSync(
+        path.join(root, "main.ts"),
+        'import { MapCompat } from "@honua/sdk-esri-compat";\nexport const map = new MapCompat({ basemap: "streets-vector" });\n',
+      );
+      runEsriCompatCodemod({ rootDir: root, write: true });
+      expect(JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).dependencies).toEqual({
+        "@honua/sdk": "0.2.3",
+        "@honua/sdk-esri-compat": "0.2.3",
+      });
+    },
+  );
 
   it("does not add a compat dependency when a later run adds no import and none is declared", () => {
     const root = makeTempProject();

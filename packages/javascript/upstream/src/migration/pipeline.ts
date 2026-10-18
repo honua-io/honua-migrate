@@ -5,8 +5,8 @@ import os from "node:os";
 import path from "node:path";
 
 import {
-  type CodemodTarget,
   COMPAT_DEPENDENCY_RANGE,
+  type CodemodTarget,
   runEsriCompatCodemod,
   STALE_COMPAT_DEPENDENCY_RANGES,
 } from "./codemod.js";

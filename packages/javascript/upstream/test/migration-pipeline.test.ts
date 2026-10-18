@@ -391,31 +391,34 @@ describe("JS migration pipeline", () => {
     });
   });
 
-  it.each(["0.1.11-beta.0", "0.1.15"])("advances the previously generated %s SDK and compat pins together", (version) => {
-    const app = writeApp({
-      "package.json": JSON.stringify({
-        private: true,
-        dependencies: {
-          "@honua/sdk": version,
-          "@honua/sdk-esri-compat": version,
-        },
-      }),
-      "src/main.ts": MAP_ONLY_SOURCE,
-    });
-    const plan = planJsMigration({ appRoot: app });
-    expect(
-      plan.dependencyChanges
-        .filter((change) => change.action === "update")
-        .map((change) => [change.name, change.version]),
-    ).toEqual([
-      ["@honua/sdk", "0.2.3"],
-      ["@honua/sdk-esri-compat", "0.2.3"],
-    ]);
-    applyJsMigration({ appRoot: app, approvedDigest: plan.planDigest });
-    const dependencies = JSON.parse(readTree(app)["package.json"]).dependencies;
-    expect(dependencies["@honua/sdk"]).toBe("0.2.3");
-    expect(dependencies["@honua/sdk-esri-compat"]).toBe("0.2.3");
-  });
+  it.each(["0.1.11-beta.0", "0.1.15"])(
+    "advances the previously generated %s SDK and compat pins together",
+    (version) => {
+      const app = writeApp({
+        "package.json": JSON.stringify({
+          private: true,
+          dependencies: {
+            "@honua/sdk": version,
+            "@honua/sdk-esri-compat": version,
+          },
+        }),
+        "src/main.ts": MAP_ONLY_SOURCE,
+      });
+      const plan = planJsMigration({ appRoot: app });
+      expect(
+        plan.dependencyChanges
+          .filter((change) => change.action === "update")
+          .map((change) => [change.name, change.version]),
+      ).toEqual([
+        ["@honua/sdk", "0.2.3"],
+        ["@honua/sdk-esri-compat", "0.2.3"],
+      ]);
+      applyJsMigration({ appRoot: app, approvedDigest: plan.planDigest });
+      const dependencies = JSON.parse(readTree(app)["package.json"]).dependencies;
+      expect(dependencies["@honua/sdk"]).toBe("0.2.3");
+      expect(dependencies["@honua/sdk-esri-compat"]).toBe("0.2.3");
+    },
+  );
 
   it.each([
     ["dependencies", "workspace:*"],
