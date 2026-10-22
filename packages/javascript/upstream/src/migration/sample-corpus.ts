@@ -24,7 +24,7 @@ const ARCGIS_SERVICE_KINDS_LOWER = [
 
 const ARCGIS_ANCHOR = "/arcgis/rest/services/";
 
-// Single-character whitespace test, applied one code unit at a time below ?
+// Single-character whitespace test, applied one code unit at a time below —
 // this is O(1) per character, not a scan over the whole (attacker-influenced)
 // source string, so it carries none of the polynomial-matching risk that
 // motivated replacing the original combined regex.
@@ -144,7 +144,7 @@ function tryConsumeServiceMatch(
 /**
  * Linear-time replacement for a regex that combined two adjacent unbounded
  * `[^...]` quantifiers around a literal anchor (`.../arcgis/rest/services/`)
- * ? a shape CodeQL flags as `js/polynomial-redos` because a regex engine can
+ * — a shape CodeQL flags as `js/polynomial-redos` because a regex engine can
  * be forced into O(n^2) work re-trying the match at every position of an
  * adversarial input (e.g. many repetitions of the anchor with no service
  * kind ever following). This scan makes a single forward pass over `source`,
@@ -505,7 +505,7 @@ export function classifyArcGisServiceUrl(url: string): ArcGisServiceReference {
 
   const kind = serviceMatch[2] as ArcGisServiceKind;
   // For NAServer, the third capture is the network-analyst sub-service name
-  // (e.g., Route_World, ClosestFacility_World) ? fold it into servicePath so
+  // (e.g., Route_World, ClosestFacility_World) — fold it into servicePath so
   // downstream consumers see it. For other kinds it's the numeric layer id.
   let servicePath = serviceMatch[1];
   let layerToken: string | undefined;
