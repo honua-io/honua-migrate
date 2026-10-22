@@ -1989,10 +1989,14 @@ describe("runEsriCompatCodemod", () => {
     );
     expect(arcadeTodos.length).toBeGreaterThan(0);
     expect(arcadeTodos[0]?.reason).toContain("arcade-expression");
+    expect(arcadeTodos[0]?.reason.startsWith("WebMap \u2192 MapLibre style derivation")).toBe(true);
+    expect(arcadeTodos[0]?.reason).not.toContain("WebMap ? MapLibre");
 
     const nextSource = fs.readFileSync(file, "utf8");
     expect(nextSource).toContain("webmapJsonToMapLibreStyle(");
     expect(nextSource).toContain("// TODO(honua-migrate)[web-map]:");
+    expect(nextSource).toContain("WebMap \u2192 MapLibre style derivation");
+    expect(nextSource).not.toContain("WebMap ? MapLibre");
     expect(nextSource).toContain("arcade-expression");
     expect(nextSource).not.toContain("@arcgis/core/WebMap");
   });

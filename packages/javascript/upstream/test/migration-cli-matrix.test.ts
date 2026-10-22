@@ -67,6 +67,7 @@ describe("migration cli parity matrix", () => {
         honuaCompat: string;
         honuaMapLibre: string;
         esriLeaflet: string;
+        notes: string;
       }>;
     };
 
@@ -145,6 +146,10 @@ describe("migration cli parity matrix", () => {
     expect(report.summary.honuaCompat.compat).toBeGreaterThan(0);
     expect(report.summary.honuaMapLibre.native).toBe(5);
     expect(report.summary.esriLeaflet.assisted).toBe(0);
+    const geometryEngine = report.matrix.find((row) => row.kind === "geometry-engine");
+    expect(geometryEngine?.notes).toContain("cut, \u2026)");
+    expect(geometryEngine?.notes).not.toContain("cut, ?)");
+    expect(fs.readFileSync(reportPath, "utf8")).not.toContain("cut, ?)");
   }, 240_000);
 
   it("prints and writes the runtime parity matrix artifact", () => {

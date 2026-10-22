@@ -63,7 +63,7 @@ const HONUA_MAPLIBRE_STATUS_OVERRIDES: Readonly<Partial<Record<CodemodConstructo
   Object.freeze({
     // Search depends on a Locator-equivalent surface (HonuaGeocodeService),
     // which is tracked as a blocking item in the migration punch list
-    // ("Locator + Geoprocessor compat (Task C)") ? no compat path exists yet.
+    // ("Locator + Geoprocessor compat (Task C)") — no compat path exists yet.
     "search-widget": "unsupported",
   });
 
@@ -79,7 +79,7 @@ const HONUA_MAPLIBRE_NOTE_OVERRIDES: Readonly<Partial<Record<CodemodConstructorK
   "web-map":
     "Static WebMap JSON literals are auto-rewritten to webmapJsonToMapLibreStyle({...}); dynamic / portal-loaded WebMaps still fall through to manual TODO.",
   "geometry-engine":
-    "geometryEngine imports rewrite to the geometryEngineCompat shim (@honua/geometry); covered ops (buffer/intersect/union/difference/area/length/simplify/convexHull/contains/intersects) migrate cleanly, uncovered ops (geodesic densify, offset, cut, ?) keep a manual TODO.",
+    "geometryEngine imports rewrite to the geometryEngineCompat shim (@honua/geometry); covered ops (buffer/intersect/union/difference/area/length/simplify/convexHull/contains/intersects) migrate cleanly, uncovered ops (geodesic densify, offset, cut, …) keep a manual TODO.",
   "sketch-widget":
     "SketchCompat maps snappingOptions (enabled/distance/featureSources) onto the contract SnappingConfig; wire bindEditSketchSnapping from @honua/sdk-js/runtime for vertex/edge/feature snapping with MapLibre indicators.",
   "editor-widget":

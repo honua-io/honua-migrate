@@ -78,7 +78,7 @@ const GEOMETRY_ENGINE_IMPORT_UNSUPPORTED_REASON =
   "geometryEngine import shape is unsupported for automatic migration (expected a default or namespace import).";
 // Esri geometryEngine operations backed by the geometryEngineCompat shim
 // (@honua/geometry). Call sites of these ops migrate cleanly; anything else
-// (geodesic densify, offset, cut, generalize, relate, ?) keeps a manual TODO.
+// (geodesic densify, offset, cut, generalize, relate, …) keeps a manual TODO.
 const GEOMETRY_ENGINE_COVERED_OPS: ReadonlySet<string> = new Set([
   "buffer",
   "geodesicBuffer",
@@ -2034,7 +2034,7 @@ function codemodFile(
       return;
     }
 
-    // reactiveUtils.watch(accessor, handler) ? rewrite simple property-access
+    // reactiveUtils.watch(accessor, handler) — rewrite simple property-access
     // accessors to compat (receiver, propertyPath, handler) form, and emit a
     // manual TODO when the accessor is too complex to rewrite safely.
     if (
@@ -5946,7 +5946,7 @@ type HonuaMapLibreWebMapOutcome =
  * Decide how to migrate a `new WebMap({...})` call for the `honua-maplibre`
  * target. Safe WebMap JSON object literals are rewritten to a
  * `webmapJsonToMapLibreStyle({...})` call; any other shape (string portal
- * item id, identifier references, computed properties, spreads, ?)
+ * item id, identifier references, computed properties, spreads, …)
  * falls through to a manual TODO carrying a clear reason.
  */
 function handleHonuaMapLibreWebMapNewExpression(
@@ -5972,7 +5972,7 @@ function handleHonuaMapLibreWebMapNewExpression(
     };
   }
 
-  // Reject portal-loaded / dynamic shapes outright ? they have no static
+  // Reject portal-loaded / dynamic shapes outright — they have no static
   // JSON to feed into webmapJsonToMapLibreStyle.
   if (objectLiteralHasProperty(arg, "portalItem")) {
     return { kind: "manual", reason: HONUA_MAPLIBRE_WEBMAP_DYNAMIC_REASON };
@@ -6015,14 +6015,14 @@ function handleHonuaMapLibreWebMapNewExpression(
 
 function formatWebMapMapLibreGapReason(gap: WebMapMapLibreManualGap): string {
   const pathSuffix = gap.path ? ` at ${gap.path}` : "";
-  return `WebMap ? MapLibre style derivation [${gap.kind}]${pathSuffix}: ${gap.reason}`;
+  return `WebMap → MapLibre style derivation [${gap.kind}]${pathSuffix}: ${gap.reason}`;
 }
 
 /**
  * Evaluate a TypeScript object literal as a JSON value. Returns ok:false
  * if any node is non-literal (identifier, call, template expression,
  * computed property, spread, method shorthand, etc.). Used by the
- * WebMap ? MapLibre style derivation rewrite to gate which constructor
+ * WebMap → MapLibre style derivation rewrite to gate which constructor
  * arguments can be statically converted.
  */
 function evaluateObjectLiteralAsJson(
@@ -6366,7 +6366,7 @@ function collectTrackedCompatReceiverKeys(
 
 /**
  * Resolve the local name of a property access receiver used as `<receiver>.on`
- * or `<receiver>.watch` ? returning an identifier text or `this.<name>`.
+ * or `<receiver>.watch` — returning an identifier text or `this.<name>`.
  */
 function resolveReceiverKey(expression: ts.PropertyAccessExpression): string | undefined {
   return receiverKeyForExpression(expression.expression);
@@ -6471,7 +6471,7 @@ function parseReactiveUtilsWatchAccessor(
   if (!trackedReceivers.has(receiverKey)) {
     return { kind: "complex" };
   }
-  // current is the receiver expression ? produce its raw text using getText() at
+  // current is the receiver expression — produce its raw text using getText() at
   // call site (we only have its node here, not the source file). The caller
   // computes the receiver text from the original source.
   return {
@@ -10448,7 +10448,7 @@ function validateQueryOutStatisticsShape(expr: ts.Expression): string | undefine
  * the ArcGIS shape into the Honua QueryFeaturesRequest shape:
  *   - rename `start`/`num`/`outSpatialReference`/`spatialRelationship`
  *   - split `geometry: { type, ...rest }` into `geometry: { ...rest }`
- *     plus a sibling `geometryType: "esriGeometry?"`
+ *     plus a sibling `geometryType: "esriGeometry…"`
  *   - lowercase `outStatistics[i].statisticType`
  *
  * Callers must have already passed `isSafeQueryCompatCall`. Returns

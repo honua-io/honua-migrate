@@ -26,7 +26,7 @@ const DEFAULT_CODEMOD_TARGET: CodemodTarget = "honua-maplibre";
 
 // Skip reasons that prevent the codemod from running against a sample. These
 // correspond to samples that would require Esri credentials, premium service
-// access, or private Portal content to even render ? the codemod has nothing
+// access, or private Portal content to even render — the codemod has nothing
 // useful to say about them in a fixture-only lane, so we record them as
 // `status: "skipped"` evidence and surface the manifest skip reasons.
 const RUN_BLOCKING_SKIP_REASONS: ReadonlySet<EsriSampleSkipReason> = new Set([
@@ -279,7 +279,7 @@ function resolveSkipReason(sample: EsriSampleCorpusSample): string | undefined {
   const reasons = sample.skipReasons ?? [];
   const blocking = reasons.filter((reason) => RUN_BLOCKING_SKIP_REASONS.has(reason));
   if (blocking.length === 0) {
-    // Sample is marked skipped but doesn't list a run-blocking reason ? record
+    // Sample is marked skipped but doesn't list a run-blocking reason — record
     // the raw manifest reasons (or a generic fallback) so callers can still
     // see why CI elected to skip it.
     return reasons.length > 0 ? reasons.join(", ") : "manifest marks sample as skipped";
