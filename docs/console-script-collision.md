@@ -18,7 +18,11 @@ automatically installs `honua-sdk`. The offline `honua-migrate code python`
 scan, translate, `.pyt`, `.atbx`, and GPServer classification commands work
 without the SDK. A live `code python run` exits with the typed unavailable
 status when `honua-sdk` cannot be imported; it never installs or selects a
-colliding launcher implicitly.
+colliding launcher implicitly. Exit 0 from that command is execution success
+only after every required job reaches a successful terminal state and every
+declared output is verified. `--yes` does not turn an empty, partial,
+unsupported, timed-out, or cancelled run into success. `run --dry-run` can
+exit 0 for a fully supported preview, and that preview is not execution.
 
 If live execution is required before `honua-sdk` removes its legacy script,
 use a dedicated virtual environment and invoke this distribution by module:
