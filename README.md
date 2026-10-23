@@ -278,6 +278,33 @@ wall time to exceed that budget, and a late observation does not count as succes
 waiting for a future terminal state. Unknown statuses stop with an explicit
 `unknown-status` outcome instead of being guessed or polled indefinitely.
 
+## Target readiness before GeoServices import
+
+`honua-migrate services arcgis preflight` checks the Honua target before a long
+import. It sends read-only GETs only: the capability manifest
+(`GET /api/v1/capabilities/manifest`) and, after the caller is authenticated,
+the import job list. It does not upload a license, change entitlements, or call
+`POST .../import/geoservices/start`. `apply` repeats that check and does not
+queue a job when the result is failed or unknown. A previous ready result is
+not an authorization grant and is not reused after the target, credential, or
+declared capability changes.
+
+The CLI reports `unreachable` (including timeout), `unauthenticated`,
+`forbidden`, `incompatible-version`, `unavailable-capability`, `unknown`, and
+`ready`. Anything other than `ready` exits non-zero with a sanitized reason.
+The compatible server contract is capability manifest
+`honua.capability_manifest.v1` and API `v1`. Edition names are not a client-side
+gate.
+
+Supported customer evaluation is a server with licensing disabled
+(`Licensing:Mode=Disabled`). That deployment reports license validation state
+`Disabled` and can declare `import.geoservices` available without a signed
+license; preflight is ready when the server says the capability is available.
+When licensing is enabled, the server decision is authoritative: a valid license
+that does not entitle `import.geoservices` is not ready, and an expired or
+otherwise invalid license is not ready even if the capability key is present.
+This tool will not install a license or invent a paid-tier requirement.
+
 ## Exit codes and failure surface
 
 The CLI never prints Python tracebacks; failures surface as typed,
