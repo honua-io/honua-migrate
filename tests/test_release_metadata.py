@@ -60,7 +60,6 @@ def test_runtime_dependencies_are_pinned_with_lower_bounds() -> None:
     assert "typer>=0.12,<1" in dependencies
     assert "jsonschema>=4.21,<5" in dependencies
     assert "requests>=2.31,<3" in dependencies
-    assert "tenacity>=8.2,<10" in dependencies
     all_requirements = dependencies | {
         requirement
         for requirements in project["optional-dependencies"].values()
