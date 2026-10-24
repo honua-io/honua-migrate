@@ -260,6 +260,21 @@ def _capability(
             capability_available=False,
             **observed,
         )
+    # Enabled licensing: server license validity is not implied by an active entitlement.
+    if licensing == "enabled" and observed["license_valid"] is not True:
+        return _report(
+            client,
+            started,
+            "unavailable-capability",
+            code="unavailable-capability",
+            message=_unavailable_message(licensing, observed, problem_code),
+            http_status=status,
+            server_reason=problem_code,
+            problem_type=problem_type,
+            capability_declared=True,
+            capability_available=False,
+            **observed,
+        )
     if licensing == "disabled":
         message = (
             "The server reports import.geoservices is available. "

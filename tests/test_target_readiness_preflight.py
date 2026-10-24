@@ -17,6 +17,8 @@ import pytest
 import responses
 
 from honua_migrate.cli import main
+from honua_migrate.services.arcgis import ArcGisClient
+from honua_migrate.services.target_readiness import preflight_target
 
 SOURCE_URL = "https://arcgis.test/rest/services/Parcels/FeatureServer"
 API_KEY = "super-secret-api-key"
@@ -751,3 +753,85 @@ def test_disabled_but_inactive_capability_is_not_treated_as_ready(
     assert "not available" in report["reason"]["message"]
     assert "Enterprise" not in out + err
     _assert_clean(out, err)
+
+
+def _client() -> ArcGisClient:
+    client = ArcGisClient("https://honua.test", API_KEY, 30, 0)
+
+    def _start(_request: object) -> dict:
+        raise AssertionError("client.start must not run during readiness")
+
+    client.start = _start  # type: ignore[method-assign]
+    return client
+
+
+@responses.activate
+def test_invalid_license_is_not_ready_while_entitlement_stays_active(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    _env(monkeypatch)
+    plan = _plan(tmp_path, capsys)
+    expired = _ready_manifest(
+        currentEdition="Enterprise",
+        licenseValidationState="Expired",
+        licenseValid=False,
+        active=True,
+    )
+    responses.add(responses.GET, MANIFEST, json=expired, status=200)
+    _stub_jobs()
+    report = preflight_target(_client())
+    assert report["ready"] is False
+    assert report["outcome"] == "unavailable-capability"
+    assert report["reason"]["licensing"] == "enabled"
+    assert report["reason"]["licenseValid"] is False
+    assert report["reason"]["licenseValidationState"] == "Expired"
+    assert report["reason"]["capabilityDeclared"] is True
+    assert "not valid" in report["reason"]["message"]
+    assert "Expired" in report["reason"]["message"]
+
+    responses.add(responses.GET, MANIFEST, json=expired, status=200)
+    _stub_jobs()
+    output = tmp_path / "apply.json"
+    code = _run(
+        [
+            "services",
+            "arcgis",
+            "apply",
+            str(plan),
+            "--yes",
+            "--retries",
+            "0",
+            "--output",
+            str(output),
+        ]
+    )
+    applied, out, err = _report(capsys)
+    assert code != 0
+    assert applied["ready"] is False
+    assert applied["outcome"] == "unavailable-capability"
+    assert applied["reason"]["licenseValid"] is False
+    saved = output.read_text(encoding="utf-8")
+    assert "jobId" not in saved
+    assert not any(call.request.method == "POST" for call in responses.calls)
+    assert not any(call.request.url == START for call in responses.calls)
+    _assert_clean(out, err, saved)
+
+    responses.add(
+        responses.GET,
+        MANIFEST,
+        json=_ready_manifest(
+            currentEdition="Enterprise",
+            licenseValidationState="Disabled",
+            licenseValid=False,
+            active=True,
+        ),
+        status=200,
+    )
+    _stub_jobs()
+    disabled = preflight_target(_client())
+    assert disabled["ready"] is True
+    assert disabled["outcome"] == "ready"
+    assert disabled["reason"]["licensing"] == "disabled"
+    assert disabled["reason"]["licenseValid"] is False
+    assert "no license is required" in disabled["reason"]["message"]
+    _assert_get_only()
