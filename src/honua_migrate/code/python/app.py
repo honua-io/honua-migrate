@@ -92,7 +92,10 @@ def run_command(
         typer.Option(
             "--yes",
             "--acknowledge",
-            help="Acknowledge that non-dry-run execution mutates the Honua target.",
+            help=(
+                "Acknowledge target mutation. Does not accept a partial or "
+                "unfinished plan."
+            ),
         ),
     ] = False,
     force: Annotated[
@@ -100,7 +103,7 @@ def run_command(
         typer.Option("--force", help="Replace existing output files."),
     ] = False,
 ) -> None:
-    """Run recognized built-in processes, or preview them with ``--dry-run``."""
+    """Run a fully supported plan. Exit 0 only when every job and output succeeds."""
 
     _finish(
         _cmd_run(

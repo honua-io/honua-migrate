@@ -305,10 +305,59 @@ that does not entitle `import.geoservices` is not ready, and an expired or
 otherwise invalid license is not ready even if the capability key is present.
 This tool will not install a license or invent a paid-tier requirement.
 
+## Python GP run outcomes
+
+`honua-migrate code python run` is target execution. Exit 0 means every
+required step reached a successful terminal job and every declared output
+reference was checked. An accepted submission, a body with no status, a
+skipped call, or `--yes` is not execution success. `--yes` and
+`--acknowledge` only authorize a mutating request.
+
+`scan`, `translate`, `pyt`, `atbx`, and `gpservice` are offline assessment.
+Their exit 0 does not mean the target ran. `run --dry-run` previews a fully
+supported straight-line plan, imports no SDK, and records `outcome` `dry-run`
+with `executionSuccess` false. A dry-run of an incomplete plan uses the same
+non-success outcome as a live run.
+
+Straight-line literal calls are the only executable shape. Missing required
+inputs, non-literal values, results passed through Python names, and calls
+inside branches, loops, or nested definitions are refused before any target
+request. A known refusal is not dispatched, and a lost, failed, timed-out, or
+cancelled response is not posted again.
+
+Live runs poll asynchronous jobs for at most 120 seconds: 120 polls, one
+second apart. Timeout, cancellation, and a transport failure after submission
+keep the sanitized job id and exit non-zero. Resume that job instead of
+starting the plan again while it may still be running. The artifact
+`honua.migration.python.gp-run/v1` records the package name and version, the
+plan id, and sanitized server and job ids. It does not claim server
+attestation. Credentials and URL queries are omitted.
+
+| Exit | Outcome | Reason | Recovery |
+|------|---------|--------|----------|
+| 0 | `succeeded` | `completed` | No recovery. Declared outputs were verified. |
+| 0 | `dry-run` | `not-executed` | Re-run without `--dry-run` and with `--yes` to execute. |
+| 2 | `refused` | `syntax-error` | Fix the script. Nothing was submitted. |
+| 3 | `incomplete` | `missing-input`, `unresolved-input`, `unsupported-dependency` | Supply literal required inputs and outputs. This runner does not bind prior results. Nothing was submitted. |
+| 3 | `unsupported` | `unsupported-control-flow` | Remove branches, loops, and nested definitions. Nothing was submitted. |
+| 4 | `unavailable` | `sdk-unavailable` | Install `honua-sdk` in an isolated environment. See the console-script collision guide. |
+| 10 | `empty` | `no-runnable-steps` | Nothing to run. Use `scan` or `translate`. |
+| 10 | `unsupported` | `unsupported-calls` | Replace unsupported calls. Nothing was submitted. |
+| 10 | `partial` | `manual-review-only`, `partial-plan`, `output-unverified`, `submission-not-terminal` | Do not treat a skipped or unverified step as done. |
+| 10 | `timed-out` | `job-timed-out` | Keep the job id. Do not start the plan again while that job is unfinished. |
+| 10 | `cancelled` | `job-cancelled` | The job id was kept and was not resubmitted. |
+| 20 | `failed` | `job-failed`, `remote-error` | Inspect the recorded job id. The request was not retried. |
+| 40 |  | safety refusal without `--yes` | Re-run with `--yes` only for a fully supported plan. No artifact is written. |
+
+An invalid server URL still exits 3 with `invalid server URL` and does not
+echo the value. Assessment commands use the exit codes in the next section,
+not this table.
+
 ## Exit codes and failure surface
 
-The CLI never prints Python tracebacks; failures surface as typed,
-prospect-safe diagnostics on stderr with deterministic exit codes:
+Assessment commands never print Python tracebacks. Failures surface as typed,
+prospect-safe diagnostics on stderr with deterministic exit codes. These codes
+are not the Python GP run outcomes above.
 
 | Exit | Meaning |
 |------|---------|

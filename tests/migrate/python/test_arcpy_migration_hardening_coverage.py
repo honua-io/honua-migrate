@@ -74,6 +74,16 @@ def test_call_argument_positional_fallback() -> None:
     assert "JOIN_ONE_TO_MANY" in (call.manual_review_reason or "")
 
 
+def test_call_argument_resolves_supported_keyword_alias() -> None:
+    report = scan_arcpy_source(
+        "import arcpy\n"
+        "arcpy.analysis.Buffer('a', distance='5 Meters', output='result-fc')\n"
+    )
+    (call,) = report.calls
+    assert _call_argument(call, 1, "out_feature_class") == "result-fc"
+    assert _call_argument(call, 2, "buffer_distance_or_field") == "5 Meters"
+
+
 def test_spatial_join_gate_passes_for_plain_call() -> None:
     call = ArcPyCall(qualified_name="arcpy.analysis.SpatialJoin", family="analysis", tool="SpatialJoin", line=1, column=0)
     assert _spatial_join_gate(call) == ("translatable", None)

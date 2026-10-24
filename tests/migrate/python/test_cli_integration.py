@@ -58,6 +58,12 @@ def test_canonical_dry_run_never_imports_public_sdk(
     tmp_path: Path, monkeypatch
 ) -> None:
     output = tmp_path / "dry-run.json"
+    script = tmp_path / "supported.py"
+    script.write_text(
+        "import arcpy\n"
+        "arcpy.analysis.Buffer('roads', 'buffered', '10 Meters')\n",
+        encoding="utf-8",
+    )
     original_import = builtins.__import__
 
     def guarded_import(name, *args, **kwargs):
@@ -72,7 +78,7 @@ def test_canonical_dry_run_never_imports_public_sdk(
                 "code",
                 "python",
                 "run",
-                str(_script(tmp_path)),
+                str(script),
                 "--server",
                 "https://example.invalid",
                 "--output",
@@ -84,5 +90,7 @@ def test_canonical_dry_run_never_imports_public_sdk(
     )
     result = json.loads(output.read_text(encoding="utf-8"))
     assert result["dryRun"] is True
+    assert result["outcome"] == "dry-run"
+    assert result["executionSuccess"] is False
     assert len(result["executions"]) == 1
     assert result["skipped"] == []

@@ -92,19 +92,21 @@ def test_cli_translate_emits_plan_and_evidence(tmp_path: Path, capsys) -> None:
     assert "coverage:" in captured.err
 
 
-def test_cli_run_dry_run_emits_only_job_executable_payloads(tmp_path: Path) -> None:
+def test_cli_run_dry_run_refuses_partial_plan(tmp_path: Path) -> None:
     script = _write(tmp_path, "wf.py", SCRIPT)
     out = tmp_path / "run.json"
 
     rc = main(["run", str(script), "--server", "http://example.test", "--dry-run", "--output", str(out)])
 
-    assert rc == 0
     result = json.loads(out.read_text())
+    assert rc != 0
     assert result["dryRun"] is True
-    # Only the job-executable Buffer is queued to run; Erase is skipped.
-    assert [e["processId"] for e in result["executions"]] == ["buffer"]
-    assert [e["jobProcessId"] for e in result["executions"]] == ["geometry.buffer"]
-    assert "arcpy.analysis.Erase" in result["skipped"]
+    assert result["executionSuccess"] is False
+    assert result["outcome"] == "partial"
+    assert result["executions"] == []
+    skipped = {item["qualifiedName"] for item in result["skipped"]}
+    assert "arcpy.analysis.Erase" in skipped
+    assert "arcpy.sa.Kriging" in skipped
 
 
 def test_cli_pyt_parses_toolbox(tmp_path: Path) -> None:
@@ -197,13 +199,15 @@ def test_cli_gpservice_classifies_tasks(tmp_path: Path) -> None:
     assert agg["summary"]["translatableCalls"] == 1
 
 
-def test_cli_run_executes_via_mock_transport(tmp_path: Path, monkeypatch) -> None:
+def test_cli_run_does_not_dispatch_a_partial_plan(tmp_path: Path, monkeypatch) -> None:
     import httpx
 
     script = _write(tmp_path, "wf.py", SCRIPT)
     out = tmp_path / "run.json"
+    seen: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.method)
         process_id = request.url.path.split("/")[-2]
         return httpx.Response(200, json={"processID": process_id, "status": "accepted"})
 
@@ -236,7 +240,6 @@ def test_cli_run_executes_via_mock_transport(tmp_path: Path, monkeypatch) -> Non
         def ogc_processes(self):
             return Processes(self.client)
 
-    # The CLI imports HonuaClient lazily from the top-level package.
     sdk_module = types.ModuleType("honua_sdk")
     sdk_module.HonuaClient = Client
     monkeypatch.setitem(sys.modules, "honua_sdk", sdk_module)
@@ -253,11 +256,11 @@ def test_cli_run_executes_via_mock_transport(tmp_path: Path, monkeypatch) -> Non
         ]
     )
 
-    assert rc == 0
     result = json.loads(out.read_text())
-    assert [e["processId"] for e in result["executions"]] == ["buffer"]
-    assert result["executions"][0]["result"]["status"] == "accepted"
-    assert "arcpy.analysis.Erase" in result["skipped"]
+    assert rc != 0
+    assert result["executionSuccess"] is False
+    assert result["submitted"] is False
+    assert seen == []
 
 
 def test_cli_run_with_no_job_executable_calls_reports_skips(tmp_path: Path, capsys) -> None:
@@ -276,10 +279,11 @@ def test_cli_run_with_no_job_executable_calls_reports_skips(tmp_path: Path, caps
         ]
     )
 
-    assert rc == 0
+    assert rc != 0
     result = json.loads(out.read_text())
+    assert result["executionSuccess"] is False
     assert result["executions"] == []
-    assert "arcpy.analysis.Erase" in result["skipped"]
+    assert result["skipped"][0]["qualifiedName"] == "arcpy.analysis.Erase"
     assert "no translatable" in capsys.readouterr().err
 
 
