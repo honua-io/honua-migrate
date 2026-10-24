@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.9.1](https://github.com/honua-io/honua-migrate/compare/honua-migrate-v0.9.0...honua-migrate-v0.9.1) (2026-10-24)
+
+
+### Bug Fixes
+
+* resolve release dispatch repository without checkout ([#219](https://github.com/honua-io/honua-migrate/issues/219)) ([3619d16](https://github.com/honua-io/honua-migrate/commit/3619d16d9a6338b06cadff38419c2d4b27b0c214))
+
+
+### Dependencies
+
+* **python:** remove unused retry and Hatch CLI dependencies ([#216](https://github.com/honua-io/honua-migrate/issues/216)) ([fe47b13](https://github.com/honua-io/honua-migrate/commit/fe47b131848af8709e7675f1f15ed01035e882bf))
+
 ## [0.9.0](https://github.com/honua-io/honua-migrate/compare/honua-migrate-v0.8.0...honua-migrate-v0.9.0) (2026-10-24)
 
 
