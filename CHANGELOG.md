@@ -1,5 +1,98 @@
 # Changelog
 
+## [0.10.0](https://github.com/honua-io/honua-migrate/compare/honua-migrate-v0.9.0...honua-migrate-v0.10.0) (2026-10-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **javascript:** align migration with SDK 0.2.3
+
+### Features
+
+* add ArcGIS service migration commands ([#106](https://github.com/honua-io/honua-migrate/issues/106)) ([ed3a993](https://github.com/honua-io/honua-migrate/commit/ed3a9930c6f467c733abf07c6dda95aa8276d6e3))
+* add GeoServer migration service CLI ([#107](https://github.com/honua-io/honua-migrate/issues/107)) ([a5df631](https://github.com/honua-io/honua-migrate/commit/a5df63123bae182a689a5b38ad429ceca19357cc))
+* add MAUI migration codemod ([#109](https://github.com/honua-io/honua-migrate/issues/109)) ([ad0c9d4](https://github.com/honua-io/honua-migrate/commit/ad0c9d4cb1307620acaa26fcdfc83f2718e0be83))
+* add Python migration engine ([#110](https://github.com/honua-io/honua-migrate/issues/110)) ([20b5bc6](https://github.com/honua-io/honua-migrate/commit/20b5bc6a6f47e0a830250cfa1a9bd6128a36457f))
+* **arcgis:** preflight target readiness before import ([e271197](https://github.com/honua-io/honua-migrate/commit/e2711974e62fa7fcb8729eb70f48fd0e64f5f87c))
+* **arcgis:** preflight target readiness before import ([fa44121](https://github.com/honua-io/honua-migrate/commit/fa4412175fdec8a25cc5060b4c6e1eda7e8200f6)), closes [#155](https://github.com/honua-io/honua-migrate/issues/155)
+* **assess:** preserve legacy compatibility ([#115](https://github.com/honua-io/honua-migrate/issues/115)) ([e142743](https://github.com/honua-io/honua-migrate/commit/e142743a81484d248076e5cf101cb0b8da8f9b9c))
+* **cli:** add caps command to crosswalk footprints to Honua capability keys ([#85](https://github.com/honua-io/honua-migrate/issues/85)) ([2d40702](https://github.com/honua-io/honua-migrate/commit/2d407028a1a3a50d97185bf09110236387480f28))
+* **cli:** add scan rbac command writing EsriAccessFootprint.json ([#30](https://github.com/honua-io/honua-migrate/issues/30)) ([#55](https://github.com/honua-io/honua-migrate/issues/55)) ([7993086](https://github.com/honua-io/honua-migrate/commit/7993086e631b847b60a10bfa49fbc6d17d71e08f))
+* **cli:** add unified migration command foundation ([#105](https://github.com/honua-io/honua-migrate/issues/105)) ([5c4d9b7](https://github.com/honua-io/honua-migrate/commit/5c4d9b7c410722d64eeb0712418caa88b8204fb1))
+* **cli:** wire pyogrio FileGDB workspace scanner to a scan filegdb-workspace command ([#26](https://github.com/honua-io/honua-migrate/issues/26)) ([9497864](https://github.com/honua-io/honua-migrate/commit/94978644d52f88f400321ac31d7e761b2862f2dd))
+* **contracts:** add versioned migration schemas ([#111](https://github.com/honua-io/honua-migrate/issues/111)) ([97ed277](https://github.com/honua-io/honua-migrate/commit/97ed2772271c38d638cbd6ac57392c92b3ed8af0))
+* E10: Add fixture-backed CI smoke test (#honua-esri-assess-10) ([d71ef0a](https://github.com/honua-io/honua-migrate/commit/d71ef0a9518e1888eb6ec39a76352a8d71eecbdf))
+* E2: Publish EsriFootprint.json v0.1 schema and reference doc (#honua-esri-assess-2) ([f87920a](https://github.com/honua-io/honua-migrate/commit/f87920a8a8a13bbc2f1653d51ad78a76a7c07f48))
+* E3: Document schema versioning and closed-product handoff contract (#honua-esri-assess-3) ([f6cba57](https://github.com/honua-io/honua-migrate/commit/f6cba574211f75bae501b9cba9086cb51b1b2ecf))
+* E4: Implement read-only ArcGIS Online Portal scanner (#honua-esri-assess-4) ([c248705](https://github.com/honua-io/honua-migrate/commit/c2487053ce5f1568be27e6ca27a3511f294dd910))
+* E5: Implement read-only ArcGIS Server REST scanner (#honua-esri-assess-5) ([acd49a1](https://github.com/honua-io/honua-migrate/commit/acd49a1df915517192ed2489334bb60be826a332))
+* E6: Add license entitlement enumeration (#honua-esri-assess-6) ([74bfcdd](https://github.com/honua-io/honua-migrate/commit/74bfcdd11da5b036fd6dc893032871522fff1412))
+* E7: Add FileGDB inventory path using license-compatible dependencies (#honua-esri-assess-7) ([12d339a](https://github.com/honua-io/honua-migrate/commit/12d339ace57e4fb80b7e80a8257c958c4e7876ab))
+* E8: Generate Markdown readiness report and sample output (#honua-esri-assess-8) ([f1de24d](https://github.com/honua-io/honua-migrate/commit/f1de24d7ec6c11a41a58ba488872c3f07f506fd8))
+* E9: Build scan CLI and package release path (#honua-esri-assess-9) ([4d9ead1](https://github.com/honua-io/honua-migrate/commit/4d9ead11f3201f14c0c9bf58da490919dccce325))
+* **footprint:** persist usage ranking and datastore binding-mode ([#31](https://github.com/honua-io/honua-migrate/issues/31)) ([#57](https://github.com/honua-io/honua-migrate/issues/57)) ([d1bc6a3](https://github.com/honua-io/honua-migrate/commit/d1bc6a3e0247e57e10431e0e3bb64489291ddaf7))
+* **footprint:** record federation topology and advanced server roles ([#54](https://github.com/honua-io/honua-migrate/issues/54)) ([#58](https://github.com/honua-io/honua-migrate/issues/58)) ([f1fff24](https://github.com/honua-io/honua-migrate/commit/f1fff2429bf90bfd8971c84393b085d3c9eba9e2))
+* **footprint:** v0.2 dependency edges (webmap-&gt;service-&gt;layer) ([#32](https://github.com/honua-io/honua-migrate/issues/32)) ([#40](https://github.com/honua-io/honua-migrate/issues/40)) ([d1830cc](https://github.com/honua-io/honua-migrate/commit/d1830cc049a95cbb4ab5102f073f5ccaf058df29))
+* **js-migration:** define the 2026.1 cohort and count surviving imports as unhandled ([#162](https://github.com/honua-io/honua-migrate/issues/162)) ([8a8d635](https://github.com/honua-io/honua-migrate/commit/8a8d6351fc8b8c437ed3966ccac28f955ecabb2f))
+* **js-migration:** per-file diagnostics and conversion modes in the JS report ([#164](https://github.com/honua-io/honua-migrate/issues/164)) ([4866847](https://github.com/honua-io/honua-migrate/commit/4866847d28f46f8dcc20d832a7d813396120aeae)), closes [#142](https://github.com/honua-io/honua-migrate/issues/142)
+* **js-migration:** reviewed migrate pipeline from plan to browser validation ([#165](https://github.com/honua-io/honua-migrate/issues/165)) ([ce271ee](https://github.com/honua-io/honua-migrate/commit/ce271ee949f2fb59a0e985ab4be907b97e41f346)), closes [#142](https://github.com/honua-io/honua-migrate/issues/142)
+* **migrate:** import the full javascript migration engine ([#108](https://github.com/honua-io/honua-migrate/issues/108)) ([075eaa3](https://github.com/honua-io/honua-migrate/commit/075eaa3793264da525751651306ded0b23b9206e))
+* **migration:** export ArcGIS existing-app handoff with verified target IDs ([#146](https://github.com/honua-io/honua-migrate/issues/146)) ([1763d4b](https://github.com/honua-io/honua-migrate/commit/1763d4b04b394ce8dca6d2e7d8a4b4944be94f8d))
+* **portal:** classify items by functional content type ([#45](https://github.com/honua-io/honua-migrate/issues/45)) ([#50](https://github.com/honua-io/honua-migrate/issues/50)) ([ae56058](https://github.com/honua-io/honua-migrate/commit/ae56058fd9b06444fd551296a064038af875f600))
+* prepare honua-migrate Python publication ([#135](https://github.com/honua-io/honua-migrate/issues/135)) ([bc763c5](https://github.com/honua-io/honua-migrate/commit/bc763c51c9b4af32d5cafec3746f6e1318d384c6))
+* **rbac:** authorized Admin-API RBAC/access export slice ([#30](https://github.com/honua-io/honua-migrate/issues/30)) ([#39](https://github.com/honua-io/honua-migrate/issues/39)) ([0eaa961](https://github.com/honua-io/honua-migrate/commit/0eaa96180e9f33dc45d108a8fc85b77f2ef3d5c4))
+* **rbac:** per-service ACE crawl and effective-permission resolution ([#30](https://github.com/honua-io/honua-migrate/issues/30)) ([#59](https://github.com/honua-io/honua-migrate/issues/59)) ([d818ad9](https://github.com/honua-io/honua-migrate/commit/d818ad9d9cc849578bc9849771a2d1eb82dd8cda))
+* **runs:** add resumable migration orchestration ([#113](https://github.com/honua-io/honua-migrate/issues/113)) ([33eaaf6](https://github.com/honua-io/honua-migrate/commit/33eaaf67c773540ac2d3d48634e219946b40e09c))
+* **scan:** usage-ranked services + datastore binding-mode routing ([#31](https://github.com/honua-io/honua-migrate/issues/31)) ([#37](https://github.com/honua-io/honua-migrate/issues/37)) ([7dd9d7a](https://github.com/honua-io/honua-migrate/commit/7dd9d7a9d81eb9a5fa583a23deb65e6ab1a36e49))
+* **server:** capture layer schema and behavior detail ([#44](https://github.com/honua-io/honua-migrate/issues/44)) ([#51](https://github.com/honua-io/honua-migrate/issues/51)) ([62e0507](https://github.com/honua-io/honua-migrate/commit/62e0507e819b2c168348d6b9ae46b5f251761f18))
+* **server:** capture layer versioning and attribute-rule presence ([#44](https://github.com/honua-io/honua-migrate/issues/44)) ([#60](https://github.com/honua-io/honua-migrate/issues/60)) ([e926708](https://github.com/honua-io/honua-migrate/commit/e926708303eb33c22e16448f65d43f7be897f20e))
+* **server:** classify non-feature/map service types ([#43](https://github.com/honua-io/honua-migrate/issues/43)) ([#49](https://github.com/honua-io/honua-migrate/issues/49)) ([82ad72e](https://github.com/honua-io/honua-migrate/commit/82ad72eb214418356cc0994f5940fdcd5efeed34))
+* **server:** emit gpserver cross-repo migration handoff ([#48](https://github.com/honua-io/honua-migrate/issues/48)) ([#53](https://github.com/honua-io/honua-migrate/issues/53)) ([f6c654f](https://github.com/honua-io/honua-migrate/commit/f6c654f59c519eac77a9d62c9708cd2609597261))
+* sync bundled crosswalk with the canonical capability vocabulary ([#86](https://github.com/honua-io/honua-migrate/issues/86)) ([5f35036](https://github.com/honua-io/honua-migrate/commit/5f35036dc150f97a02680b0938b221c4e074b0c4))
+* **verdict:** consume usage, service-type and federation signals ([#61](https://github.com/honua-io/honua-migrate/issues/61)) ([#62](https://github.com/honua-io/honua-migrate/issues/62)) ([454bd1a](https://github.com/honua-io/honua-migrate/commit/454bd1ae9aa5280ef75b8537a047c2432d3176df))
+* **verdict:** enumerate hard lock-in extent (utility network, parcel fabric, lrs) ([#46](https://github.com/honua-io/honua-migrate/issues/46)) ([#52](https://github.com/honua-io/honua-migrate/issues/52)) ([a3efdda](https://github.com/honua-io/honua-migrate/commit/a3efdda67361368e00f6212c821193af24259ae2))
+* **verdict:** migratability verdict by shop profile ([#28](https://github.com/honua-io/honua-migrate/issues/28)) ([#36](https://github.com/honua-io/honua-migrate/issues/36)) ([cd2797b](https://github.com/honua-io/honua-migrate/commit/cd2797b4588b3c067c678a5f2c480dc22e835f72))
+
+
+### Bug Fixes
+
+* **arcgis:** reject an invalid license when the entitlement is active ([09f657a](https://github.com/honua-io/honua-migrate/commit/09f657ac0797ffbbc23571e2d1493086940f48b6))
+* **build:** drop redundant schema force-include that breaks wheel build ([#34](https://github.com/honua-io/honua-migrate/issues/34)) ([87c4690](https://github.com/honua-io/honua-migrate/commit/87c469044fa7b957479c3ede6b950d98c427f205))
+* **ci:** pass an explicit dist-tag when publishing prerelease versions ([#124](https://github.com/honua-io/honua-migrate/issues/124)) ([3e988b0](https://github.com/honua-io/honua-migrate/commit/3e988b0a664caf0eddd198c3609cefa36d0b316f))
+* **ci:** publish the JavaScript tarball via an explicit relative path ([#123](https://github.com/honua-io/honua-migrate/issues/123)) ([81c5944](https://github.com/honua-io/honua-migrate/commit/81c5944ff1fcd4991cab792a33d124009ed19628))
+* declare click as an explicit runtime dependency ([0db51ec](https://github.com/honua-io/honua-migrate/commit/0db51ec36873cc33f17950f88c46052ce4812dfe))
+* **javascript:** align migration with SDK 0.2.3 ([bba9754](https://github.com/honua-io/honua-migrate/commit/bba975460266af0227cc851a0ac8f0d146997e3f))
+* **js-migration:** depend on compat 0.1.10-beta.0 ([#176](https://github.com/honua-io/honua-migrate/issues/176)) ([f2b59c4](https://github.com/honua-io/honua-migrate/commit/f2b59c4084447addb0139bd55fe2d94b52c68ef3))
+* **js-migration:** depend on compat 0.1.11 and emit a typed shell ([da4f3b2](https://github.com/honua-io/honua-migrate/commit/da4f3b20bda012f72855f3fb0ba2f4e1dbf739a5))
+* **js-migration:** depend on compat 0.1.11 and emit a typed shell ([2fd7f76](https://github.com/honua-io/honua-migrate/commit/2fd7f7684100839af1caeb93ce51af3e82774708))
+* **js-migration:** rewrite a 2D ArcGIS app onto the compat client ([#172](https://github.com/honua-io/honua-migrate/issues/172)) ([a640f01](https://github.com/honua-io/honua-migrate/commit/a640f01472d8359743cc2dc5d4faa78c82e67e19))
+* **js-migration:** stop codemod writes that should keep ArcGIS ([4dd5bed](https://github.com/honua-io/honua-migrate/commit/4dd5bed092d3be195fc5f23d712d4a86f9fdf2e8))
+* **js-migration:** stop codemod writes that should keep ArcGIS ([7d2a377](https://github.com/honua-io/honua-migrate/commit/7d2a3778de048b864cba01b864e2b74d7b0cd408))
+* **js-migration:** write a compat range that selects 0.1.11 ([dea0608](https://github.com/honua-io/honua-migrate/commit/dea0608d88e38b897c5323319c300de5e05c8bc9))
+* **js-migration:** write a compat range that selects 0.1.11 ([84b7aa2](https://github.com/honua-io/honua-migrate/commit/84b7aa2437ce87100c9872a1004c3d3b11553593))
+* map Typer-vendored Click exceptions to exit codes ([b969985](https://github.com/honua-io/honua-migrate/commit/b9699858d2c99ccb61b100ef5c053dd82fb67ab9))
+* **migrate:** break legacy sdk dependency cycle ([#116](https://github.com/honua-io/honua-migrate/issues/116)) ([11141e7](https://github.com/honua-io/honua-migrate/commit/11141e7d66bd15b4cb28cb9535b7a85ecc7b88cd))
+* **python:** fail closed on incomplete GP migration runs ([f1d5dbd](https://github.com/honua-io/honua-migrate/commit/f1d5dbdc608d8e57275b496006a2399ea45ae1a6))
+* **python:** fail closed on incomplete GP migration runs ([7bab34c](https://github.com/honua-io/honua-migrate/commit/7bab34ca597fd6639ad26caf666faf156656b0f3)), closes [#210](https://github.com/honua-io/honua-migrate/issues/210)
+* **python:** honor GP aliases and keep failed job ids ([a117cb0](https://github.com/honua-io/honua-migrate/commit/a117cb0fe1f6392ec5939079ba823170d06fe2e5))
+* refuse to clobber scan output and harden Esri response parsing ([#78](https://github.com/honua-io/honua-migrate/issues/78)) ([ed370f3](https://github.com/honua-io/honua-migrate/commit/ed370f3dc44b62ee7988713aaf02a73d9146f570))
+* **release:** keep component package commits out of the Python release ([#181](https://github.com/honua-io/honua-migrate/issues/181)) ([f18109e](https://github.com/honua-io/honua-migrate/commit/f18109e39a0f1b72a27d3886e460a6263b0fa6c0))
+* **release:** mark fallback versions for release-please ([#178](https://github.com/honua-io/honua-migrate/issues/178)) ([89cfa94](https://github.com/honua-io/honua-migrate/commit/89cfa94545a3f4d49da9262d7c636682fd950d2c))
+
+
+### Documentation
+
+* add OpenSSF Scorecard badge ([#65](https://github.com/honua-io/honua-migrate/issues/65)) ([406e4df](https://github.com/honua-io/honua-migrate/commit/406e4dffaa0c95e3ab93b024b819b2de5f56e848))
+* **compliance:** add Esri IP and licensing clean-room guardrails ([#33](https://github.com/honua-io/honua-migrate/issues/33)) ([#35](https://github.com/honua-io/honua-migrate/issues/35)) ([90eab25](https://github.com/honua-io/honua-migrate/commit/90eab25a2a1f4a017770445f7715842e739a228e))
+* define migration ownership and deprecation ([#114](https://github.com/honua-io/honua-migrate/issues/114)) ([bb682b1](https://github.com/honua-io/honua-migrate/commit/bb682b107a0a4b80b472203eb45336dba092da3f))
+* **esri:** scope server compatibility claim ([#140](https://github.com/honua-io/honua-migrate/issues/140)) ([76c4ace](https://github.com/honua-io/honua-migrate/commit/76c4acef9ade01517b1b7243a514383d2cd67d52))
+* fix signposting, and stop describing a closed product that does not exist ([#167](https://github.com/honua-io/honua-migrate/issues/167)) ([829dc82](https://github.com/honua-io/honua-migrate/commit/829dc82c414f96ae193fb7179382e194c9d3ce38))
+* **okf:** bring honua-migrate into the OKF bundle, and give it a front door ([#148](https://github.com/honua-io/honua-migrate/issues/148)) ([08d9e36](https://github.com/honua-io/honua-migrate/commit/08d9e3612c8abf6f01fdea3462e690b39da45512))
+* **okf:** give the pages a resource, so the bundle is a graph ([#151](https://github.com/honua-io/honua-migrate/issues/151)) ([2fcde9b](https://github.com/honua-io/honua-migrate/commit/2fcde9bbcf208afb0c03d81ee7e8c26d8c5ee707))
+* **okf:** take the generator's examples-section revision ([#150](https://github.com/honua-io/honua-migrate/issues/150)) ([a75a426](https://github.com/honua-io/honua-migrate/commit/a75a42664e50b3666da252ba00dcf364a6fdd4e0))
+* **operators:** add prerequisites and least-privilege access guide ([#41](https://github.com/honua-io/honua-migrate/issues/41)) ([5ced163](https://github.com/honua-io/honua-migrate/commit/5ced163a222fa142adb1ee322e9069d71f7c177f))
+* refresh README for v0.7 CLI surface and v0.2 schema ([#82](https://github.com/honua-io/honua-migrate/issues/82)) ([25fe844](https://github.com/honua-io/honua-migrate/commit/25fe84473b9126cb4f54e8fc227e3a4375532482))
+
 ## [0.9.0](https://github.com/honua-io/honua-migrate/compare/honua-migrate-v0.8.0...honua-migrate-v0.9.0) (2026-10-24)
 
 
