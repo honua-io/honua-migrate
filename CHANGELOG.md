@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.9.0](https://github.com/honua-io/honua-migrate/compare/honua-migrate-v0.8.0...honua-migrate-v0.9.0) (2026-10-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **javascript:** align migration with SDK 0.2.3
+
+### Features
+
+* **arcgis:** preflight target readiness before import ([e271197](https://github.com/honua-io/honua-migrate/commit/e2711974e62fa7fcb8729eb70f48fd0e64f5f87c))
+* **arcgis:** preflight target readiness before import ([fa44121](https://github.com/honua-io/honua-migrate/commit/fa4412175fdec8a25cc5060b4c6e1eda7e8200f6)), closes [#155](https://github.com/honua-io/honua-migrate/issues/155)
+
+
+### Bug Fixes
+
+* **arcgis:** reject an invalid license when the entitlement is active ([09f657a](https://github.com/honua-io/honua-migrate/commit/09f657ac0797ffbbc23571e2d1493086940f48b6))
+* **javascript:** align migration with SDK 0.2.3 ([bba9754](https://github.com/honua-io/honua-migrate/commit/bba975460266af0227cc851a0ac8f0d146997e3f))
+* **js-migration:** depend on compat 0.1.11 and emit a typed shell ([da4f3b2](https://github.com/honua-io/honua-migrate/commit/da4f3b20bda012f72855f3fb0ba2f4e1dbf739a5))
+* **js-migration:** depend on compat 0.1.11 and emit a typed shell ([2fd7f76](https://github.com/honua-io/honua-migrate/commit/2fd7f7684100839af1caeb93ce51af3e82774708))
+* **js-migration:** stop codemod writes that should keep ArcGIS ([4dd5bed](https://github.com/honua-io/honua-migrate/commit/4dd5bed092d3be195fc5f23d712d4a86f9fdf2e8))
+* **js-migration:** stop codemod writes that should keep ArcGIS ([7d2a377](https://github.com/honua-io/honua-migrate/commit/7d2a3778de048b864cba01b864e2b74d7b0cd408))
+* **js-migration:** write a compat range that selects 0.1.11 ([dea0608](https://github.com/honua-io/honua-migrate/commit/dea0608d88e38b897c5323319c300de5e05c8bc9))
+* **js-migration:** write a compat range that selects 0.1.11 ([84b7aa2](https://github.com/honua-io/honua-migrate/commit/84b7aa2437ce87100c9872a1004c3d3b11553593))
+* **python:** fail closed on incomplete GP migration runs ([f1d5dbd](https://github.com/honua-io/honua-migrate/commit/f1d5dbdc608d8e57275b496006a2399ea45ae1a6))
+* **python:** fail closed on incomplete GP migration runs ([7bab34c](https://github.com/honua-io/honua-migrate/commit/7bab34ca597fd6639ad26caf666faf156656b0f3)), closes [#210](https://github.com/honua-io/honua-migrate/issues/210)
+* **python:** honor GP aliases and keep failed job ids ([a117cb0](https://github.com/honua-io/honua-migrate/commit/a117cb0fe1f6392ec5939079ba823170d06fe2e5))
+
 ## [0.8.0](https://github.com/honua-io/honua-migrate/compare/honua-migrate-v0.7.1...honua-migrate-v0.8.0) (2026-09-29)
 
 
