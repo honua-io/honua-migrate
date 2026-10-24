@@ -50,6 +50,7 @@ from .arcpy import (
     ArcPyCall,
     ArcPyJobError,
     ArcPyJobTimeoutError,
+    ArcPyJobTransportError,
     ArcPyMigrationPlan,
     ArcPyProcessExecution,
     ArcPyProcessRunner,
@@ -725,6 +726,35 @@ def _execute_plan(
                     guidance=(
                         f"Job {shown} failed and was not resubmitted. Inspect it "
                         "before any manual retry."
+                    ),
+                    exit_code=EXIT_REMOTE_ERROR,
+                    jobs=jobs,
+                    output_checks=output_checks,
+                    dispatch_count=dispatch_count,
+                )
+            except ArcPyJobTransportError as exc:
+                # Submission succeeded; polling or the results download did not.
+                # Keep the sanitized id and do not treat the run as success.
+                job_id = _public_job_id(exc.job_id)
+                jobs.append(
+                    _job_record(
+                        translation,
+                        job_id=exc.job_id,
+                        status=None,
+                        succeeded=False,
+                    )
+                )
+                shown = job_id or "the submitted job"
+                return _finish_run(
+                    args,
+                    plan,
+                    script_name=script_name,
+                    outcome="failed",
+                    reason="remote-error",
+                    guidance=(
+                        f"Job {shown} could not be retrieved after submission. "
+                        "It was not retried. Inspect this job id before any "
+                        "manual retry."
                     ),
                     exit_code=EXIT_REMOTE_ERROR,
                     jobs=jobs,

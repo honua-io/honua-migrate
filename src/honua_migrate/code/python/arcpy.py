@@ -362,6 +362,18 @@ class ArcPyJobTimeoutError(RuntimeError):
         )
 
 
+class ArcPyJobTransportError(RuntimeError):
+    """Raised when polling or downloading a submitted job fails in transport.
+
+    ``job_id`` is the identifier returned by submission. Retrieval failed, so
+    the run did not succeed; callers keep this id and do not submit again.
+    """
+
+    def __init__(self, job_id: str) -> None:
+        self.job_id = job_id
+        super().__init__("ArcPy migration job could not be retrieved after submission.")
+
+
 @dataclass(frozen=True)
 class _ArgSpec:
     arcpy_name: str
@@ -454,10 +466,35 @@ def _register(spec: _ToolSpec) -> _ToolSpec:
     return spec
 
 
-def _call_argument(call: ArcPyCall, position: int, *arcpy_names: str) -> JsonValue:
-    """Resolve a call argument by positional index or any of its keyword names."""
+def _argument_lookup_names(call: ArcPyCall, arcpy_names: tuple[str, ...]) -> tuple[str, ...]:
+    """Return canonical names plus aliases for the same process input."""
 
+    names = list(arcpy_names)
+    spec = _lookup_spec(call.family, call.tool)
+    if spec is None or not arcpy_names:
+        return tuple(names)
+    spec_by_keyword = {_normalize_keyword(arg.arcpy_name): arg for arg in spec.args}
+    process_names: set[str] = set()
     for name in arcpy_names:
+        arg = spec_by_keyword.get(_normalize_keyword(name))
+        if arg is not None:
+            process_names.add(arg.process_name)
+    seen = {_normalize_keyword(name) for name in names}
+    for alias, process_name in spec.aliases.items():
+        if process_name in process_names and alias not in seen:
+            names.append(alias)
+            seen.add(alias)
+    return tuple(names)
+
+
+def _call_argument(call: ArcPyCall, position: int, *arcpy_names: str) -> JsonValue:
+    """Resolve a call argument by position, canonical keyword, or spec alias.
+
+    Supported aliases such as ``output`` for ``out_feature_class`` count as
+    present. Callers that only know the canonical ArcPy name still see them.
+    """
+
+    for name in _argument_lookup_names(call, arcpy_names):
         normalized = _normalize_keyword(name)
         for raw_name, value in call.kwargs.items():
             if _normalize_keyword(raw_name) == normalized:
@@ -1723,28 +1760,34 @@ class ArcPyProcessRunner:
             # Server ran the process synchronously; no job to poll.
             return ArcPyProcessExecution(translation=translation, result=submission)
 
-        document = submission
-        status = _normalize_status(_job_status(submission))
-        polls = 0
-        while status not in _TERMINAL_JOB_STATUSES:
-            if polls >= self._max_polls:
-                raise ArcPyJobTimeoutError(job_id, status, polls)
-            self._sleep(self._poll_interval)
-            polls += 1
-            document = self._processes.job(job_id)
-            status = _normalize_status(_job_status(document))
+        try:
+            document = submission
+            status = _normalize_status(_job_status(submission))
+            polls = 0
+            while status not in _TERMINAL_JOB_STATUSES:
+                if polls >= self._max_polls:
+                    raise ArcPyJobTimeoutError(job_id, status, polls)
+                self._sleep(self._poll_interval)
+                polls += 1
+                document = self._processes.job(job_id)
+                status = _normalize_status(_job_status(document))
 
-        if status != JOB_STATUS_SUCCESSFUL:
-            raise ArcPyJobError(job_id, status, document)
+            if status != JOB_STATUS_SUCCESSFUL:
+                raise ArcPyJobError(job_id, status, document)
 
-        results = self._processes.job_results(job_id)
-        return ArcPyProcessExecution(
-            translation=translation,
-            result=document,
-            job_id=job_id,
-            status=status,
-            results=results,
-        )
+            results = self._processes.job_results(job_id)
+            return ArcPyProcessExecution(
+                translation=translation,
+                result=document,
+                job_id=job_id,
+                status=status,
+                results=results,
+            )
+        except (ArcPyJobError, ArcPyJobTimeoutError):
+            # Failure and timeout already carry the submission id.
+            raise
+        except Exception as exc:
+            raise ArcPyJobTransportError(job_id) from exc
 
     def execute_plan_async(self, plan: ArcPyMigrationPlan) -> tuple[ArcPyProcessExecution, ...]:
         """Execute all supported translations as polled jobs, in plan order."""

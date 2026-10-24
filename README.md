@@ -299,11 +299,12 @@ request. A known refusal is not dispatched, and a lost, failed, timed-out, or
 cancelled response is not posted again.
 
 Live runs poll asynchronous jobs for at most 120 seconds: 120 polls, one
-second apart. Timeout and cancellation keep the sanitized job id and exit
-non-zero. Resume that job instead of starting the plan again while it may
-still be running. The artifact `honua.migration.python.gp-run/v1` records the
-package name and version, the plan id, and sanitized server and job ids. It
-does not claim server attestation. Credentials and URL queries are omitted.
+second apart. Timeout, cancellation, and a transport failure after submission
+keep the sanitized job id and exit non-zero. Resume that job instead of
+starting the plan again while it may still be running. The artifact
+`honua.migration.python.gp-run/v1` records the package name and version, the
+plan id, and sanitized server and job ids. It does not claim server
+attestation. Credentials and URL queries are omitted.
 
 | Exit | Outcome | Reason | Recovery |
 |------|---------|--------|----------|

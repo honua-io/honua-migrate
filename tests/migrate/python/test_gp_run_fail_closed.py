@@ -83,6 +83,14 @@ _CHAIN = (
     "arcpy.analysis.Buffer('parcels', 'parcels_buffer', '10 Meters')\n"
     "arcpy.analysis.Clip('parcels_buffer', 'district', 'parcels_clip')\n"
 )
+_ALIAS_BUFFER = (
+    "import arcpy\n"
+    "arcpy.analysis.Buffer('a', distance='5 Meters', output='result-fc')\n"
+)
+_ALIAS_DISTANCE_ONLY = (
+    "import arcpy\n"
+    "arcpy.analysis.Buffer('a', distance='5 Meters')\n"
+)
 
 
 class _Processes:
@@ -114,6 +122,8 @@ class _Processes:
     def job(self, job_id: str) -> dict[str, Any]:
         self.job_calls.append(job_id)
         action = self.behavior.get("job", "running")
+        if action == "raise":
+            raise ConnectionError("connection reset")
         status = {
             "running": "running",
             "failed": "failed",
@@ -125,6 +135,8 @@ class _Processes:
     def job_results(self, job_id: str) -> dict[str, Any]:
         self.result_calls.append(job_id)
         results = self.behavior.get("results", "verified")
+        if results == "raise":
+            raise ConnectionError("connection reset")
         if results == "verified":
             return {"outputs": {"result": f"{_SERVER}/outputs/{job_id}"}}
         if results == "mismatch":
@@ -226,6 +238,13 @@ def _assert_common(payload: dict[str, Any], *, mode: str) -> None:
         (_MIXED, "--acknowledge", EXIT_PARTIAL, "partial", "partial-plan"),
         (_MIXED, "--dry-run", EXIT_PARTIAL, "partial", "partial-plan"),
         (_MISSING, "--yes", EXIT_VALIDATION_ERROR, "incomplete", "missing-input"),
+        (
+            _ALIAS_DISTANCE_ONLY,
+            "--yes",
+            EXIT_VALIDATION_ERROR,
+            "incomplete",
+            "missing-input",
+        ),
         (_UNRESOLVED, "--yes", EXIT_VALIDATION_ERROR, "incomplete", "unresolved-input"),
         (_DEPENDENCY, "--yes", EXIT_VALIDATION_ERROR, "incomplete", "unsupported-dependency"),
         (_BRANCH, "--yes", EXIT_VALIDATION_ERROR, "unsupported", "unsupported-control-flow"),
@@ -531,6 +550,89 @@ def test_timeout_keeps_one_resumable_job(
     assert "secret" not in json.dumps(payload)
     assert payload["jobs"][0]["jobId"] in payload["guidance"]
     assert "not resubmitted" in payload["guidance"]
+
+
+def test_supported_alias_keywords_are_not_missing_input(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    code, payload, processes = _run(
+        tmp_path,
+        _ALIAS_BUFFER,
+        "--yes",
+        monkeypatch=monkeypatch,
+        behavior={"execute": "sync-success"},
+    )
+
+    assert code == EXIT_SUCCESS
+    assert payload["outcome"] == "succeeded"
+    assert payload["reason"] == "completed"
+    assert payload["reason"] != "missing-input"
+    assert payload["executionSuccess"] is True
+    assert len(processes.posts) == 1
+    body = processes.posts[0]["payload"]
+    assert body["inputs"]["input_features"] == "a"
+    assert body["inputs"]["distance"] == "5 Meters"
+    assert body["outputs"] == {"result": "result-fc"}
+
+
+def test_poll_transport_failure_keeps_sanitized_job_id(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _quiet_sleep(monkeypatch)
+    code, payload, processes = _run(
+        tmp_path,
+        _BUFFER,
+        "--yes",
+        monkeypatch=monkeypatch,
+        behavior={"job": "raise"},
+    )
+
+    text = json.dumps(payload)
+    assert code == EXIT_REMOTE_ERROR
+    assert code != EXIT_SUCCESS
+    assert payload["outcome"] == "failed"
+    assert payload["reason"] == "remote-error"
+    assert payload["executionSuccess"] is False
+    assert payload["dispatchCount"] == 1
+    assert len(processes.posts) == 1
+    assert processes.job_calls == ["https://jobs.example.test/buffer?token=secret"]
+    assert processes.result_calls == []
+    assert payload["jobs"][0]["jobId"] == "https://jobs.example.test/buffer"
+    assert payload["jobs"][0]["succeeded"] is False
+    assert "secret" not in text
+    assert "token=" not in text
+    assert payload["jobs"][0]["jobId"] in payload["guidance"]
+    assert "not retried" in payload["guidance"]
+
+
+def test_results_transport_failure_keeps_sanitized_job_id(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _quiet_sleep(monkeypatch)
+    code, payload, processes = _run(
+        tmp_path,
+        _BUFFER,
+        "--yes",
+        monkeypatch=monkeypatch,
+        behavior={"job": "successful", "results": "raise"},
+    )
+
+    text = json.dumps(payload)
+    assert code == EXIT_REMOTE_ERROR
+    assert code != EXIT_SUCCESS
+    assert payload["outcome"] == "failed"
+    assert payload["executionSuccess"] is False
+    assert payload["dispatchCount"] == 1
+    assert len(processes.posts) == 1
+    assert processes.result_calls == ["https://jobs.example.test/buffer?token=secret"]
+    assert payload["jobs"][0]["jobId"] == "https://jobs.example.test/buffer"
+    assert payload["jobs"][0]["succeeded"] is False
+    assert "secret" not in text
+    assert "token=" not in text
+    assert "not retried" in payload["guidance"]
 
 
 def test_transport_failure_is_not_retried(
