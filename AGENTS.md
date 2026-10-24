@@ -25,9 +25,9 @@ Hard project constraints (do not violate):
 - Build backend: Hatchling (`hatchling>=1.24`), PEP 517.
 - CLI framework: Typer / Click.
 - Runtime deps: `jsonschema>=4.21,<5`, `requests>=2.31,<3`,
-  `tenacity>=8.2,<10`, `typer>=0.12,<1`.
+  `typer>=0.12,<1`.
 - Optional extra `filegdb`: `pyogrio>=0.12,<0.13` (GDAL/OGR read-only metadata).
-- Dev tooling: `pytest`, `ruff`, `mypy`, `build`, `hatch`, `responses`,
+- Dev tooling: `pytest`, `ruff`, `mypy`, `build`, `hatchling`, `responses`,
   `packaging`.
 
 ## Setup
