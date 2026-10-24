@@ -28,6 +28,34 @@ def _plain(result) -> str:
     return click.unstyle(result.output)
 
 
+def _stub_ready_import_target() -> None:
+    responses.add(
+        responses.GET,
+        "https://honua.test/api/v1/capabilities/manifest",
+        json={
+            "schemaVersion": "honua.capability_manifest.v1",
+            "scope": {"authenticated": True},
+            "server": {
+                "apiVersion": "v1",
+                "serverVersion": "2026.1.0",
+                "deploymentRevision": "a" * 40,
+            },
+            "policies": {
+                "licenseValidationState": "Disabled",
+                "licenseValid": True,
+                "entitlements": [{"key": "import.geoservices", "active": True}],
+            },
+        },
+        status=200,
+    )
+    responses.add(
+        responses.GET,
+        f"https://honua.test{API_PREFIX}/jobs",
+        json={"jobs": []},
+        status=200,
+    )
+
+
 def _plan(path: Path, *extra: str):
     return _invoke(
         [
@@ -105,6 +133,7 @@ def test_apply_injects_runtime_credential_and_round_trips_optional_fields(tmp_pa
     assert plan_artifact["actions"][0]["kind"] == "arcgis-service-import"
     assert "SOURCE_SECRET" not in plan.read_text(encoding="utf-8")
 
+    _stub_ready_import_target()
     responses.add(
         responses.POST,
         f"https://honua.test{API_PREFIX}/start",
@@ -129,7 +158,9 @@ def test_apply_injects_runtime_credential_and_round_trips_optional_fields(tmp_pa
     )
     assert apply_result.exit_code == 0, apply_result.output
 
-    sent = json.loads(responses.calls[0].request.body)
+    sent = json.loads(
+        next(call.request.body for call in responses.calls if call.request.method == "POST")
+    )
     assert sent == {
         "serviceUrl": SOURCE_URL,
         "layerId": 7,
@@ -218,11 +249,16 @@ def test_relationships_file_plans_the_related_table_and_apply_omits_evidence(tmp
     assert actions[1]["request"]["serviceName"] == "cities-rel-1"
     assert "relationships" not in actions[1]["request"]
 
+    _stub_ready_import_target()
     responses.add(responses.POST, f"https://honua.test{API_PREFIX}/start", json={"jobId": "job-a"}, status=202)
     responses.add(responses.POST, f"https://honua.test{API_PREFIX}/start", json={"jobId": "job-b"}, status=202)
     apply_result = _invoke(["apply", str(plan), "--yes"], env=HONUA_ENV)
     assert apply_result.exit_code == 0, apply_result.output
-    sent = [json.loads(call.request.body) for call in responses.calls]
+    sent = [
+        json.loads(call.request.body)
+        for call in responses.calls
+        if call.request.method == "POST"
+    ]
     assert [item["layerId"] for item in sent] == [0, 1]
     assert all("relationships" not in item for item in sent)
     assert all(item["targetSchema"] == "reviewed_destination" for item in sent)

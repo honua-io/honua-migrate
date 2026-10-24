@@ -22,9 +22,10 @@ from urllib.parse import urlsplit, urlunsplit
 import requests
 import typer
 
+from honua_esri_assess.redaction import sanitize_handoff_url
 from honua_migrate.contract_validation import assert_artifact_safe, validate_contract
 from honua_migrate.contracts import MigrationError, MigrationPlan
-from honua_esri_assess.redaction import sanitize_handoff_url
+from honua_migrate.services.target_readiness import TargetReadinessError, preflight_target
 
 ARTIFACT_VERSION = "honua.arcgis-service-migration/v1"
 API_PREFIX = "/api/v1/admin/import/geoservices"
@@ -623,15 +624,37 @@ def _apply(
             "accessTokenSecretReference": validated_secret_reference,
         }
         payloads = [{**payload, "credentials": credential} for payload in payloads]
-    client = ArcGisClient.from_options(honua_url, api_key, timeout_seconds, retries)
+    client = _target_client(honua_url, api_key, timeout_seconds, retries)
+    readiness = preflight_target(client)
+    if not readiness["ready"]:
+        _emit(readiness, output, force=force)
+        raise TargetReadinessError(
+            readiness["reason"]["message"],
+            exit_code=int(readiness["exitCode"]),
+        )
     responses = [client.start(payload) for payload in payloads]
     artifact = {
         "artifactVersion": ARTIFACT_VERSION,
         "kind": "apply",
         "planId": plan_id,
+        "preflight": readiness,
         "response": responses[0] if len(responses) == 1 else responses,
     }
     _emit(artifact, output, force=force)
+
+
+def _target_client(
+    honua_url: str | None,
+    api_key: str | None,
+    timeout_seconds: float,
+    retries: int,
+) -> ArcGisClient:
+    return ArcGisClient(
+        _safe_url(honua_url or _get_env("HONUA_URL")),
+        api_key or "",
+        timeout_seconds,
+        retries,
+    )
 
 
 @arcgis_app.command("apply")
@@ -660,8 +683,35 @@ def apply_command(
             token_secret_ref,
             force,
         )
+    except TargetReadinessError:
+        raise
     except ArcGisMigrationError as exc:
         raise typer.BadParameter(str(exc)) from exc
+
+
+@arcgis_app.command("preflight")
+def preflight_command(
+    output: Path | None = typer.Option(None, "--output", help="Write readiness evidence."),
+    force: bool = typer.Option(False, "--force", help="Replace an existing output artifact."),
+    honua_url: str | None = typer.Option(None, envvar="HONUA_URL"),
+    api_key: str | None = typer.Option(None, envvar="HONUA_API_KEY", hide_input=True),
+    timeout_seconds: float = typer.Option(30, min=1),
+    retries: int = typer.Option(2, min=0, max=5),
+) -> None:
+    """Check target readiness. Read-only: does not queue or upload an import."""
+
+    try:
+        _preflight_output(output, force=force)
+        client = _target_client(honua_url, api_key, timeout_seconds, retries)
+        report = preflight_target(client)
+        _emit(report, output, force=force)
+    except ArcGisMigrationError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    if not report["ready"]:
+        raise TargetReadinessError(
+            report["reason"]["message"],
+            exit_code=int(report["exitCode"]),
+        )
 
 
 def _job_command(
