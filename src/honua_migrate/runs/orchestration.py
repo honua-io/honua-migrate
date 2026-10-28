@@ -105,7 +105,7 @@ def _redact_value(value: Any) -> Any:
         return value
     if _BEARER_VALUE.search(value):
         return "[redacted]"
-    if not value.lower().startswith(("http://", "https://")):
+    if "://" not in value:
         return value
     try:
         parsed = urlsplit(value)

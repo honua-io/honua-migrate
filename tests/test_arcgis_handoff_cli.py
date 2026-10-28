@@ -583,3 +583,81 @@ def test_handoff_target_service_url_rejects_credentials_and_query_strings(tmp_pa
 
     assert result.exit_code != 0
     assert "credentials" in _plain(result)
+
+
+def test_handoff_keeps_every_related_layer_and_job_id(tmp_path):
+    catalog = tmp_path / "relationships.json"
+    catalog.write_text(
+        json.dumps(
+            {
+                "service": {"tables": [{"id": 1, "name": "Inspections"}]},
+                "layers": {"7": {"relationships": [{"relatedTableId": 1}]}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    plan = tmp_path / "plan.json"
+    planned = _invoke(
+        [
+            "plan",
+            SOURCE_URL,
+            "--layer-id",
+            "7",
+            "--table-name",
+            "parcels",
+            "--relationships-file",
+            str(catalog),
+            "--output",
+            str(plan),
+        ]
+    )
+    assert planned.exit_code == 0, planned.output
+    plan_id = json.loads(plan.read_text(encoding="utf-8"))["id"]
+    apply_artifact = tmp_path / "apply.json"
+    apply_artifact.write_text(
+        json.dumps(
+            {
+                "kind": "apply",
+                "planId": plan_id,
+                "response": [{"jobId": "job-origin"}, {"jobId": "job-related"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    manifest = _manifest(
+        tmp_path,
+        [
+            {
+                "plan": str(plan),
+                "apply": str(apply_artifact),
+                "targetLayerIds": [12, 13],
+            }
+        ],
+    )
+    output = tmp_path / "handoff.json"
+    result = _invoke(
+        ["handoff", str(manifest), *_BASE_ARGS, *_READ_ONLY_ARGS, "--output", str(output)]
+    )
+    assert result.exit_code == 0, result.output
+    artifact = json.loads(output.read_text(encoding="utf-8"))
+    validate_contract("handoff", artifact)
+    assert artifact["jobIds"] == ["job-origin", "job-related"]
+    assert [item["targetLayerId"] for item in artifact["idMapping"]] == [12, 13]
+    assert [item["jobId"] for item in artifact["idMapping"]] == ["job-origin", "job-related"]
+    assert artifact["scope"]["layerIds"] == [1, 7]
+
+    single_target = _manifest(
+        tmp_path, [{"plan": str(plan), "targetLayerId": 12}]
+    )
+    refused = _invoke(
+        [
+            "handoff",
+            str(single_target),
+            *_BASE_ARGS,
+            *_READ_ONLY_ARGS,
+            "--output",
+            str(tmp_path / "refused.json"),
+        ]
+    )
+    assert refused.exit_code != 0
+    assert "targetLayerIds" in _plain(refused)

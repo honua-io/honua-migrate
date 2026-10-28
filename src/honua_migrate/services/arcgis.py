@@ -8,6 +8,7 @@ centralises SSRF protection in the Honua server endpoint.
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import json
 import math
 import os
@@ -24,7 +25,7 @@ import typer
 
 from honua_esri_assess.redaction import sanitize_handoff_url
 from honua_migrate.contract_validation import assert_artifact_safe, validate_contract
-from honua_migrate.contracts import MigrationError, MigrationPlan
+from honua_migrate.contracts import EXIT_PARTIAL, MigrationError, MigrationPlan
 from honua_migrate.services.target_readiness import TargetReadinessError, preflight_target
 
 ARTIFACT_VERSION = "honua.arcgis-service-migration/v1"
@@ -67,7 +68,43 @@ class _PollingDeadlineExpired(ArcGisMigrationError):
     """Internal control flow: emit the last safe status as a timeout receipt."""
 
 
-def _safe_url(value: str, *, allow_relative: bool = False) -> str:
+class PartialApplyError(ArcGisMigrationError):
+    """At least one import was queued. The receipt is already on stdout."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message, exit_code=EXIT_PARTIAL)
+
+
+_SERVER_TABLE_NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,62}$")
+
+
+def _allow_insecure_http_option() -> Any:
+    """Opt in to sending the Honua API key over non-loopback HTTP."""
+
+    return typer.Option(
+        False,
+        "--allow-insecure-http",
+        help="Send the Honua API key to a non-loopback http:// URL.",
+    )
+
+
+def _loopback_host(hostname: str) -> bool:
+    host = hostname.strip("[]").lower()
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def _safe_url(
+    value: str,
+    *,
+    allow_relative: bool = False,
+    protect_transport: bool = False,
+    allow_insecure_http: bool = False,
+) -> str:
     lower_value = value.lower()
     if (
         not value
@@ -95,6 +132,12 @@ def _safe_url(value: str, *, allow_relative: bool = False) -> str:
             raise ArcGisMigrationError(
                 "HONUA_URL and service URLs must be absolute HTTP(S) URLs."
             )
+        if protect_transport and parsed.scheme != "https":
+            if not (_loopback_host(parsed.hostname) or allow_insecure_http):
+                raise ArcGisMigrationError(
+                    "Honua URL must use HTTPS. HTTP is allowed for loopback, "
+                    "or pass --allow-insecure-http."
+                )
     return urlunsplit((parsed.scheme, parsed.netloc, parsed.path.rstrip("/"), "", ""))
 
 
@@ -163,9 +206,9 @@ def _validate_secret_reference(reference: str | None) -> str | None:
 
 
 def _write_json(path: Path, data: Mapping[str, Any], *, force: bool = False) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
     temporary: Path | None = None
     try:
+        path.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(
             "w",
             encoding="utf-8",
@@ -260,6 +303,25 @@ def _table_name_from_layer(name: str, layer_id: int) -> str:
     return (cleaned[:48] or f"layer_{layer_id}")
 
 
+def _derived_table_name(name: str, layer_id: int) -> str:
+    """Table name the server will accept for a related layer.
+
+    ImportValidationHelpers requires a letter first, then [A-Za-z0-9_], at most
+    63 characters. A layer title such as "2019 Inspections" would otherwise
+    queue the origin and then fail the related start.
+    """
+
+    cleaned = _table_name_from_layer(name, layer_id)
+    if cleaned[:1].isdigit():
+        cleaned = f"t_{cleaned}"
+    cleaned = cleaned[:63]
+    if _SERVER_TABLE_NAME.fullmatch(cleaned) is None:
+        raise ArcGisMigrationError(
+            f"Related layer {layer_id} has no table name the server will accept."
+        )
+    return cleaned
+
+
 def _relationship_records(origin_layer_id: int, layer_document: Mapping[str, Any]) -> list[dict[str, Any]]:
     relationships = layer_document.get("relationships")
     if not isinstance(relationships, list):
@@ -310,6 +372,12 @@ def expand_service_plan(origin: Mapping[str, Any], catalog: Mapping[str, Any]) -
     relationships = _relationship_records(layer_id, origin_document)
     origin_request = dict(origin)
     origin_request["relationships"] = relationships
+    origin_table = origin_request.get("tableName")
+    if not isinstance(origin_table, str) or _SERVER_TABLE_NAME.fullmatch(origin_table) is None:
+        raise ArcGisMigrationError(
+            "Origin table name must start with a letter and contain only letters, digits, and underscores."
+        )
+    table_names = {origin_table}
     actions = [{"kind": "arcgis-service-import", "request": origin_request}]
     seen = {layer_id}
     service_name = origin.get("serviceName")
@@ -318,10 +386,18 @@ def expand_service_plan(origin: Mapping[str, Any], catalog: Mapping[str, Any]) -
         if related_id in seen:
             continue
         seen.add(related_id)
+        table_name = _derived_table_name(
+            named_layers.get(related_id, f"layer_{related_id}"), related_id
+        )
+        if table_name in table_names:
+            raise ArcGisMigrationError(
+                "Plan actions must use distinct table names."
+            )
+        table_names.add(table_name)
         request: dict[str, Any] = {
             "serviceUrl": origin["serviceUrl"],
             "layerId": related_id,
-            "tableName": _table_name_from_layer(named_layers.get(related_id, f"layer_{related_id}"), related_id),
+            "tableName": table_name,
             "targetSrid": origin["targetSrid"],
             "overwriteExisting": origin["overwriteExisting"],
             "maxRetries": origin["maxRetries"],
@@ -344,9 +420,17 @@ class ArcGisClient:
     api_key: str
     timeout_seconds: float = 30
     retries: int = 2
+    allow_insecure_http: bool = False
     session: requests.Session | Any = field(default_factory=requests.Session)
     sleeper: Callable[[float], None] = time.sleep
     clock: Callable[[], float] = time.monotonic
+
+    def __post_init__(self) -> None:
+        self.base_url = _safe_url(
+            self.base_url,
+            protect_transport=True,
+            allow_insecure_http=self.allow_insecure_http,
+        )
 
     @classmethod
     def from_options(
@@ -355,12 +439,19 @@ class ArcGisClient:
         api_key: str | None,
         timeout_seconds: float,
         retries: int,
+        *,
+        allow_insecure_http: bool = False,
     ) -> "ArcGisClient":
         return cls(
-            _safe_url(honua_url or _get_env("HONUA_URL")),
+            _safe_url(
+                honua_url or _get_env("HONUA_URL"),
+                protect_transport=True,
+                allow_insecure_http=allow_insecure_http,
+            ),
             api_key or _get_env("HONUA_API_KEY"),
             timeout_seconds,
             retries,
+            allow_insecure_http,
         )
 
     def request(
@@ -392,7 +483,13 @@ class ArcGisClient:
                     # HTTPAdapter explicitly accepts TimeoutSauce; requests'
                     # Session annotation omits this runtime-supported form.
                     timeout=timeout,  # type: ignore[arg-type]
+                    # A redirect would replay X-API-Key to whatever host answered.
+                    allow_redirects=False,
                 )
+                if response.is_redirect or response.status_code in {301, 302, 303, 307, 308}:
+                    raise ArcGisMigrationError(
+                        "Refusing to follow a redirect with the Honua API key."
+                    )
             except requests.RequestException as exc:
                 if deadline is not None and self.clock() >= deadline:
                     raise _PollingDeadlineExpired("Import polling deadline expired.") from exc
@@ -518,9 +615,10 @@ def _emit(data: Mapping[str, Any], output: Path | None, *, force: bool = False) 
         assert_artifact_safe(safe_data)
     except MigrationError as exc:
         raise ArcGisMigrationError(str(exc)) from exc
+    # Echo before the file write so a queued job id survives an unwritable --output.
+    typer.echo(json.dumps(safe_data, sort_keys=True))
     if output:
         _write_json(output, safe_data, force=force)
-    typer.echo(json.dumps(safe_data, sort_keys=True))
 
 
 @arcgis_app.command("discover")
@@ -533,12 +631,15 @@ def discover_command(
     timeout_seconds: int = typer.Option(30, min=1, max=600),
     retries: int = typer.Option(2, min=0, max=5),
     token_secret_ref: str | None = typer.Option(None, help="Server-side ArcGIS token secret reference."),
+    allow_insecure_http: bool = _allow_insecure_http_option(),
 ) -> None:
     """Read-only discovery; source credentials are never placed in the artifact."""
     try:
         _preflight_output(output, force=force)
         request = _request(service_url, timeout_seconds, token_secret_ref)
-        client = ArcGisClient.from_options(honua_url, api_key, timeout_seconds, retries)
+        client = ArcGisClient.from_options(
+            honua_url, api_key, timeout_seconds, retries, allow_insecure_http=allow_insecure_http
+        )
         artifact = {"artifactVersion": ARTIFACT_VERSION, "kind": "discovery", "request": request, "discovery": client.discover(request)}
         _emit(artifact, output, force=force)
     except ArcGisMigrationError as exc:
@@ -601,6 +702,36 @@ def plan_command(
         raise typer.BadParameter(str(exc)) from exc
 
 
+def _started_job_ids(started: list[dict[str, Any]]) -> list[str]:
+    job_ids: list[str] = []
+    for response in started:
+        job_id = response.get("jobId") if isinstance(response, dict) else None
+        if isinstance(job_id, str) and job_id:
+            job_ids.append(job_id)
+    return job_ids
+
+
+def _apply_artifact(
+    plan_id: str,
+    readiness: Mapping[str, Any],
+    started: list[dict[str, Any]],
+    *,
+    failed_index: int | None = None,
+) -> dict[str, Any]:
+    artifact: dict[str, Any] = {
+        "artifactVersion": ARTIFACT_VERSION,
+        "kind": "apply",
+        "planId": plan_id,
+        "preflight": readiness,
+        "response": started[0] if len(started) == 1 else started,
+    }
+    if failed_index is not None:
+        artifact["partial"] = True
+        artifact["failedActionIndex"] = failed_index
+        artifact["startedJobIds"] = _started_job_ids(started)
+    return artifact
+
+
 def _apply(
     plan: Path,
     output: Path | None,
@@ -611,6 +742,8 @@ def _apply(
     retries: int,
     token_secret_ref: str | None,
     force: bool,
+    *,
+    allow_insecure_http: bool = False,
 ) -> None:
     if not yes:
         raise typer.BadParameter("Apply mutates the Honua target. Re-run with --yes.")
@@ -624,7 +757,9 @@ def _apply(
             "accessTokenSecretReference": validated_secret_reference,
         }
         payloads = [{**payload, "credentials": credential} for payload in payloads]
-    client = _target_client(honua_url, api_key, timeout_seconds, retries)
+    client = _target_client(
+        honua_url, api_key, timeout_seconds, retries, allow_insecure_http=allow_insecure_http
+    )
     readiness = preflight_target(client)
     if not readiness["ready"]:
         _emit(readiness, output, force=force)
@@ -632,15 +767,47 @@ def _apply(
             readiness["reason"]["message"],
             exit_code=int(readiness["exitCode"]),
         )
-    responses = [client.start(payload) for payload in payloads]
-    artifact = {
-        "artifactVersion": ARTIFACT_VERSION,
-        "kind": "apply",
-        "planId": plan_id,
-        "preflight": readiness,
-        "response": responses[0] if len(responses) == 1 else responses,
-    }
-    _emit(artifact, output, force=force)
+    started: list[dict[str, Any]] = []
+    failed_index: int | None = None
+    failure: BaseException | None = None
+    for index, payload in enumerate(payloads):
+        try:
+            response = client.start(payload)
+        except ArcGisMigrationError as exc:
+            failed_index = index
+            failure = exc
+            break
+        if not isinstance(response, dict):
+            failed_index = index
+            failure = ArcGisMigrationError("Honua returned an invalid JSON response.")
+            break
+        started.append(response)
+    if failed_index is None:
+        try:
+            _emit(_apply_artifact(plan_id, readiness, started), output, force=force)
+        except ArcGisMigrationError as exc:
+            if started:
+                raise PartialApplyError(
+                    "Apply queued the import but could not write the receipt file. "
+                    "The job IDs were printed above."
+                ) from exc
+            raise
+        return
+    if not started:
+        assert failure is not None
+        raise failure
+    try:
+        _emit(
+            _apply_artifact(plan_id, readiness, started, failed_index=failed_index),
+            output,
+            force=force,
+        )
+    except ArcGisMigrationError:
+        # The receipt was echoed before the file write.
+        pass
+    raise PartialApplyError(
+        "Apply queued some imports and then failed. The receipt lists the started job IDs."
+    ) from failure
 
 
 def _target_client(
@@ -648,12 +815,19 @@ def _target_client(
     api_key: str | None,
     timeout_seconds: float,
     retries: int,
+    *,
+    allow_insecure_http: bool = False,
 ) -> ArcGisClient:
     return ArcGisClient(
-        _safe_url(honua_url or _get_env("HONUA_URL")),
+        _safe_url(
+            honua_url or _get_env("HONUA_URL"),
+            protect_transport=True,
+            allow_insecure_http=allow_insecure_http,
+        ),
         api_key or "",
         timeout_seconds,
         retries,
+        allow_insecure_http,
     )
 
 
@@ -669,6 +843,7 @@ def apply_command(
     token_secret_ref: str | None = typer.Option(
         None, help="Server-side ArcGIS token secret reference; never stored in the plan."
     ),
+    allow_insecure_http: bool = _allow_insecure_http_option(),
 ) -> None:
     """Queue an import from a previously reviewed plan."""
     try:
@@ -682,9 +857,12 @@ def apply_command(
             retries,
             token_secret_ref,
             force,
+            allow_insecure_http=allow_insecure_http,
         )
     except TargetReadinessError:
         raise
+    except PartialApplyError as exc:
+        raise typer.Exit(exc.exit_code) from exc
     except ArcGisMigrationError as exc:
         raise typer.BadParameter(str(exc)) from exc
 
@@ -697,12 +875,15 @@ def preflight_command(
     api_key: str | None = typer.Option(None, envvar="HONUA_API_KEY", hide_input=True),
     timeout_seconds: float = typer.Option(30, min=1),
     retries: int = typer.Option(2, min=0, max=5),
+    allow_insecure_http: bool = _allow_insecure_http_option(),
 ) -> None:
     """Check target readiness. Read-only: does not queue or upload an import."""
 
     try:
         _preflight_output(output, force=force)
-        client = _target_client(honua_url, api_key, timeout_seconds, retries)
+        client = _target_client(
+            honua_url, api_key, timeout_seconds, retries, allow_insecure_http=allow_insecure_http
+        )
         report = preflight_target(client)
         _emit(report, output, force=force)
     except ArcGisMigrationError as exc:
@@ -723,10 +904,18 @@ def _job_command(
     timeout_seconds: float,
     retries: int,
     force: bool,
+    *,
+    allow_insecure_http: bool = False,
 ) -> None:
     _preflight_output(output, force=force)
     validated_job_id = None if action == "list" else _job_id(job_id or "")
-    client = ArcGisClient.from_options(honua_url, api_key, timeout_seconds, retries)
+    client = ArcGisClient.from_options(
+        honua_url,
+        api_key,
+        timeout_seconds,
+        retries,
+        allow_insecure_http=allow_insecure_http,
+    )
     response = (
         client.list()
         if action == "list"
@@ -748,10 +937,19 @@ def status_command(
     api_key: str | None = typer.Option(None, envvar="HONUA_API_KEY", hide_input=True),
     timeout_seconds: float = typer.Option(30, min=1),
     retries: int = typer.Option(2, min=0, max=5),
+    allow_insecure_http: bool = _allow_insecure_http_option(),
 ) -> None:
     try:
         _job_command(
-            "status", job_id, output, honua_url, api_key, timeout_seconds, retries, force
+            "status",
+            job_id,
+            output,
+            honua_url,
+            api_key,
+            timeout_seconds,
+            retries,
+            force,
+            allow_insecure_http=allow_insecure_http,
         )
     except ArcGisMigrationError as exc:
         raise typer.BadParameter(str(exc)) from exc
@@ -765,10 +963,19 @@ def list_command(
     api_key: str | None = typer.Option(None, envvar="HONUA_API_KEY", hide_input=True),
     timeout_seconds: float = typer.Option(30, min=1),
     retries: int = typer.Option(2, min=0, max=5),
+    allow_insecure_http: bool = _allow_insecure_http_option(),
 ) -> None:
     try:
         _job_command(
-            "list", None, output, honua_url, api_key, timeout_seconds, retries, force
+            "list",
+            None,
+            output,
+            honua_url,
+            api_key,
+            timeout_seconds,
+            retries,
+            force,
+            allow_insecure_http=allow_insecure_http,
         )
     except ArcGisMigrationError as exc:
         raise typer.BadParameter(str(exc)) from exc
@@ -785,11 +992,18 @@ def resume_command(
     retries: int = typer.Option(2, min=0, max=5),
     poll_interval_seconds: float = typer.Option(2, "--poll-interval", min=0.1, max=300),
     max_wait_seconds: float = typer.Option(300, "--max-wait", min=0, max=86400),
+    allow_insecure_http: bool = _allow_insecure_http_option(),
 ) -> None:
     """Wait for an existing job using bounded GET-only polling; never requeue it."""
     try:
         validated_job_id = _job_id(job_id)
-        client = ArcGisClient.from_options(honua_url, api_key, timeout_seconds, retries)
+        client = ArcGisClient.from_options(
+            honua_url,
+            api_key,
+            timeout_seconds,
+            retries,
+            allow_insecure_http=allow_insecure_http,
+        )
         response = client.wait_for_terminal(
             validated_job_id,
             poll_interval_seconds=poll_interval_seconds,
@@ -820,12 +1034,21 @@ def cancel_command(
     api_key: str | None = typer.Option(None, envvar="HONUA_API_KEY", hide_input=True),
     timeout_seconds: float = typer.Option(30, min=1),
     retries: int = typer.Option(2, min=0, max=5),
+    allow_insecure_http: bool = _allow_insecure_http_option(),
 ) -> None:
     try:
         if not yes:
             raise ArcGisMigrationError("Cancel mutates target job state. Re-run with --yes.")
         _job_command(
-            "cancel", job_id, output, honua_url, api_key, timeout_seconds, retries, force
+            "cancel",
+            job_id,
+            output,
+            honua_url,
+            api_key,
+            timeout_seconds,
+            retries,
+            force,
+            allow_insecure_http=allow_insecure_http,
         )
     except ArcGisMigrationError as exc:
         raise typer.BadParameter(str(exc)) from exc
@@ -868,7 +1091,22 @@ def _load_handoff_manifest(path: Path) -> list[dict[str, Any]]:
     return payload
 
 
-def _handoff_job_id(apply_path: str, expected_plan_id: str) -> str | None:
+def _plan_action_requests(artifact: Mapping[str, Any]) -> list[dict[str, Any]]:
+    actions = artifact.get("actions")
+    if not isinstance(actions, list) or not actions:
+        raise ArcGisMigrationError("Plan artifact has no valid request.")
+    requests: list[dict[str, Any]] = []
+    for action in actions:
+        if not isinstance(action, dict) or action.get("kind") != "arcgis-service-import":
+            raise ArcGisMigrationError("Plan artifact has no valid request.")
+        request = action.get("request")
+        if not isinstance(request, dict):
+            raise ArcGisMigrationError("Plan artifact has no valid request.")
+        requests.append(request)
+    return requests
+
+
+def _handoff_job_ids(apply_path: str, expected_plan_id: str) -> list[str]:
     try:
         artifact = json.loads(Path(apply_path).read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -884,8 +1122,16 @@ def _handoff_job_id(apply_path: str, expected_plan_id: str) -> str | None:
             "A handoff manifest 'apply' artifact does not match its plan."
         )
     response = artifact.get("response")
-    job_id = response.get("jobId") if isinstance(response, dict) else None
-    return job_id if isinstance(job_id, str) and job_id else None
+    items = response if isinstance(response, list) else [response]
+    job_ids: list[str] = []
+    for item in items:
+        job_id = item.get("jobId") if isinstance(item, dict) else None
+        if not isinstance(job_id, str) or not job_id:
+            raise ArcGisMigrationError("Apply artifact is missing a job ID.")
+        job_ids.append(job_id)
+    if not job_ids:
+        raise ArcGisMigrationError("Apply artifact is missing a job ID.")
+    return job_ids
 
 
 def _handoff_scope(
@@ -909,16 +1155,34 @@ def _handoff_scope(
         target_layer_id = entry.get("targetLayerId")
         if not isinstance(plan_value, str) or not plan_value:
             raise ArcGisMigrationError(f"Handoff manifest entry {index} is missing 'plan'.")
-        if not isinstance(target_layer_id, int) or isinstance(target_layer_id, bool):
+        has_single_target = isinstance(target_layer_id, int) and not isinstance(target_layer_id, bool)
+        has_target_list = isinstance(entry.get("targetLayerIds"), list)
+        if not has_single_target and not has_target_list:
             raise ArcGisMigrationError(
                 f"Handoff manifest entry {index} needs a verified integer 'targetLayerId'."
             )
-        plan_id, request, plan_artifact = _read_artifact(Path(plan_value))
+        plan_id, _request, plan_artifact = _read_artifact(Path(plan_value))
+        requests = _plan_action_requests(plan_artifact)
+        target_layer_ids = entry.get("targetLayerIds")
+        if len(requests) == 1 and has_single_target:
+            target_ids = [target_layer_id]
+        elif isinstance(target_layer_ids, list) and len(target_layer_ids) == len(requests):
+            target_ids = target_layer_ids
+        else:
+            raise ArcGisMigrationError(
+                f"Handoff manifest entry {index} needs 'targetLayerIds' for every "
+                "action in a multi-layer plan."
+            )
+        if any(isinstance(item, bool) or not isinstance(item, int) for item in target_ids):
+            raise ArcGisMigrationError(
+                f"Handoff manifest entry {index} needs an integer target layer id per action."
+            )
 
         manifest_job_id = entry.get("jobId")
         apply_value = entry.get("apply")
+        manifest_job_ids: list[str] = []
         if apply_value is not None:
-            if manifest_job_id is not None:
+            if manifest_job_id is not None or entry.get("jobIds") is not None:
                 raise ArcGisMigrationError(
                     f"Handoff manifest entry {index} must not set both 'jobId' and 'apply'."
                 )
@@ -926,32 +1190,47 @@ def _handoff_scope(
                 raise ArcGisMigrationError(
                     f"Handoff manifest entry {index} has an invalid 'apply' path."
                 )
-            manifest_job_id = _handoff_job_id(apply_value, plan_id)
-        elif manifest_job_id is not None and not isinstance(manifest_job_id, str):
-            raise ArcGisMigrationError(f"Handoff manifest entry {index} has an invalid 'jobId'.")
+            manifest_job_ids = _handoff_job_ids(apply_value, plan_id)
+        elif isinstance(entry.get("jobIds"), list):
+            if manifest_job_id is not None:
+                raise ArcGisMigrationError(
+                    f"Handoff manifest entry {index} must not set both 'jobId' and 'jobIds'."
+                )
+            manifest_job_ids = entry["jobIds"]
+        elif manifest_job_id is not None:
+            if not isinstance(manifest_job_id, str):
+                raise ArcGisMigrationError(f"Handoff manifest entry {index} has an invalid 'jobId'.")
+            manifest_job_ids = [manifest_job_id]
+        if manifest_job_ids and len(manifest_job_ids) != len(requests):
+            raise ArcGisMigrationError(
+                f"Handoff manifest entry {index} needs one job ID for every plan action."
+            )
+        if any(not isinstance(job_id, str) or not job_id for job_id in manifest_job_ids):
+            raise ArcGisMigrationError(f"Handoff manifest entry {index} has an invalid job ID.")
 
-        source_service_url = request["serviceUrl"]
-        source_layer_id = request["layerId"]
-        mapping_entry: dict[str, Any] = {
-            "sourceServiceUrl": source_service_url,
-            "sourceLayerId": source_layer_id,
-            "tableName": request["tableName"],
-            "targetServiceUrl": target_service_url,
-            "targetLayerId": target_layer_id,
-        }
-        if manifest_job_id:
-            mapping_entry["jobId"] = manifest_job_id
-            if manifest_job_id not in job_ids:
-                job_ids.append(manifest_job_id)
-        id_mapping.append(mapping_entry)
+        for offset, request in enumerate(requests):
+            source_service_url = request["serviceUrl"]
+            source_layer_id = request["layerId"]
+            mapping_entry: dict[str, Any] = {
+                "sourceServiceUrl": source_service_url,
+                "sourceLayerId": source_layer_id,
+                "tableName": request["tableName"],
+                "targetServiceUrl": target_service_url,
+                "targetLayerId": target_ids[offset],
+            }
+            if manifest_job_ids:
+                mapping_entry["jobId"] = manifest_job_ids[offset]
+                if manifest_job_ids[offset] not in job_ids:
+                    job_ids.append(manifest_job_ids[offset])
+            id_mapping.append(mapping_entry)
+            if source_service_url not in service_urls:
+                service_urls.append(source_service_url)
+            if source_layer_id not in layer_ids:
+                layer_ids.append(source_layer_id)
         if plan_id not in plan_ids:
             plan_ids.append(plan_id)
         if plan_artifact["plan_digest"] not in plan_digests:
             plan_digests.append(plan_artifact["plan_digest"])
-        if source_service_url not in service_urls:
-            service_urls.append(source_service_url)
-        if source_layer_id not in layer_ids:
-            layer_ids.append(source_layer_id)
     return id_mapping, plan_ids, plan_digests, job_ids, service_urls, layer_ids
 
 
