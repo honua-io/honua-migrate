@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import os
 import re
@@ -83,7 +84,23 @@ def redact_artifact(value: Any, *, key: str = "") -> Any:
     return value
 
 
-def validate_url(value: str, *, label: str) -> str:
+def _loopback_host(hostname: str) -> bool:
+    host = hostname.strip("[]").lower()
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def validate_url(
+    value: str,
+    *,
+    label: str,
+    protect_transport: bool = False,
+    allow_insecure_http: bool = False,
+) -> str:
     parsed = urlsplit(value)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         raise MigrationError(f"{label} must be an absolute HTTP(S) URL.")
@@ -91,6 +108,12 @@ def validate_url(value: str, *, label: str) -> str:
         raise MigrationError(
             f"{label} cannot contain credentials, a query, or a fragment."
         )
+    if protect_transport and parsed.scheme != "https":
+        if not (_loopback_host(parsed.hostname or "") or allow_insecure_http):
+            raise MigrationError(
+                f"{label} must use HTTPS. HTTP is allowed for loopback, "
+                "or pass --allow-insecure-http."
+            )
     return value.rstrip("/")
 
 
@@ -138,12 +161,18 @@ class HonuaMigrationClient:
         *,
         timeout: float = 120,
         retries: int = 3,
+        allow_insecure_http: bool = False,
     ) -> None:
         if timeout <= 0 or retries < 0:
             raise MigrationError(
                 "Timeout must be positive and retries cannot be negative."
             )
-        self.base_url = validate_url(base_url, label="Honua URL")
+        self.base_url = validate_url(
+            base_url,
+            label="Honua URL",
+            protect_transport=True,
+            allow_insecure_http=allow_insecure_http,
+        )
         self.api_key = resolve_secret_reference(api_key_reference)
         self.timeout = timeout
         self.retries = retries
@@ -168,7 +197,15 @@ class HonuaMigrationClient:
                     headers=headers,
                     json=body,
                     timeout=self.timeout,
+                    allow_redirects=False,
                 )
+                redirected = getattr(response, "is_redirect", False) or response.status_code in {
+                    301, 302, 303, 307, 308
+                }
+                if redirected:
+                    raise MigrationError(
+                        "Refusing to follow a redirect with the Honua API key."
+                    )
                 if (
                     response.status_code in {429, 502, 503, 504}
                     and attempt < retry_count
@@ -287,19 +324,41 @@ class HonuaMigrationClient:
             time.sleep(poll_interval)
 
 
+def _allow_insecure_http_option() -> Any:
+    """Opt in to sending the Honua API key over non-loopback HTTP."""
+
+    return typer.Option(
+        False,
+        "--allow-insecure-http",
+        help="Send the Honua API key to a non-loopback http:// URL.",
+    )
+
+
 def _client(
-    url: str, key: str, timeout: float, retries: int
+    url: str,
+    key: str,
+    timeout: float,
+    retries: int,
+    *,
+    allow_insecure_http: bool = False,
 ) -> HonuaMigrationClient:
-    return HonuaMigrationClient(url, key, timeout=timeout, retries=retries)
+    return HonuaMigrationClient(
+        url,
+        key,
+        timeout=timeout,
+        retries=retries,
+        allow_insecure_http=allow_insecure_http,
+    )
 
 
 def _emit(
     payload: Mapping[str, Any], output: Path | None, force: bool
 ) -> None:
     safe = redact_artifact(payload)
+    # Echo before the file write so a queued job id survives an unwritable --output.
+    typer.echo(json.dumps(safe, indent=2, sort_keys=True))
     if output:
         write_artifact(safe, output, force=force)
-    typer.echo(json.dumps(safe, indent=2, sort_keys=True))
 
 
 def _validate_completed_job(
@@ -586,10 +645,17 @@ def scan_command(
     force: Annotated[bool, typer.Option("--force")] = False,
     timeout: Annotated[float, typer.Option("--timeout")] = 120,
     retries: Annotated[int, typer.Option("--retries")] = 3,
+    allow_insecure_http: bool = _allow_insecure_http_option(),
 ) -> None:
     """Discover a GeoServer catalog; this source operation is read-only."""
     _preflight_output(output, force=force)
-    discovery = _client(honua_url, honua_api_key_ref, timeout, retries).scan(
+    discovery = _client(
+        honua_url,
+        honua_api_key_ref,
+        timeout,
+        retries,
+        allow_insecure_http=allow_insecure_http,
+    ).scan(
         geoserver_url,
         username,
         geoserver_password_ref,
@@ -659,6 +725,7 @@ def plan_command(
     poll_interval: Annotated[
         float, typer.Option("--poll-interval")
     ] = 1,
+    allow_insecure_http: bool = _allow_insecure_http_option(),
 ) -> None:
     """Run a dry-run to completion and emit reviewable evidence."""
     _preflight_output(output, force=force)
@@ -684,7 +751,13 @@ def plan_command(
         workspace_mappings=workspace_mapping,
         default_workspace_name=default_workspace_name,
     )
-    client = _client(honua_url, honua_api_key_ref, timeout, retries)
+    client = _client(
+        honua_url,
+        honua_api_key_ref,
+        timeout,
+        retries,
+        allow_insecure_http=allow_insecure_http,
+    )
     queued = client.start(request)
     job_id = queued.get("jobId")
     if not isinstance(job_id, str):
@@ -744,6 +817,7 @@ def apply_command(
     force: Annotated[bool, typer.Option("--force")] = False,
     timeout: Annotated[float, typer.Option("--timeout")] = 120,
     retries: Annotated[int, typer.Option("--retries")] = 3,
+    allow_insecure_http: bool = _allow_insecure_http_option(),
 ) -> None:
     """Apply a reviewed, completed plan with explicit acknowledgement."""
     if not acknowledge:
@@ -755,7 +829,13 @@ def apply_command(
     password_reference = validate_server_secret_reference(
         geoserver_password_ref
     )
-    client = _client(honua_url, honua_api_key_ref, timeout, retries)
+    client = _client(
+        honua_url,
+        honua_api_key_ref,
+        timeout,
+        retries,
+        allow_insecure_http=allow_insecure_http,
+    )
     _verify_plan_job(client, request, recorded_job)
     apply_request = dict(request)
     apply_request.update(
@@ -777,9 +857,17 @@ def _job_command(
     force: bool,
     timeout: float,
     retries: int,
+    *,
+    allow_insecure_http: bool = False,
 ) -> None:
     _preflight_output(output, force=force)
-    client = _client(honua_url, honua_api_key_ref, timeout, retries)
+    client = _client(
+        honua_url,
+        honua_api_key_ref,
+        timeout,
+        retries,
+        allow_insecure_http=allow_insecure_http,
+    )
     if action == "list":
         payload = client.list()
     elif action == "status":
@@ -800,6 +888,7 @@ def status_command(
     force: Annotated[bool, typer.Option("--force")] = False,
     timeout: Annotated[float, typer.Option("--timeout")] = 120,
     retries: Annotated[int, typer.Option("--retries")] = 3,
+    allow_insecure_http: bool = _allow_insecure_http_option(),
 ) -> None:
     _job_command(
         "status",
@@ -810,6 +899,7 @@ def status_command(
         force,
         timeout,
         retries,
+        allow_insecure_http=allow_insecure_http,
     )
 
 
@@ -830,10 +920,17 @@ def resume_command(
     poll_interval: Annotated[
         float, typer.Option("--poll-interval")
     ] = 1,
+    allow_insecure_http: bool = _allow_insecure_http_option(),
 ) -> None:
     """Resume monitoring an existing job until a bounded terminal state."""
     _preflight_output(output, force=force)
-    client = _client(honua_url, honua_api_key_ref, timeout, retries)
+    client = _client(
+        honua_url,
+        honua_api_key_ref,
+        timeout,
+        retries,
+        allow_insecure_http=allow_insecure_http,
+    )
     job = client.wait_for_terminal(
         job_id,
         wait_timeout=wait_timeout,
@@ -852,6 +949,7 @@ def list_command(
     force: Annotated[bool, typer.Option("--force")] = False,
     timeout: Annotated[float, typer.Option("--timeout")] = 120,
     retries: Annotated[int, typer.Option("--retries")] = 3,
+    allow_insecure_http: bool = _allow_insecure_http_option(),
 ) -> None:
     _job_command(
         "list",
@@ -862,6 +960,7 @@ def list_command(
         force,
         timeout,
         retries,
+        allow_insecure_http=allow_insecure_http,
     )
 
 
@@ -879,6 +978,7 @@ def cancel_command(
     force: Annotated[bool, typer.Option("--force")] = False,
     timeout: Annotated[float, typer.Option("--timeout")] = 120,
     retries: Annotated[int, typer.Option("--retries")] = 3,
+    allow_insecure_http: bool = _allow_insecure_http_option(),
 ) -> None:
     if not acknowledge:
         raise typer.BadParameter(
@@ -893,4 +993,5 @@ def cancel_command(
         force,
         timeout,
         retries,
+        allow_insecure_http=allow_insecure_http,
     )

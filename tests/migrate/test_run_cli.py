@@ -15,12 +15,21 @@ from honua_migrate.app import cli_app
 from honua_migrate.cli import main
 from honua_migrate.contracts import (
     EXIT_APPLY_REFUSED,
+    EXIT_PARTIAL,
     EXIT_REMOTE_ERROR,
     EXIT_UNAVAILABLE,
     MigrationError,
     MigrationPlan,
 )
 from honua_migrate.runs import ExecutionReceipt, start_run
+
+
+class _SnapshotExecutor:
+    def inspect(self, action: Mapping[str, Any]) -> ExecutionReceipt | None:
+        return None
+
+    def execute(self, action: Mapping[str, Any]) -> ExecutionReceipt:
+        return ExecutionReceipt()
 
 
 def _plan(
@@ -77,6 +86,78 @@ def test_plan_verify_and_apply_ack_preflight(tmp_path: Path) -> None:
         == EXIT_UNAVAILABLE
     )
     assert json.loads(run_path.read_text(encoding="utf-8"))["outcome"] == "partial"
+
+
+def test_reconcile_compare_exits_partial_unless_the_snapshots_match(tmp_path: Path) -> None:
+    plan_path = tmp_path / "plan.json"
+    run_path = tmp_path / "run.json"
+    source_path = tmp_path / "source.json"
+    target_path = tmp_path / "target.json"
+    output_path = tmp_path / "result.json"
+    payload = MigrationPlan(
+        id="plan-1",
+        service="fake",
+        actions=({"id": "inspect", "write": False},),
+    ).to_dict()
+    plan_path.write_text(json.dumps(payload), encoding="utf-8")
+    run = start_run(plan_path, run_path, _SnapshotExecutor())
+    binding = {
+        "run_id": run["id"],
+        "plan_id": run["plan_id"],
+        "plan_digest": run["plan_digest"],
+        "service": run["service"],
+    }
+    snapshot = {
+        "counts": {"roads": 2},
+        "schemas": {"roads": {"id": "integer"}},
+        "extents": {"roads": [0, 0, 1, 1]},
+        "samples": [{"id": 1}],
+        "relationships": [],
+        "metadata": {"title": "Roads"},
+        "supported_metadata": ["title"],
+        **binding,
+    }
+    source_path.write_text(json.dumps(snapshot), encoding="utf-8")
+    target_path.write_text(json.dumps(snapshot), encoding="utf-8")
+
+    matched = CliRunner().invoke(
+        cli_app,
+        [
+            "reconcile",
+            "compare",
+            str(run_path),
+            "--source",
+            str(source_path),
+            "--target",
+            str(target_path),
+            "--output",
+            str(output_path),
+        ],
+    )
+    assert matched.exit_code == 0, matched.output
+    assert json.loads(output_path.read_text(encoding="utf-8"))["status"] == "matched"
+
+    output_path.unlink()
+    target = json.loads(target_path.read_text(encoding="utf-8"))
+    target["counts"] = {"roads": 1}
+    target_path.write_text(json.dumps(target), encoding="utf-8")
+    mismatched = CliRunner().invoke(
+        cli_app,
+        [
+            "reconcile",
+            "compare",
+            str(run_path),
+            "--source",
+            str(source_path),
+            "--target",
+            str(target_path),
+            "--output",
+            str(output_path),
+        ],
+    )
+    assert mismatched.exit_code == EXIT_PARTIAL, mismatched.output
+    assert json.loads(output_path.read_text(encoding="utf-8"))["status"] == "mismatched"
+    assert "mismatched" in mismatched.output
 
 
 def test_existing_output_refuses_before_adapter_factory(

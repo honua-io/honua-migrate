@@ -727,6 +727,96 @@ def test_mutating_post_is_not_retried(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "server-secret" not in str(caught.value)
 
 
+def test_honua_url_requires_https_and_redirects_are_not_followed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("HONUA_KEY", "key")
+    with pytest.raises(MigrationError, match="HTTPS"):
+        HonuaMigrationClient("http://honua.example", "env:HONUA_KEY")
+    HonuaMigrationClient("http://127.0.0.1:9", "env:HONUA_KEY")
+    HonuaMigrationClient("http://localhost", "env:HONUA_KEY")
+    HonuaMigrationClient("http://[::1]", "env:HONUA_KEY")
+    allowed = HonuaMigrationClient(
+        "http://10.1.1.1", "env:HONUA_KEY", allow_insecure_http=True
+    )
+    seen: dict[str, Any] = {}
+
+    class Response:
+        is_redirect = True
+        status_code = 302
+        ok = False
+
+        @staticmethod
+        def json() -> dict[str, str]:
+            return {}
+
+    def fake_request(method: str, url: str, **kwargs: Any) -> Response:
+        seen["method"] = method
+        seen["url"] = url
+        seen["allow_redirects"] = kwargs["allow_redirects"]
+        return Response()
+
+    monkeypatch.setattr(
+        "honua_migrate.services.geoserver.requests.request", fake_request
+    )
+    with pytest.raises(MigrationError, match="redirect"):
+        allowed.request("GET", "/api/v1/admin/import/geoserver/jobs")
+    assert seen["allow_redirects"] is False
+    assert seen["url"].startswith("http://10.1.1.1/")
+
+    class Ok:
+        ok = True
+        status_code = 200
+        is_redirect = False
+
+        @staticmethod
+        def json() -> dict[str, str]:
+            return {"workspaces": []}
+
+    monkeypatch.setattr(
+        "honua_migrate.services.geoserver.requests.request",
+        lambda *args, **kwargs: Ok(),
+    )
+    scanned = allowed.scan("http://geoserver.example/rest", None, None, include_styles=False)
+    assert scanned == {"workspaces": []}
+
+
+def test_scan_prints_the_inventory_before_the_output_write_fails(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    class Client:
+        def scan(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+            return {"workspaces": [{"name": "public"}]}
+
+    monkeypatch.setattr(
+        "honua_migrate.services.geoserver._client", lambda *args, **kwargs: Client()
+    )
+
+    def refuse(*args: Any, **kwargs: Any) -> None:
+        raise MigrationError("Could not write the requested artifact.")
+
+    monkeypatch.setattr(
+        "honua_migrate.services.geoserver.write_artifact", refuse
+    )
+    result = runner.invoke(
+        geoserver_app,
+        [
+            "scan",
+            "--honua-url",
+            "https://honua.test",
+            "--honua-api-key-ref",
+            "env:KEY",
+            "--geoserver-url",
+            "http://geoserver.example/rest",
+            "--output",
+            str(tmp_path / "inventory.json"),
+        ],
+    )
+    assert result.exit_code != 0
+    assert "public" in result.output
+    assert not (tmp_path / "inventory.json").exists()
+
+
 def test_resume_is_bounded_get_only_wait(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

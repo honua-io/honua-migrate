@@ -602,3 +602,187 @@ def test_resume_passes_remaining_deadline_to_network_timeout():
     assert timeouts == [2]
     assert result["outcome"] == "timed-out"
     assert result["pollCount"] == 1
+
+
+def test_related_table_names_match_the_server_rule_before_apply(tmp_path):
+    catalog = tmp_path / "relationships.json"
+    catalog.write_text(
+        json.dumps(
+            {
+                "service": {"tables": [{"id": 3, "name": "2019 Inspections"}]},
+                "layers": {
+                    "0": {
+                        "relationships": [
+                            {"relatedTableId": 3, "keyField": "PARENT_ID"}
+                        ]
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    plan = tmp_path / "plan.json"
+    result = _invoke(
+        [
+            "plan",
+            SOURCE_URL,
+            "--layer-id",
+            "0",
+            "--table-name",
+            "parcels",
+            "--relationships-file",
+            str(catalog),
+            "--output",
+            str(plan),
+        ]
+    )
+    assert result.exit_code == 0, result.output
+    actions = json.loads(plan.read_text(encoding="utf-8"))["actions"]
+    assert actions[1]["request"]["tableName"] == "t_2019_inspections"
+
+    duplicate = tmp_path / "duplicate.json"
+    refused = _invoke(
+        [
+            "plan",
+            SOURCE_URL,
+            "--layer-id",
+            "0",
+            "--table-name",
+            "t_2019_inspections",
+            "--relationships-file",
+            str(catalog),
+            "--output",
+            str(duplicate),
+        ]
+    )
+    assert refused.exit_code != 0
+    assert "distinct table names" in _plain(refused)
+    assert not duplicate.exists()
+
+    bad_origin = tmp_path / "bad-origin.json"
+    refused_origin = _invoke(
+        [
+            "plan",
+            SOURCE_URL,
+            "--layer-id",
+            "0",
+            "--table-name",
+            "2019_parcels",
+            "--relationships-file",
+            str(catalog),
+            "--output",
+            str(bad_origin),
+        ]
+    )
+    assert refused_origin.exit_code != 0
+    assert "Origin table name" in _plain(refused_origin)
+    assert not bad_origin.exists()
+
+
+@responses.activate
+def test_partial_apply_keeps_started_job_ids(tmp_path):
+    catalog = tmp_path / "relationships.json"
+    catalog.write_text(
+        json.dumps(
+            {
+                "service": {"tables": [{"id": 1, "name": "Notes"}]},
+                "layers": {"0": {"relationships": [{"relatedTableId": 1}]}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    plan = tmp_path / "plan.json"
+    assert _invoke(
+        [
+            "plan",
+            SOURCE_URL,
+            "--layer-id",
+            "0",
+            "--table-name",
+            "parcels",
+            "--relationships-file",
+            str(catalog),
+            "--output",
+            str(plan),
+        ]
+    ).exit_code == 0
+    _stub_ready_import_target()
+    responses.add(
+        responses.POST,
+        f"https://honua.test{API_PREFIX}/start",
+        json={"jobId": "job-a"},
+        status=202,
+    )
+    responses.add(
+        responses.POST,
+        f"https://honua.test{API_PREFIX}/start",
+        json={"message": "table rejected"},
+        status=400,
+    )
+    output = tmp_path / "apply.json"
+    result = _invoke(
+        ["apply", str(plan), "--yes", "--output", str(output)],
+        env=HONUA_ENV,
+    )
+    assert result.exit_code == 10, result.output
+    receipt = json.loads(_plain(result))
+    assert receipt["partial"] is True
+    assert receipt["failedActionIndex"] == 1
+    assert receipt["startedJobIds"] == ["job-a"]
+    assert json.loads(output.read_text(encoding="utf-8"))["startedJobIds"] == ["job-a"]
+    assert "table rejected" not in _plain(result)
+
+
+@responses.activate
+def test_apply_echoes_the_job_id_when_the_receipt_file_cannot_be_written(tmp_path):
+    plan = tmp_path / "plan.json"
+    assert _plan(plan).exit_code == 0
+    _stub_ready_import_target()
+    responses.add(
+        responses.POST,
+        f"https://honua.test{API_PREFIX}/start",
+        json={"jobId": "job-kept"},
+        status=202,
+    )
+    parent = tmp_path / "not-a-directory"
+    parent.write_text("x", encoding="utf-8")
+    result = _invoke(
+        ["apply", str(plan), "--yes", "--output", str(parent / "apply.json")],
+        env=HONUA_ENV,
+    )
+    assert result.exit_code == 10, result.output
+    assert json.loads(_plain(result))["response"]["jobId"] == "job-kept"
+
+
+def test_honua_api_key_stays_off_plain_http_unless_loopback_or_opt_in():
+    with pytest.raises(ArcGisMigrationError, match="HTTPS"):
+        ArcGisClient("http://honua.example", "key")
+    ArcGisClient("http://127.0.0.1:9", "key")
+    ArcGisClient("http://localhost", "key")
+    ArcGisClient("http://[::1]", "key")
+    ArcGisClient("http://10.1.1.1", "key", allow_insecure_http=True)
+
+
+def test_arcgis_client_refuses_to_follow_a_redirect_with_the_api_key():
+    seen: dict[str, object] = {}
+
+    class Response:
+        is_redirect = True
+        status_code = 302
+        content = b""
+        ok = False
+
+        @staticmethod
+        def json() -> dict[str, str]:
+            return {"jobId": "should-not-return"}
+
+    class Session:
+        def request(self, *args, **kwargs):
+            seen.update(kwargs)
+            return Response()
+
+    client = ArcGisClient("https://honua.test", "key", session=Session())
+    with pytest.raises(ArcGisMigrationError, match="redirect"):
+        client.start({"serviceUrl": SOURCE_URL, "layerId": 0, "tableName": "parcels"})
+    assert seen["allow_redirects"] is False
+    assert seen["headers"]["X-API-Key"] == "key"

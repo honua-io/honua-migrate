@@ -89,6 +89,26 @@ def test_start_persists_bound_redacted_run_and_refuses_clobber(tmp_path: Path) -
     assert persisted["outcome"] == "succeeded"
     assert "do-not-persist" not in run_path.read_text(encoding="utf-8")
 
+
+def test_run_config_redacts_database_urls(tmp_path: Path) -> None:
+    plan_path = tmp_path / "plan.json"
+    run_path = tmp_path / "run.json"
+    _plan(plan_path, {"id": "inspect", "write": False})
+
+    start_run(
+        plan_path,
+        run_path,
+        FakeExecutor(),
+        config={
+            "dsn": "postgres://migrator:secret@db.internal:5432/honua?sslmode=require",
+        },
+    )
+
+    stored = json.loads(run_path.read_text(encoding="utf-8"))["config"]["dsn"]
+    assert stored == "postgres://db.internal:5432/honua"
+    assert "secret" not in run_path.read_text(encoding="utf-8")
+    assert "sslmode" not in run_path.read_text(encoding="utf-8")
+
     with pytest.raises(MigrationError) as caught:
         start_run(plan_path, run_path, FakeExecutor(), acknowledged=True)
     assert caught.value.exit_code == EXIT_APPLY_REFUSED
