@@ -325,13 +325,48 @@ inside branches, loops, or nested definitions are refused before any target
 request. A known refusal is not dispatched, and a lost, failed, timed-out, or
 cancelled response is not posted again.
 
+When the installed `honua-sdk` exposes `HonuaClient.geoprocessing()`, a live
+run submits `geometry.buffer` and does not post the bare process id `buffer`.
+The server input is a GeoJSON geometry or base64 WKB, an integer `srid`, and a
+positive numeric distance. Pass the API key by environment variable name. The
+value is not a command argument and is omitted from the artifact:
+
+```python
+import arcpy
+arcpy.analysis.Buffer(
+    {"type": "Point", "coordinates": [0.0, 0.0]},
+    "buffered",
+    10,
+    srid=4326,
+)
+```
+
+```bash
+python -m honua_migrate code python run buffer.py \
+  --server http://127.0.0.1:18080 \
+  --yes \
+  --api-key-env HONUA_API_KEY
+```
+
+A feature-class name such as `"roads"` and a distance such as `"25 Meters"`
+are not server geometry inputs. With a geoprocessing client present, that plan
+exits 3 with reason `not-executable` and no request is sent. `run --dry-run`
+can still exit 0 for the same script and record the offline process id
+`buffer`. That preview does not mean the server can execute the feature-class
+plan. Other calls in the plan are refused with it; a buffer is not submitted
+and then followed by an unmapped step.
+
 Live runs poll asynchronous jobs for at most 120 seconds: 120 polls, one
-second apart. Timeout, cancellation, and a transport failure after submission
-keep the sanitized job id and exit non-zero. Resume that job instead of
-starting the plan again while it may still be running. The artifact
+second apart. The runner does not dismiss a job when the poll bound is reached.
+Timeout, cancellation, and a transport failure after submission keep the
+sanitized job id and exit non-zero. Resume that job instead of starting the
+plan again while it may still be running. A credential refusal before a job id
+exists is `unauthenticated`, `submitted` false, and is not retried. The artifact
 `honua.migration.python.gp-run/v1` records the package name and version, the
 plan id, and sanitized server and job ids. It does not claim server
-attestation. Credentials and URL queries are omitted.
+attestation. Credentials and URL queries are omitted. An inline geometry is
+recorded as `inline:Feature` (or `inline:` plus the geometry type), not as
+coordinates.
 
 | Exit | Outcome | Reason | Recovery |
 |------|---------|--------|----------|
@@ -339,8 +374,10 @@ attestation. Credentials and URL queries are omitted.
 | 0 | `dry-run` | `not-executed` | Re-run without `--dry-run` and with `--yes` to execute. |
 | 2 | `refused` | `syntax-error` | Fix the script. Nothing was submitted. |
 | 3 | `incomplete` | `missing-input`, `unresolved-input`, `unsupported-dependency` | Supply literal required inputs and outputs. This runner does not bind prior results. Nothing was submitted. |
+| 3 | `incomplete` | `not-executable` | Use a GeoJSON geometry or base64 WKB, an integer `srid`, and a positive numeric distance for `geometry.buffer`. Feature-class names are not submitted. |
 | 3 | `unsupported` | `unsupported-control-flow` | Remove branches, loops, and nested definitions. Nothing was submitted. |
 | 4 | `unavailable` | `sdk-unavailable` | Install `honua-sdk` in an isolated environment. See the console-script collision guide. |
+| 4 | `unavailable` | `unauthenticated` | Set `--api-key-env` to the name of a variable that holds the API key. A refused credential is not a submitted job. |
 | 10 | `empty` | `no-runnable-steps` | Nothing to run. Use `scan` or `translate`. |
 | 10 | `unsupported` | `unsupported-calls` | Replace unsupported calls. Nothing was submitted. |
 | 10 | `partial` | `manual-review-only`, `partial-plan`, `output-unverified`, `submission-not-terminal` | Do not treat a skipped or unverified step as done. |

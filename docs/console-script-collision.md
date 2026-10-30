@@ -33,6 +33,27 @@ python -m venv .venv-honua-migrate-run
 .venv-honua-migrate-run/bin/python -m honua_migrate code python run --help
 ```
 
+A live run against a Honua server uses that same module invocation. Put the
+API key in an environment variable and pass the variable name. The quickstart
+admin password is that key. A script the server can execute passes a GeoJSON
+geometry or base64 WKB, an integer `srid`, and a positive numeric distance:
+
+```bash
+export HONUA_API_KEY
+.venv-honua-migrate-run/bin/python -m honua_migrate code python run buffer.py \
+  --server http://127.0.0.1:18080 \
+  --yes \
+  --api-key-env HONUA_API_KEY
+```
+
+Exit 0 means every required job reached a successful terminal state and every
+declared output was verified. A failed or unfinished job exits non-zero, keeps
+the job id, and is not submitted again. `run --dry-run` can exit 0 for a
+feature-class script such as `Buffer("roads", "roads_buffer", "25 Meters")`.
+That preview records the offline process id `buffer` and does not mean the
+server accepted the script. With `honua-sdk`'s geoprocessing client installed,
+that feature-class plan is refused before any request.
+
 On Windows, the interpreter is
 `.venv-honua-migrate-run\Scripts\python.exe`. Do not rely on the
 `honua-migrate` executable in a co-installed 0.x SDK environment; use
