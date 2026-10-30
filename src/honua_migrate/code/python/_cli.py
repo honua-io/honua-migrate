@@ -19,9 +19,14 @@ from __future__ import annotations
 
 import argparse
 import ast
+import base64
 import json
+import math
+import os
+import re
 import sys
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -87,6 +92,21 @@ _BINARY_TOOLBOX_SUFFIXES = {".tbx"}
 _POLL_INTERVAL_SECONDS = 1.0
 _MAX_POLLS = 120
 _RUN_SCHEMA = "honua.migration.python.gp-run/v1"
+_ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+_GEOMETRY_BUFFER = "geometry.buffer"
+_BUFFER_INPUT_KEYS = frozenset({"input_features", "distance", "srid"})
+_GEOJSON_TYPES = frozenset(
+    {
+        "Point",
+        "LineString",
+        "Polygon",
+        "MultiPoint",
+        "MultiLineString",
+        "MultiPolygon",
+        "GeometryCollection",
+    }
+)
+_MIN_WKB_BYTES = 21
 _BLOCKING_SCOPES = (
     ast.If,
     ast.For,
@@ -581,6 +601,38 @@ def _checked_reference(declared: Any, actual: Any) -> str | None:
     return None
 
 
+def _geometry_kind(value: Any) -> str | None:
+    """Return a GeoJSON type name, without copying coordinates."""
+
+    if not isinstance(value, Mapping):
+        return None
+    kind = value.get("type")
+    if not isinstance(kind, str):
+        return None
+    if kind == "Feature":
+        geometry = _geometry_kind(value.get("geometry"))
+        return "Feature" if geometry not in (None, "Feature") else None
+    if kind not in _GEOJSON_TYPES:
+        return None
+    if kind == "GeometryCollection":
+        return kind if isinstance(value.get("geometries"), list) else None
+    return kind if "coordinates" in value else None
+
+
+def _inline_geometry_reference(actual: Any) -> str | None:
+    """Name an inline geometry result without storing its coordinates."""
+
+    candidate = actual
+    if isinstance(actual, Mapping) and "value" in actual:
+        candidate = actual.get("value")
+    kind = _geometry_kind(candidate)
+    if kind is None:
+        return None
+    if kind == "Feature":
+        return "inline:Feature"
+    return f"inline:{kind}"
+
+
 def _output_checks(execution: ArcPyProcessExecution) -> tuple[bool, list[dict[str, Any]]]:
     declared = execution.translation.payload.get("outputs")
     if not isinstance(declared, Mapping) or not declared:
@@ -596,7 +648,12 @@ def _output_checks(execution: ArcPyProcessExecution) -> tuple[bool, list[dict[st
     checks: list[dict[str, Any]] = []
     verified_all = True
     for name, declared_value in declared.items():
-        reference = _checked_reference(declared_value, produced.get(name))
+        if name in produced:
+            reference = _checked_reference(declared_value, produced.get(name))
+        elif len(declared) == 1:
+            reference = _inline_geometry_reference(produced.get("outputFeatureLayer"))
+        else:
+            reference = None
         verified = reference is not None
         verified_all = verified_all and verified
         checks.append({"name": str(name), "verified": verified, "reference": reference})
@@ -629,6 +686,131 @@ def _sdk_unavailable_guidance() -> str:
     )
 
 
+def _is_unauthenticated(exc: BaseException) -> bool:
+    return getattr(exc, "status_code", None) in (401, 403)
+
+
+def _as_wkb_text(value: str) -> str | None:
+    if not value or value != value.strip():
+        return None
+    try:
+        decoded = base64.b64decode(value, validate=True)
+    except (ValueError, TypeError):
+        return None
+    if len(decoded) < _MIN_WKB_BYTES or decoded[0] not in (0, 1):
+        return None
+    return value
+
+
+def _as_wkb(value: Any) -> dict[str, Any] | str | None:
+    if isinstance(value, str):
+        return _as_wkb_text(value)
+    if isinstance(value, Mapping) and _geometry_kind(value) is not None:
+        return {str(key): item for key, item in value.items()}
+    return None
+
+
+def _as_distance(value: Any) -> int | float | None:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if value <= 0:
+        return None
+    return value
+
+
+def _as_srid(value: Any) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        return None
+    return value
+
+
+def _geometry_buffer_inputs(payload: Mapping[str, Any]) -> dict[str, Any] | None:
+    inputs = payload.get("inputs")
+    if not isinstance(inputs, Mapping) or set(inputs) - _BUFFER_INPUT_KEYS:
+        return None
+    wkb = _as_wkb(inputs.get("input_features"))
+    distance = _as_distance(inputs.get("distance"))
+    srid = _as_srid(inputs.get("srid"))
+    if wkb is None or distance is None or srid is None:
+        return None
+    return {"wkb": wkb, "srid": srid, "distance": distance}
+
+
+def _server_translation(
+    translation: ArcPyProcessTranslation,
+) -> ArcPyProcessTranslation | None:
+    """Adapt one step to the published geometry.buffer job, or refuse it."""
+
+    if translation.job_process_id != _GEOMETRY_BUFFER:
+        return None
+    inputs = _geometry_buffer_inputs(translation.payload)
+    outputs = translation.payload.get("outputs")
+    if inputs is None or not isinstance(outputs, Mapping) or not outputs:
+        return None
+    payload: dict[str, Any] = {
+        "inputs": inputs,
+        "outputs": {str(key): value for key, value in outputs.items()},
+    }
+    metadata = translation.payload.get("metadata")
+    if isinstance(metadata, Mapping):
+        payload["metadata"] = {str(key): value for key, value in metadata.items()}
+    return replace(translation, process_id=_GEOMETRY_BUFFER, payload=payload)
+
+
+def _status_document(job: Any) -> dict[str, Any]:
+    if isinstance(job, Mapping):
+        return dict(job)
+    document: dict[str, Any] = {}
+    job_id = getattr(job, "job_id", None)
+    status = getattr(job, "status", None)
+    if isinstance(job_id, str) and job_id:
+        document["jobID"] = job_id
+    if isinstance(status, str) and status:
+        document["status"] = status
+    inline = getattr(job, "inline_results", None)
+    if isinstance(inline, Mapping) and inline:
+        document["outputs"] = dict(inline)
+    return document
+
+
+class _ServerGeoprocessing:
+    """Adapt ``HonuaClient.geoprocessing()`` to the process runner.
+
+    The body is inputs only. Declared output names stay on the translation so
+    verification can see them, and they are not sent to the server. Polling
+    uses ``job``; ``wait`` is not used because it dismisses a timed-out job.
+    """
+
+    def __init__(self, geoprocessing: Any) -> None:
+        self._geoprocessing = geoprocessing
+
+    def execute(self, process_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
+        inputs = payload.get("inputs") if isinstance(payload, Mapping) else None
+        if not isinstance(inputs, Mapping):
+            raise ArcPyJobError(None, "failed", {})
+        job = self._geoprocessing.submit_geometry(
+            process_id,
+            dict(inputs),
+            respond_async=True,
+        )
+        return _status_document(job)
+
+    def job(self, job_id: str) -> dict[str, Any]:
+        return _status_document(self._geoprocessing.job(job_id))
+
+    def job_results(self, job_id: str) -> Any:
+        return self._geoprocessing.results(job_id)
+
+
+def _server_geoprocessing(client: Any) -> Any | None:
+    factory = getattr(client, "geoprocessing", None)
+    if not callable(factory):
+        return None
+    return factory()
+
+
 def _execute_plan(
     args: argparse.Namespace,
     plan: ArcPyMigrationPlan,
@@ -651,14 +833,63 @@ def _execute_plan(
     jobs: list[dict[str, Any]] = []
     output_checks: list[dict[str, Any]] = []
     dispatch_count = 0
+    api_key: str | None = None
+    env_name = getattr(args, "api_key_env", None)
+    if isinstance(env_name, str):
+        api_key = os.environ.get(env_name, "")
+        if not api_key.strip():
+            return _finish_run(
+                args,
+                plan,
+                script_name=script_name,
+                outcome="unavailable",
+                reason="unauthenticated",
+                guidance=(
+                    "The API key environment variable is unset or empty. "
+                    "Nothing was submitted."
+                ),
+                exit_code=EXIT_UNAVAILABLE,
+            )
+    client_kwargs: dict[str, Any] = {}
+    if api_key is not None:
+        client_kwargs["api_key"] = api_key
     # One attempt per step. A lost or unfinished response is not posted again.
-    with HonuaClient(args.server) as client:
-        runner = ArcPyProcessRunner(
-            client,
-            poll_interval=_POLL_INTERVAL_SECONDS,
-            max_polls=_MAX_POLLS,
-        )
-        for translation in plan.translations:
+    with HonuaClient(args.server, **client_kwargs) as client:
+        geoprocessing = _server_geoprocessing(client)
+        if geoprocessing is not None:
+            adapted: list[ArcPyProcessTranslation] = []
+            for translation in plan.translations:
+                mapped = _server_translation(translation)
+                if mapped is None:
+                    return _finish_run(
+                        args,
+                        plan,
+                        script_name=script_name,
+                        outcome="incomplete",
+                        reason="not-executable",
+                        guidance=(
+                            "The plan is not executable on this server. "
+                            "geometry.buffer accepts a GeoJSON geometry or "
+                            "base64 WKB, an integer srid, and a positive "
+                            "numeric distance. Nothing was submitted."
+                        ),
+                        exit_code=EXIT_UNSUPPORTED_INPUT,
+                    )
+                adapted.append(mapped)
+            runner = ArcPyProcessRunner(
+                _ServerGeoprocessing(geoprocessing),
+                poll_interval=_POLL_INTERVAL_SECONDS,
+                max_polls=_MAX_POLLS,
+            )
+            steps: Sequence[ArcPyProcessTranslation] = tuple(adapted)
+        else:
+            runner = ArcPyProcessRunner(
+                client,
+                poll_interval=_POLL_INTERVAL_SECONDS,
+                max_polls=_MAX_POLLS,
+            )
+            steps = plan.translations
+        for translation in steps:
             dispatch_count += 1
             try:
                 execution = runner.execute_async(translation)
@@ -761,7 +992,31 @@ def _execute_plan(
                     output_checks=output_checks,
                     dispatch_count=dispatch_count,
                 )
-            except Exception:
+            except Exception as exc:
+                if _is_unauthenticated(exc):
+                    jobs.append(
+                        _job_record(
+                            translation,
+                            job_id=None,
+                            status=None,
+                            succeeded=False,
+                        )
+                    )
+                    return _finish_run(
+                        args,
+                        plan,
+                        script_name=script_name,
+                        outcome="unavailable",
+                        reason="unauthenticated",
+                        guidance=(
+                            "The server refused the credential before a job id "
+                            "was returned. It was not retried."
+                        ),
+                        exit_code=EXIT_UNAVAILABLE,
+                        jobs=jobs,
+                        output_checks=output_checks,
+                        dispatch_count=max(dispatch_count - 1, 0),
+                    )
                 jobs.append(
                     _job_record(
                         translation,
@@ -864,6 +1119,12 @@ def _cmd_run(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return EXIT_SAFETY_REFUSAL
+    env_name = getattr(args, "api_key_env", None)
+    if env_name is not None and (
+        not isinstance(env_name, str) or _ENV_NAME.fullmatch(env_name) is None
+    ):
+        print("invalid --api-key-env name", file=sys.stderr)
+        return EXIT_BAD_ARGUMENTS
     failure = _preflight_outputs(args.output, force=args.force)
     if failure is not None:
         return failure
@@ -1058,6 +1319,14 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     run.add_argument("--force", action="store_true", help="Replace existing output files.")
+    run.add_argument(
+        "--api-key-env",
+        default=None,
+        help=(
+            "Environment variable that holds the Honua API key. "
+            "The key is not a command argument."
+        ),
+    )
     run.set_defaults(func=_cmd_run)
 
     pyt = sub.add_parser("pyt", help="Parse a .pyt Python toolbox and classify its tools' GP calls.")

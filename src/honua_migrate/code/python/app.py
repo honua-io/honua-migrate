@@ -102,6 +102,16 @@ def run_command(
         bool,
         typer.Option("--force", help="Replace existing output files."),
     ] = False,
+    api_key_env: Annotated[
+        str | None,
+        typer.Option(
+            "--api-key-env",
+            help=(
+                "Environment variable that holds the Honua API key. "
+                "The key is not a command argument."
+            ),
+        ),
+    ] = None,
 ) -> None:
     """Run a fully supported plan. Exit 0 only when every job and output succeeds."""
 
@@ -114,6 +124,7 @@ def run_command(
                 dry_run=dry_run,
                 acknowledge=acknowledge,
                 force=force,
+                api_key_env=api_key_env,
             )
         )
     )
