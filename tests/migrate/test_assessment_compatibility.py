@@ -34,10 +34,10 @@ FIXED_TIME = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
 WARNING_FRAGMENT = "honua_esri_assess and honua-esri-assess are compatibility surfaces"
 
 SCHEMA_HASHES = {
-    "esri-footprint-v0.1.json": "a1cda2ba069ef17cedf2cdf86717975c3b124b1000596df3551f8b69e47364e2",
-    "esri-footprint-v0.2.json": "6d690e98eed70ddf1b1937d839c2c90a2ca143f0acc21b3f1fd907da7fe917de",
-    "esri-access-footprint-v0.1.json": "4708c22af3f1e71e3ba9c1a054e5af0556f886549bd2bd49e777923f84c056ec",
-    "esri-access-footprint-v0.2.json": "b542d56a7bd663d4de312dce61b3d8215b104888409517e34d815996832bf4bc",
+    "esri-footprint-v0.1.json": "44aeb527e81914b8f3908bc6ce17e6271017288ae1ee6bb65a89a16cf2836777",
+    "esri-footprint-v0.2.json": "5062b21ad5037e0034f7425e1c1856405beae3284b9bd9f587a3b1382c5f0467",
+    "esri-access-footprint-v0.1.json": "f59ec35f9069b8ed15e64681989f5c72f81752bb8944f2643969170fd1adbd90",
+    "esri-access-footprint-v0.2.json": "f4d1820094c654b9b6c884e9a134734545438fa7be21de73bcd6b1cc0dd19520",
 }
 
 
@@ -251,7 +251,7 @@ print(SCHEMA_VERSION, bundled_schema_version(), callable(build_footprint))
     )
 
     assert result.returncode == 0
-    assert result.stdout.strip() == "v0.2 v0.2 True"
+    assert result.stdout.strip() == "v0.3 v0.3 True"
     assert result.stderr.count(WARNING_FRAGMENT) == 1
     assert "no earlier than honua-migrate 1.2" in result.stderr
 
@@ -267,7 +267,7 @@ def test_legacy_module_remains_functional_and_keeps_stdout_clean() -> None:
     )
 
     assert result.returncode == 0
-    assert result.stdout.startswith("honua-esri-assess ")
+    assert result.stdout.startswith("honua-migrate ")
     assert WARNING_FRAGMENT not in result.stdout
     assert result.stderr.count(WARNING_FRAGMENT) == 1
 
@@ -283,7 +283,7 @@ def test_successor_module_does_not_emit_the_legacy_warning() -> None:
     )
 
     assert result.returncode == 0
-    assert result.stdout.startswith("honua-esri-assess ")
+    assert result.stdout.startswith("honua-migrate ")
     assert WARNING_FRAGMENT not in result.stderr
 
 

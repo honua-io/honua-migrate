@@ -11,8 +11,9 @@ This document is the short, prospect-facing summary of what an assessment
 hands over to the rest of the migration.
 
 For semver rules, deprecation policy, and full producer/consumer contracts,
-see [versioning.md](./versioning.md). The published JSON Schema body for the
-current `0.1.x` line lives in
+see [versioning.md](./versioning.md). The current draft schema is
+[`schemas/esri-footprint-v0.3.json`](../../schemas/esri-footprint-v0.3.json).
+The earlier v0.1 reference is
 [`docs/schemas/esri-footprint.v0.1.md`](./esri-footprint.v0.1.md)
 (schema file: [`schemas/esri-footprint-v0.1.json`](../../schemas/esri-footprint-v0.1.json),
 canonical sample: [`docs/samples/esri-footprint.sample.json`](../samples/esri-footprint.sample.json)).
@@ -20,9 +21,11 @@ canonical sample: [`docs/samples/esri-footprint.sample.json`](../samples/esri-fo
 ## The sole handoff
 
 `EsriFootprint.json` is the **only** supported handoff out of an assessment.
-For geoprocessing services, `migrationHandoff.target` now identifies the Python
-script migration pipeline as `honua-migrate:python-script`. Consumers that
-match the previous target value must update; the accompanying note also changes.
+Starting with schema v0.3, `migrationHandoff.target` identifies the Python
+script migration pipeline as `honua-migrate:python-script`. Consumers must opt
+in to v0.3 and update any routing based on the previous target value; the
+accompanying note also changes. Coordinate the producer and consumer rollout:
+the closed-product consumer has not been verified against this version.
 
 - No side-channel data exchange. Consumers do not call the
   customer's source systems on their own, do not consume scanner logs, and do

@@ -12,7 +12,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 from . import SCHEMA_VERSION
 from .diagnostics import SchemaValidationError
 
-SCHEMA_FILENAME = "esri-footprint-v0.2.json"
+SCHEMA_FILENAME = "esri-footprint-v0.3.json"
 
 
 def _repo_schema_path() -> Path:

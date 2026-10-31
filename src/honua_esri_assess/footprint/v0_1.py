@@ -38,7 +38,7 @@ from honua_esri_assess.server.models import (
     ServiceRecord,
 )
 
-SCHEMA_VERSION = "v0.2"
+SCHEMA_VERSION = "v0.3"
 PRODUCER_NAME = "honua-esri-assess"
 
 #: Dependency-edge relation tags emitted at v0.2.

@@ -15,7 +15,7 @@ from honua_esri_assess.diagnostics import Diagnostic
 from honua_esri_assess.output_io import atomic_write_text
 from honua_esri_assess.redaction import sanitize_handoff_url
 
-SCHEMA_VERSION = "v0.2"
+SCHEMA_VERSION = "v0.3"
 TOOL_NAME = "honua-esri-assess"
 DISTRIBUTION_NAME = "honua-migrate"
 ITEM_KINDS = ("portal-item", "server-service", "filegdb-feature-class")

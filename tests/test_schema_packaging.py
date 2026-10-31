@@ -28,6 +28,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_FILENAMES = (
     "esri-footprint-v0.1.json",
     "esri-footprint-v0.2.json",
+    "esri-footprint-v0.3.json",
 )
 
 
@@ -66,7 +67,7 @@ def test_package_schema_matches_canonical(filename: str) -> None:
 def test_load_schema_returns_current_version() -> None:
     schema_module.load_schema.cache_clear()
     schema = schema_module.load_schema()
-    assert "v0.2" in schema["properties"]["schemaVersion"]["enum"]
+    assert "v0.3" in schema["properties"]["schemaVersion"]["enum"]
 
 
 def test_load_schema_fails_closed_when_missing(monkeypatch: pytest.MonkeyPatch) -> None:

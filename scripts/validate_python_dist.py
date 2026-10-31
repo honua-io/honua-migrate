@@ -190,6 +190,7 @@ def validate_wheel(path: Path, version: str) -> None:
             "honua_esri_assess/cli.py",
             "honua_esri_assess/py.typed",
             "honua_esri_assess/schemas/esri-footprint-v0.2.json",
+            "honua_esri_assess/schemas/esri-footprint-v0.3.json",
         }
         missing = sorted(required - names)
         if missing:

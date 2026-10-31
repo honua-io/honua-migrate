@@ -1,4 +1,4 @@
-"""Optional EsriFootprint v0.1 schema validation for the report CLI."""
+"""Optional footprint schema validation for the report CLI."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ class SchemaValidationIssue:
 
 
 def validate_footprint_v01(footprint: Mapping[str, Any]) -> tuple[SchemaValidationIssue, ...]:
-    """Validate a footprint against the packaged EsriFootprint v0.1 schema."""
+    """Validate a footprint against the packaged footprint schema."""
 
     try:
         from jsonschema import Draft202012Validator, FormatChecker
@@ -34,14 +34,14 @@ def validate_footprint_v01(footprint: Mapping[str, Any]) -> tuple[SchemaValidati
     except FileNotFoundError:
         return (
             SchemaValidationIssue(
-                message="Schema validation could not run because the packaged v0.1 schema was not found.",
+                message="Schema validation could not run because the packaged footprint schema was not found.",
                 is_failure=True,
             ),
         )
     except json.JSONDecodeError:
         return (
             SchemaValidationIssue(
-                message="Schema validation could not run because the packaged v0.1 schema is invalid JSON.",
+                message="Schema validation could not run because the packaged footprint schema is invalid JSON.",
                 is_failure=True,
             ),
         )
@@ -54,7 +54,7 @@ def validate_footprint_v01(footprint: Mapping[str, Any]) -> tuple[SchemaValidati
 def _load_packaged_schema() -> Mapping[str, Any]:
     schema_text = (
         resources.files("honua_esri_assess")
-        .joinpath("schemas", "esri-footprint-v0.2.json")
+        .joinpath("schemas", "esri-footprint-v0.3.json")
         .read_text(encoding="utf-8")
     )
     schema = json.loads(schema_text)
@@ -74,12 +74,12 @@ def _issue_from_error(error: Any) -> SchemaValidationIssue:
 def _sanitized_reason(error: Any) -> str:
     validator = getattr(error, "validator", None)
     return {
-        "additionalProperties": "field is not allowed by EsriFootprint v0.1",
-        "anyOf": "field does not match any allowed v0.1 shape",
-        "const": "field does not match the required v0.1 value",
-        "enum": "field is not in the allowed v0.1 vocabulary",
+        "additionalProperties": "field is not allowed by the footprint schema",
+        "anyOf": "field does not match any allowed schema shape",
+        "const": "field does not match the required schema value",
+        "enum": "field is not in the allowed schema vocabulary",
         "format": "field does not match the required format",
-        "oneOf": "field does not match exactly one allowed v0.1 shape",
+        "oneOf": "field does not match exactly one allowed schema shape",
         "pattern": "field does not match the required prospect-safe format",
         "required": "required field is missing",
         "type": "field has the wrong JSON type",

@@ -7,9 +7,10 @@ tags: [versioning, schemas, policy]
 ---
 # `EsriFootprint.json` Versioning Policy
 
-Status: pre-1.0 (current line: `0.1.x`).
+Status: pre-1.0 (draft producer line: `0.3.x`).
 Companion: [Handoff contract](./handoff-contract.md).
-Schema body: [`docs/schemas/esri-footprint.v0.1.md`](./esri-footprint.v0.1.md)
+Current schema: [`schemas/esri-footprint-v0.3.json`](../../schemas/esri-footprint-v0.3.json).
+Earlier schema reference: [`docs/schemas/esri-footprint.v0.1.md`](./esri-footprint.v0.1.md)
 (JSON Schema at [`schemas/esri-footprint-v0.1.json`](../../schemas/esri-footprint-v0.1.json)).
 
 ## Scope
@@ -120,6 +121,19 @@ is for shape compatibility only.
 
 Adopting a new minor (`0.2.x`) is **opt-in** for the consumer; the producer
 will keep publishing the previous line until consumers are ready.
+
+The draft v0.3 producer changes the geoprocessing routing target and emits
+only v0.3. Keep existing v0.2 producer releases available and hold the v0.3
+release until the closed-product consumer is verified and the rollout is
+coordinated. The v0.3 schema also accepts earlier artifacts for readers that
+explicitly support those lines; that does not override a consumer's pin.
+
+The repository's v0.1 and v0.2 assessment and access schema copies have
+revised descriptive text. Their validation keywords are unchanged, but the
+file bytes and hashes differ from previous releases despite retaining their
+schema identifiers. Consumers that verify exact file hashes must update their
+pins deliberately; existing released artifacts remain available for those
+consumers. Coordinate any publication of the revised copies with them.
 
 ## Deprecation policy
 

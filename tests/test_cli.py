@@ -365,7 +365,7 @@ def test_version_command_mentions_tool_and_schema_versions(runner: CliRunner) ->
 
     assert result.exit_code == 0
     assert f"honua-migrate {__version__}" in result.output
-    assert "Assessment footprint schema v0.2" in result.output
+    assert "Assessment footprint schema v0.3" in result.output
 
 
 def test_root_version_option_mentions_tool_and_schema_versions(
@@ -375,7 +375,7 @@ def test_root_version_option_mentions_tool_and_schema_versions(
 
     assert result.exit_code == 0
     assert f"honua-migrate {__version__}" in result.output
-    assert "Assessment footprint schema v0.2" in result.output
+    assert "Assessment footprint schema v0.3" in result.output
 
 
 def test_schema_validate_accepts_canonical_sample(runner: CliRunner) -> None:
