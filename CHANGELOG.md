@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.2](https://github.com/honua-io/honua-migrate/compare/honua-migrate-v0.9.1...honua-migrate-v0.9.2) (2026-10-31)
+
+
+### Documentation
+
+* the server this CLI calls is FCL-1.0-ALv2, not ELv2 ([#234](https://github.com/honua-io/honua-migrate/issues/234)) ([323c5f8](https://github.com/honua-io/honua-migrate/commit/323c5f87286d965e7028c4b36221ed32418878bd))
+
 ## [0.9.1](https://github.com/honua-io/honua-migrate/compare/honua-migrate-v0.9.0...honua-migrate-v0.9.1) (2026-10-30)
 
 
