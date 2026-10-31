@@ -6,7 +6,7 @@ import WebMap from "@arcgis/core/WebMap";
 const layerUrl = "https://example.test/rest/services/default/FeatureServer/0";
 const simple = new FeatureLayer({ url: "https://example.test/rest/services/default/FeatureServer/0" });
 const complex = new FeatureLayer({ url: layerUrl, outFields: ["*"] });
-const map = new Map({ basemap: "streets-vector", layers: [simple] });
+const map = new Map({ basemap: "osm", layers: [simple] });
 const mapView = new MapView({
   map,
   container: "viewDiv",

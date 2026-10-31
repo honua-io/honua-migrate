@@ -210,7 +210,7 @@ describe("arcgis migration integration", () => {
     expect(migratedMain).toContain(
       'const simple = new FeatureLayerCompat({ url: "https://example.test/rest/services/default/FeatureServer/0" });',
     );
-    expect(migratedMain).toContain('const map = new MapCompat({ basemap: "streets-vector", layers: [simple] });');
+    expect(migratedMain).toContain('const map = new MapCompat({ basemap: "osm", layers: [simple] });');
     expect(migratedMain).toContain("const mapView = new MapViewCompat({");
     expect(migratedMain).toContain('const complex = new FeatureLayerCompat({ url: layerUrl, outFields: ["*"] });');
     expect(migratedMain).not.toContain('import FeatureLayer from "@arcgis/core/layers/FeatureLayer";');

@@ -6,7 +6,7 @@ const layer = new FeatureLayer({
   url: "https://example.test/rest/services/default/FeatureServer/0",
 });
 const map = new Map({
-  basemap: "streets",
+  basemap: "osm",
   layers: [layer],
 });
 const mapView = new MapView({

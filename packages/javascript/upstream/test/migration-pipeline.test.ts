@@ -120,7 +120,7 @@ const COMPAT_ADDITIONS: Array<[string, string, string, string, boolean]> = [
 ];
 
 const MAP_ONLY_SOURCE =
-  'import Map from "@arcgis/core/Map";\n\nexport const map = new Map({ basemap: "streets-vector" });\n';
+  'import Map from "@arcgis/core/Map";\n\nexport const map = new Map({ basemap: "osm" });\n';
 
 describe("JS migration pipeline", () => {
   it("pins generated runtimes to the tested stable dependency floor", () => {
