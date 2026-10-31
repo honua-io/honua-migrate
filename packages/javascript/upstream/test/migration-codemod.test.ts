@@ -787,8 +787,8 @@ describe("runEsriCompatCodemod", () => {
       [
         "import Basemap from '@arcgis/core/Basemap';",
         "import Map from '@arcgis/core/Map';",
-        "const basemap = new Basemap({ id: 'streets-vector' });",
-        "const map = new Map({ basemap });",
+        "const basemap = new Basemap({ id: 'osm' });",
+        "const map = new Map({ basemap: 'osm' });",
         "void map;",
       ].join("\n"),
       "utf8",
@@ -817,8 +817,8 @@ describe("runEsriCompatCodemod", () => {
 
     const nextSource = fs.readFileSync(file, "utf8");
     expect(nextSource).toContain('import { BasemapCompat, MapCompat } from "@honua/sdk-esri-compat";');
-    expect(nextSource).toContain("const basemap = new BasemapCompat({ id: 'streets-vector' });");
-    expect(nextSource).toContain("const map = new MapCompat({ basemap });");
+    expect(nextSource).toContain("const basemap = new BasemapCompat({ id: 'osm' });");
+    expect(nextSource).toContain("const map = new MapCompat({ basemap: 'osm' });");
     expect(nextSource).not.toContain("@arcgis/core/Basemap");
   });
 
@@ -1037,7 +1037,7 @@ describe("runEsriCompatCodemod", () => {
         "import Map from '@arcgis/core/Map';",
         "import MapView from '@arcgis/core/views/MapView';",
         "import Feature from '@arcgis/core/widgets/Feature';",
-        "const map = new Map({ basemap: 'streets' });",
+        "const map = new Map({ basemap: 'osm' });",
         "const view = new MapView({ map, center: [0, 0], zoom: 2 });",
         "const feature = new Feature({ view, container: 'feature-div', title: 'Selected', graphic: { attributes: { OBJECTID: 1 } } });",
         "void feature;",
@@ -1162,7 +1162,7 @@ describe("runEsriCompatCodemod", () => {
         "import Map from '@arcgis/core/Map';",
         "import MapView from '@arcgis/core/views/MapView';",
         "import Print from '@arcgis/core/widgets/Print';",
-        "const map = new Map({ basemap: 'streets' });",
+        "const map = new Map({ basemap: 'osm' });",
         "const view = new MapView({ map, center: [0, 0], zoom: 2 });",
         "const printer = new Print({ view, container: 'print-div', printServiceUrl: printUrl, templateOptions: { format: 'pdf', layout: 'a4-landscape' } });",
         "void printer;",
@@ -1207,7 +1207,7 @@ describe("runEsriCompatCodemod", () => {
         "import Map from '@arcgis/core/Map';",
         "import MapView from '@arcgis/core/views/MapView';",
         "import Swipe from '@arcgis/core/widgets/Swipe';",
-        "const map = new Map({ basemap: 'streets' });",
+        "const map = new Map({ basemap: 'osm' });",
         "const view = new MapView({ map, center: [0, 0], zoom: 2 });",
         "const swipe = new Swipe({ view, container: 'swipe-div', position: 40, leadingLayers: [], trailingLayers: [] });",
         "void swipe;",
@@ -1249,7 +1249,7 @@ describe("runEsriCompatCodemod", () => {
         "import MapView from '@arcgis/core/views/MapView';",
         "import DistanceMeasurement2D from '@arcgis/core/widgets/DistanceMeasurement2D';",
         "import AreaMeasurement2D from '@arcgis/core/widgets/AreaMeasurement2D';",
-        "const map = new Map({ basemap: 'streets' });",
+        "const map = new Map({ basemap: 'osm' });",
         "const view = new MapView({ map, center: [0, 0], zoom: 2 });",
         "const distance = new DistanceMeasurement2D({ view, container: 'distance-2d', unit: 'kilometers' });",
         "const area = new AreaMeasurement2D({ view, container: 'area-2d', unit: 'square-kilometers' });",
@@ -1313,7 +1313,7 @@ describe("runEsriCompatCodemod", () => {
         "import Map from '@arcgis/core/Map';",
         "import MapView from '@arcgis/core/views/MapView';",
         "import TableList from '@arcgis/core/widgets/TableList';",
-        "const map = new Map({ basemap: 'streets' });",
+        "const map = new Map({ basemap: 'osm' });",
         "const view = new MapView({ map, center: [0, 0], zoom: 2 });",
         "const tableList = new TableList({ view, container: 'table-list', tables: [{ id: 'parcels' }], autoRefresh: false });",
         "void tableList;",
@@ -1354,7 +1354,7 @@ describe("runEsriCompatCodemod", () => {
         "import Map from '@arcgis/core/Map';",
         "import MapView from '@arcgis/core/views/MapView';",
         "import BasemapLayerList from '@arcgis/core/widgets/BasemapLayerList';",
-        "const map = new Map({ basemap: 'streets' });",
+        "const map = new Map({ basemap: 'osm' });",
         "const view = new MapView({ map, center: [0, 0], zoom: 2 });",
         "const basemapLayerList = new BasemapLayerList({ view, container: 'basemap-layer-list', autoRefresh: false });",
         "void basemapLayerList;",
@@ -1497,11 +1497,11 @@ describe("runEsriCompatCodemod", () => {
         "const legend = new Legend({ view, container: 'legend-div', includeHidden: true, autoRefresh: false });",
         "const popup = new Popup({ view, container: 'popup-div', dockEnabled: true });",
         "const home = new Home({ view, container: 'home-div', viewpoint: { center: [0, 0], zoom: 3 } });",
-        "const basemapToggle = new BasemapToggle({ view, container: 'basemap-div', nextBasemap: 'satellite' });",
+        "const basemapToggle = new BasemapToggle({ view, container: 'basemap-div', nextBasemap: 'osm' });",
         "const locate = new Locate({ view, container: 'locate-div', zoom: 12, locateProvider: async () => ({ coords: { latitude: 21.3069, longitude: -157.8583 } }) });",
         "const scaleBar = new ScaleBar({ view, container: 'scale-div', unit: 'dual' });",
         "const search = new Search({ view, container: 'search-div', includeDefaultSources: false, autoRefreshSources: false });",
-        "const basemapGallery = new BasemapGallery({ view, container: 'gallery-div', autoRefresh: false });",
+        "const basemapGallery = new BasemapGallery({ view, container: 'gallery-div', source: ['osm'], autoRefresh: false });",
         "const compass = new Compass({ view });",
         "const expand = new Expand({ view, content: legend, expanded: false });",
         "const bookmarks = new Bookmarks({ view, bookmarks: [{ name: 'Home', target: { center: [0, 0], zoom: 2 } }] });",
@@ -1684,7 +1684,7 @@ describe("runEsriCompatCodemod", () => {
       "const home = new HomeCompat({ view, container: 'home-div', viewpoint: { center: [0, 0], zoom: 3 } });",
     );
     expect(nextSource).toContain(
-      "const basemapToggle = new BasemapToggleCompat({ view, container: 'basemap-div', nextBasemap: 'satellite' });",
+      "const basemapToggle = new BasemapToggleCompat({ view, container: 'basemap-div', nextBasemap: 'osm' });",
     );
     expect(nextSource).toContain(
       "const locate = new LocateCompat({ view, container: 'locate-div', zoom: 12, locateProvider: async () => ({ coords: { latitude: 21.3069, longitude: -157.8583 } }) });",
@@ -1696,7 +1696,7 @@ describe("runEsriCompatCodemod", () => {
       "const search = new SearchCompat({ view, container: 'search-div', includeDefaultSources: false, autoRefreshSources: false });",
     );
     expect(nextSource).toContain(
-      "const basemapGallery = new BasemapGalleryCompat({ view, container: 'gallery-div', autoRefresh: false });",
+      "const basemapGallery = new BasemapGalleryCompat({ view, container: 'gallery-div', source: ['osm'], autoRefresh: false });",
     );
     expect(nextSource).toContain("const compass = new CompassCompat({ view });");
     expect(nextSource).toContain("const expand = new ExpandCompat({ view, content: legend, expanded: false });");
@@ -2555,7 +2555,7 @@ describe("runEsriCompatCodemod", () => {
       file,
       [
         "import * as MapModule from '@arcgis/core/Map';",
-        "const map = new MapModule.default({ basemap: 'streets' });",
+        "const map = new MapModule.default({ basemap: 'osm' });",
         "void map;",
       ].join("\n"),
       "utf8",
@@ -2579,7 +2579,7 @@ describe("runEsriCompatCodemod", () => {
     const nextSource = fs.readFileSync(file, "utf8");
     expect(nextSource).not.toContain("@arcgis/core/Map");
     expect(nextSource).toContain('import { MapCompat } from "@honua/sdk-esri-compat";');
-    expect(nextSource).toContain("const map = new MapCompat({ basemap: 'streets' });");
+    expect(nextSource).toContain("const map = new MapCompat({ basemap: 'osm' });");
   });
 
   it("rewrites require-default constructor expressions", () => {
@@ -2589,7 +2589,7 @@ describe("runEsriCompatCodemod", () => {
       file,
       [
         "const Map = require('@arcgis/core/Map').default;",
-        "const map = new Map({ basemap: 'streets' });",
+        "const map = new Map({ basemap: 'osm' });",
         "void map;",
       ].join("\n"),
       "utf8",
@@ -2613,7 +2613,7 @@ describe("runEsriCompatCodemod", () => {
 
     const nextSource = fs.readFileSync(file, "utf8");
     expect(nextSource).toContain('import { MapCompat } from "@honua/sdk-esri-compat";');
-    expect(nextSource).toContain("const map = new MapCompat({ basemap: 'streets' });");
+    expect(nextSource).toContain("const map = new MapCompat({ basemap: 'osm' });");
     expect(nextSource).not.toContain("require('@arcgis/core/Map').default");
     expect(nextSource).not.toContain("const Map = require('@arcgis/core/Map').default;");
   });
@@ -2625,7 +2625,7 @@ describe("runEsriCompatCodemod", () => {
       file,
       [
         "const { default: MapCtor } = require('@arcgis/core/Map');",
-        "const map = new MapCtor({ basemap: 'streets' });",
+        "const map = new MapCtor({ basemap: 'osm' });",
         "void map;",
       ].join("\n"),
       "utf8",
@@ -2649,7 +2649,7 @@ describe("runEsriCompatCodemod", () => {
 
     const nextSource = fs.readFileSync(file, "utf8");
     expect(nextSource).toContain('import { MapCompat } from "@honua/sdk-esri-compat";');
-    expect(nextSource).toContain("const map = new MapCompat({ basemap: 'streets' });");
+    expect(nextSource).toContain("const map = new MapCompat({ basemap: 'osm' });");
     expect(nextSource).not.toContain("require('@arcgis/core/Map')");
     expect(nextSource).not.toContain("const { default: MapCtor } = require('@arcgis/core/Map');");
   });
@@ -2659,7 +2659,7 @@ describe("runEsriCompatCodemod", () => {
     const file = path.join(root, "require-map.cjs");
     fs.writeFileSync(
       file,
-      ["const Map = require('@arcgis/core/Map');", "const map = new Map({ basemap: 'streets' });"].join("\n"),
+      ["const Map = require('@arcgis/core/Map');", "const map = new Map({ basemap: 'osm' });"].join("\n"),
       "utf8",
     );
 
@@ -2676,7 +2676,7 @@ describe("runEsriCompatCodemod", () => {
 
     const nextSource = fs.readFileSync(file, "utf8");
     expect(nextSource).toContain('const { MapCompat } = require("@honua/sdk-esri-compat");');
-    expect(nextSource).toContain("new MapCompat({ basemap: 'streets' })");
+    expect(nextSource).toContain("new MapCompat({ basemap: 'osm' })");
   });
 
   it("auto-migrates require constructor in CommonJS .js modules to compat destructure", () => {
@@ -2686,7 +2686,7 @@ describe("runEsriCompatCodemod", () => {
       file,
       [
         "const Map = require('@arcgis/core/Map');",
-        "const map = new Map({ basemap: 'streets' });",
+        "const map = new Map({ basemap: 'osm' });",
         "module.exports = { map };",
       ].join("\n"),
       "utf8",
@@ -2705,7 +2705,7 @@ describe("runEsriCompatCodemod", () => {
 
     const nextSource = fs.readFileSync(file, "utf8");
     expect(nextSource).toContain('const { MapCompat } = require("@honua/sdk-esri-compat");');
-    expect(nextSource).toContain("new MapCompat({ basemap: 'streets' })");
+    expect(nextSource).toContain("new MapCompat({ basemap: 'osm' })");
     expect(nextSource).toContain("module.exports = { map };");
   });
 
@@ -2714,11 +2714,9 @@ describe("runEsriCompatCodemod", () => {
     const file = path.join(root, "require-strict.cjs");
     fs.writeFileSync(
       file,
-      [
-        '"use strict";',
-        "const Map = require('@arcgis/core/Map');",
-        "const map = new Map({ basemap: 'streets' });",
-      ].join("\n"),
+      ['"use strict";', "const Map = require('@arcgis/core/Map');", "const map = new Map({ basemap: 'osm' });"].join(
+        "\n",
+      ),
       "utf8",
     );
 
@@ -2795,10 +2793,10 @@ describe("runEsriCompatCodemod", () => {
         "import MapView from '@arcgis/core/views/MapView';",
         "import SceneView from '@arcgis/core/views/SceneView';",
         "import WebMap from '@arcgis/core/WebMap';",
-        "const map = new Map({ basemap: 'streets', ground: 'world-elevation', tables: [tableLayer], spatialReference: { wkid: 3857 } });",
+        "const map = new Map({ basemap: 'osm', ground: 'world-elevation', tables: [tableLayer], spatialReference: { wkid: 3857 } });",
         "const view = new MapView({ map, zoom: 4, scale: 5000000, rotation: 10, extent: initialExtent, constraints: { minZoom: 2 }, padding: { left: 8 }, highlightOptions: { color: '#ff0' }, spatialReference: { wkid: 4326 } });",
         "const scene = new SceneView({ map, viewingMode: 'global', qualityProfile: 'high', scale: 4000000, rotation: 15, spatialReference: { wkid: 3857 }, popup: { dockEnabled: true } });",
-        "const webMap = new WebMap({ portalItem: { id: 'abc123' }, basemap: 'satellite', layers: [layerA], tables: [tableLayer], ground: 'world-elevation', spatialReference: { wkid: 3857 } });",
+        "const webMap = new WebMap({ basemap: 'osm', layers: [layerA], tables: [tableLayer], ground: 'world-elevation', spatialReference: { wkid: 3857 } });",
         "void map; void view; void scene; void webMap;",
       ].join("\n"),
       "utf8",
@@ -2843,7 +2841,7 @@ describe("runEsriCompatCodemod", () => {
     expect(nextSource).not.toContain("@arcgis/core/views/MapView");
     expect(nextSource).not.toContain("@arcgis/core/views/SceneView");
     expect(nextSource).not.toContain("@arcgis/core/WebMap");
-    expect(nextSource).toContain("const map = new MapCompat({ basemap: 'streets'");
+    expect(nextSource).toContain("const map = new MapCompat({ basemap: 'osm'");
     expect(nextSource).toContain("ground: 'world-elevation'");
     expect(nextSource).toContain("tables: [tableLayer]");
     expect(nextSource).toContain("spatialReference: { wkid: 3857 }");
@@ -2858,8 +2856,8 @@ describe("runEsriCompatCodemod", () => {
     );
     expect(nextSource).toContain("spatialReference: { wkid: 3857 }");
     expect(nextSource).toContain("popup: { dockEnabled: true }");
-    expect(nextSource).toContain("const webMap = new WebMapCompat({ portalItem: { id: 'abc123' }");
-    expect(nextSource).toContain("basemap: 'satellite'");
+    expect(nextSource).toContain("const webMap = new WebMapCompat({ basemap: 'osm'");
+    expect(nextSource).toContain("basemap: 'osm'");
     expect(nextSource).toContain("layers: [layerA]");
     expect(nextSource).toContain("tables: [tableLayer]");
     expect(nextSource).toContain("ground: 'world-elevation'");
@@ -3886,7 +3884,7 @@ describe("runEsriCompatCodemod", () => {
     const file = path.join(root, "orphan-require.cjs");
     fs.writeFileSync(
       file,
-      ["const Map = require('@arcgis/core/Map');", "const map = new Map({ basemap: 'streets' });"].join("\n"),
+      ["const Map = require('@arcgis/core/Map');", "const map = new Map({ basemap: 'osm' });"].join("\n"),
       "utf8",
     );
 
@@ -3899,7 +3897,7 @@ describe("runEsriCompatCodemod", () => {
     expect(result.metrics.autoMigratedCallSites).toBe(1);
     const nextSource = fs.readFileSync(file, "utf8");
     expect(nextSource).toContain('const { MapCompat } = require("@honua/sdk-esri-compat");');
-    expect(nextSource).toContain("new MapCompat({ basemap: 'streets' })");
+    expect(nextSource).toContain("new MapCompat({ basemap: 'osm' })");
     expect(nextSource).not.toContain("const Map = require('@arcgis/core/Map');");
     expect(nextSource).not.toContain("require('@arcgis/core/Map')");
   });
