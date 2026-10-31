@@ -100,7 +100,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Report retired tooling
-        run: echo "The standalone JavaScript source migration package has been retired."
+        run: echo "JavaScript migration tooling retired: the standalone application-source package has been removed."
 
   dotnet:
     name: MAUI tool package gate (.NET 10)
