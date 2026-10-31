@@ -438,6 +438,7 @@ def test_footprint_emits_gpserver_cross_repo_handoff() -> None:
         "https://gis.example.com/arcgis/rest/services/Analysis/ElevationProfile/GPServer"
     ]
     handoff = elevation["migrationHandoff"]
+    assert handoff["target"] == "honua-migrate:python-script"
     assert handoff["target"] == GP_HANDOFF_TARGET
     assert handoff["note"] == GP_HANDOFF_NOTE
     assert handoff["serviceUrl"] == elevation["serviceUrl"]

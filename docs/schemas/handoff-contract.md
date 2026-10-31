@@ -20,6 +20,9 @@ canonical sample: [`docs/samples/esri-footprint.sample.json`](../samples/esri-fo
 ## The sole handoff
 
 `EsriFootprint.json` is the **only** supported handoff out of an assessment.
+For geoprocessing services, `migrationHandoff.target` now identifies the Python
+script migration pipeline as `honua-migrate:python-script`. Consumers that
+match the previous target value must update; the accompanying note also changes.
 
 - No side-channel data exchange. Consumers do not call the
   customer's source systems on their own, do not consume scanner logs, and do
