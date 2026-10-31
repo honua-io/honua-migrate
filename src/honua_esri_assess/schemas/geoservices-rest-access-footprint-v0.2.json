@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.honua.io/geoservices-rest-access-footprint/v0.2.0/geoservices-rest-access-footprint.json",
   "title": "GeoServicesRestAccessFootprint",
-  "description": "Read-only export of identity and access posture (users, roles+privileges, groups, per-service permissions, item sharing, org security config) produced by the Honua migration assessor from documented ArcGIS /arcgis/admin/security, /arcgis/admin/services, and Portal admin/community endpoints. It is a documented SIBLING of GeoServicesRestFootprint.json and drives Honua RBAC + the Portal facade. Schema version geoservices-rest-access-footprint/v0.2 (full SemVer in $id) is an additive successor to v0.1: it adds per-service ACE detail (operations) and a resolved effectivePermissions collapse. Schema version is carried in-band. v0.x is unstable; v1.0 is the first stable promise. Credentials, tokens, query strings, and URL userinfo are never present in any field.",
+  "description": "Read-only export of identity and access posture (users, roles+privileges, groups, per-service permissions, item sharing, org security config) produced by the Honua migration assessor from documented security, service, and community endpoints relative to their configured bases. It is a documented SIBLING of GeoServicesRestFootprint.json and drives Honua RBAC + the Portal facade. Schema version geoservices-rest-access-footprint/v0.2 (full SemVer in $id) is an additive successor to v0.1: it adds per-service ACE detail (operations) and a resolved effectivePermissions collapse. Schema version is carried in-band. v0.x is unstable; v1.0 is the first stable promise. Credentials, tokens, query strings, and URL userinfo are never present in any field.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -59,7 +59,7 @@
     },
     "servicePermissions": {
       "type": "array",
-      "description": "Per-service access-control entries (ACEs) observed by crawling documented admin security endpoints (/arcgis/admin/services/<service>/permissions). Each entry is one principal->effect ACE on one service.",
+      "description": "Per-service access-control entries (ACEs) observed by crawling documented admin security endpoint `services/<service>/permissions` relative to the configured admin base. Each entry is one principal->effect ACE on one service.",
       "items": {
         "$ref": "#/$defs/ServicePermission"
       }

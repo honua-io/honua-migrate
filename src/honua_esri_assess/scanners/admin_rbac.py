@@ -13,12 +13,12 @@ Documented endpoints consumed (all read-only):
   ``/sharing/rest/portals/self/roles`` (custom roles),
   ``/sharing/rest/portals/self/roles/<id>/privileges`` (role privileges),
   ``/sharing/rest/community/groups`` (groups).
-* ArcGIS Server admin (``/arcgis/admin/*``):
-  ``/arcgis/admin/security/roles/getRoles`` (roles),
-  ``/arcgis/admin/security/users/getUsers`` (users),
-  ``/arcgis/admin/services`` and ``/arcgis/admin/services/<folder>``
+* Configured server admin base (relative endpoint paths):
+  ``security/roles/getRoles`` (roles),
+  ``security/users/getUsers`` (users),
+  ``services`` and ``services/<folder>``
   (service catalog, root plus one level of sub-folders),
-  ``/arcgis/admin/services/<service>/permissions`` (per-service ACEs, crawled
+  ``services/<service>/permissions`` (per-service ACEs, crawled
   across the whole catalog and collapsed into effective grants).
 
 Soft failures (a token without admin scope, a denied endpoint) become typed
@@ -113,8 +113,8 @@ def scan_server_rbac(
 ) -> AccessFootprint:
     """Scan an ArcGIS Server admin target for RBAC posture.
 
-    Reads documented ``/arcgis/admin/security`` endpoints. The provided
-    ``target`` is the admin base (e.g. ``https://host/arcgis/admin``).
+    Reads documented security endpoints relative to the operator-supplied
+    administrator base URL. The ``target`` is that base URL.
     """
 
     base = target.rstrip("/") + "/"
@@ -159,10 +159,10 @@ def _crawl_service_permissions(
     diagnostics: list[Diagnostic],
     timeout: float | None,
 ) -> list[ServicePermission]:
-    """Crawl ``/arcgis/admin/services`` and read each service's ACEs.
+    """Crawl the configured admin base's ``services`` endpoint.
 
-    Read-only: lists the service catalog (root folder plus one level of
-    sub-folders, the documented admin layout) and issues a GET against
+    Read each service's ACEs read-only. List the service catalog (root folder
+    plus one level of sub-folders, the documented admin layout), then issue a GET against
     ``services/<service>/permissions`` for every discovered service. Any soft
     failure (denied, missing, rate limited, unreachable) for a single service
     becomes a typed diagnostic and is skipped -- the crawl never aborts.

@@ -20,5 +20,4 @@ Earlier schemas remain available for validating historical artifacts.
 The access footprint contains identities, roles and privileges, groups,
 service permissions, item sharing, organization security configuration, and
 prospect-safe diagnostics. All recorded access is read-only. External service
-paths such as `/sharing/rest` and `/arcgis/admin` remain literal where needed
-to describe the service protocol.
+admin service suffixes are resolved relative to the base URL supplied by the operator.

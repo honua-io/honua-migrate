@@ -1,9 +1,9 @@
 """Static catalog mapping Esri extension license codes to human names.
 
 The codes used here are the terse identifiers surfaced by
-``/arcgis/admin/system/licenses`` and per-service ``extensions`` arrays
+the configured licensing endpoint and per-service ``extensions`` arrays
 (e.g., ``"Spatial"``, ``"Network"``, ``"3DAnalyst"``). They are documented
-in the ArcGIS REST/Admin reference. Unknown codes round-trip verbatim
+in the GeoServices REST service reference. Unknown codes round-trip verbatim
 with status ``"unknown"`` and an ``unknown`` resolution flag so the catalog
 can be extended without losing data.
 """

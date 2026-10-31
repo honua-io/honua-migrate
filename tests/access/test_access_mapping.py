@@ -86,7 +86,7 @@ def test_facade_policies_prefer_effective_permissions_with_operations() -> None:
     url = "https://host.local/server/rest/services/X/FeatureServer"
     footprint = AccessFootprint(
         source_kind="geoservices-server",
-        locator="https://host.local/arcgis/admin",
+        locator="https://host.local/admin-api",
         roles=[
             AccessRole(id="publishers", name="publishers", type="custom", privileges=[]),
         ],

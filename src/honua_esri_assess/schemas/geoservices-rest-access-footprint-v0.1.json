@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.honua.io/geoservices-rest-access-footprint/v0.1.0/geoservices-rest-access-footprint.json",
   "title": "GeoServicesRestAccessFootprint",
-  "description": "Read-only export of identity and access posture (users, roles+privileges, groups, per-service permissions, item sharing, org security config) produced by the Honua migration assessor from documented ArcGIS /arcgis/admin/security and Portal admin/community endpoints. It is a documented SIBLING of GeoServicesRestFootprint.json and drives Honua RBAC + the Portal facade. Schema version geoservices-rest-access-footprint/v0.1 (full SemVer in $id). v0.x is unstable; v1.0 is the first stable promise. Credentials, tokens, query strings, and URL userinfo are never present in any field.",
+  "description": "Read-only export of identity and access posture (users, roles+privileges, groups, per-service permissions, item sharing, org security config) produced by the Honua migration assessor from documented security and community endpoints relative to the configured service base. It is a documented SIBLING of GeoServicesRestFootprint.json and drives Honua RBAC + the Portal facade. Schema version geoservices-rest-access-footprint/v0.1 (full SemVer in $id). v0.x is unstable; v1.0 is the first stable promise. Credentials, tokens, query strings, and URL userinfo are never present in any field.",
   "type": "object",
   "additionalProperties": false,
   "required": [

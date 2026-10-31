@@ -4,7 +4,7 @@
 ``GeoServicesRestFootprint.json``. It captures the identity / RBAC posture of an Esri
 estate -- users, roles + privileges, groups, per-service permissions, item
 sharing, and org security configuration -- read-only from documented ArcGIS
-``/arcgis/admin/security`` and Portal ``admin``/``community`` endpoints.
+the configured security endpoint and Portal ``admin``/``community`` endpoints.
 
 The artifact drives Honua RBAC and the Portal facade access policies (see
 :mod:`honua_esri_assess.footprint.access_mapping`).

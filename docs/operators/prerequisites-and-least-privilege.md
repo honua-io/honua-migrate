@@ -87,11 +87,11 @@ All read-only `GET`, `f=json`.
 
 | Endpoint | What it reads |
 |----------|---------------|
-| `…/arcgis/admin/info`, `…/arcgis/admin/system/licenses` | Entitlements / licensing |
-| `…/arcgis/admin/security/users/getUsers`, `…/security/roles/getRoles` | Identity & roles/privileges (RBAC export) |
-| `…/arcgis/admin/services/<service>/permissions` | Per-service access-control entries |
-| `…/arcgis/admin/usagereports` | Real service usage (prioritization) |
-| `…/arcgis/admin/data/items` | Data-store **registrations** (storage type → binding-mode hint) |
+| `admin-base/info`, `admin-base/system/licenses` | Entitlements / licensing |
+| `admin-base/security/users/getUsers`, `admin-base/security/roles/getRoles` | Identity & roles/privileges (RBAC export) |
+| `admin-base/services/<service>/permissions` | Per-service access-control entries |
+| `admin-base/usagereports` | Real service usage (prioritization) |
+| `admin-base/data/items` | Data-store **registrations** (storage type → binding-mode hint) |
 | Portal `…/sharing/rest/community/groups`, `security/users`, `security/roles` | Portal-side identity/roles |
 
 > The authorized RBAC/usage scanners ship as library modules today; the
@@ -106,7 +106,7 @@ issue a token for a plain **Viewer** account — no admin, no publisher, no
 sharing privileges needed. It only ever sees what that viewer can already see.
 
 ### Tier 2 (the honest caveat)
-The ArcGIS **Server Admin API** (`/arcgis/admin/*`: `usagereports`,
+The **Server Admin API** (relative paths: `usagereports`,
 `data/items`, `system/licenses`, `security/*`, `services/<>/permissions`) does
 **not** expose a granular read-only role — access is gated behind an
 **administrative** connection to the server (the primary site administrator or

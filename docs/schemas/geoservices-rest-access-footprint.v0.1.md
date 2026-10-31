@@ -40,7 +40,7 @@ access policies (see the mapping transform below).
 | Target          | Endpoints |
 |-----------------|-----------|
 | ArcGIS Online / Enterprise Portal | `/sharing/rest/portals/self`, `/sharing/rest/portals/self/users`, `/sharing/rest/portals/self/roles`, `/sharing/rest/portals/self/roles/<id>/privileges`, `/sharing/rest/community/groups` |
-| ArcGIS Server admin | `/arcgis/admin/security/roles/getRoles`, `/arcgis/admin/security/users/getUsers`, `/arcgis/admin/services/<svc>/permissions` |
+| ArcGIS Server admin | `security/roles/getRoles` relative to the configured admin base, `security/users/getUsers` relative to the configured admin base, `services/<svc>/permissions` relative to the configured admin base |
 
 ## Top-level shape
 
@@ -94,7 +94,7 @@ between minor bumps); v1.0 is the first stable promise. Pin on
 ## Deferred at v0.1 (out of scope of the foundational slice)
 
 - A `scan rbac` CLI surface and `GeoServicesRestAccessFootprint.json` write path.
-- Per-service ACE enumeration from `/arcgis/admin/services/<svc>/permissions`
+- Per-service ACE enumeration from `services/<svc>/permissions` relative to the configured admin base
   (the `ServicePermission`/`ItemSharing` shapes are defined and validated; the
   scanner skeleton models them via helpers but does not yet crawl every
   service/item).

@@ -1,10 +1,10 @@
 """ArcGIS Server entitlement collector.
 
-Reads documented admin endpoints (``/arcgis/admin/info``,
-``/arcgis/admin/system/licenses``) plus per-service extension lists. Admin
+Reads documented server metadata and licensing endpoints relative to the configured
+server base, plus per-service extension lists. Admin
 endpoints are guarded behind an admin token; when the caller's token does
 not satisfy that scope, the collector falls back to whatever the public
-``/arcgis/rest/info`` endpoint exposes and emits ``missing-permission``
+server metadata endpoint exposes and emits ``missing-permission``
 diagnostics.
 """
 

@@ -65,7 +65,7 @@ def _server_client() -> StubHttpClient:
 def test_scan_server_rbac_reads_admin_security_endpoints() -> None:
     client = _server_client()
 
-    footprint = scan_server_rbac("https://host.local/arcgis/admin", client)
+    footprint = scan_server_rbac("https://host.local/admin-api", client)
 
     assert footprint.source_kind == "geoservices-server"
     assert {r.name for r in footprint.roles} == {"publishers", "viewers"}
@@ -76,14 +76,14 @@ def test_scan_server_rbac_reads_admin_security_endpoints() -> None:
 
 def test_scan_server_rbac_crawls_aces_across_catalog() -> None:
     client = _server_client()
-    footprint = scan_server_rbac("https://host.local/arcgis/admin", client)
+    footprint = scan_server_rbac("https://host.local/admin-api", client)
 
     # Services from the root folder and both sub-folders were crawled.
     crawled_urls = {p.service_url for p in footprint.service_permissions}
     assert crawled_urls == {
-        "https://host.local/arcgis/admin/services/Parcels.MapServer",
-        "https://host.local/arcgis/admin/services/Hosted/Wells.FeatureServer",
-        "https://host.local/arcgis/admin/services/Utilities/PrintingTools.GPServer",
+        "https://host.local/admin-api/services/Parcels.MapServer",
+        "https://host.local/admin-api/services/Hosted/Wells.FeatureServer",
+        "https://host.local/admin-api/services/Utilities/PrintingTools.GPServer",
     }
 
     parcels = [
@@ -103,9 +103,9 @@ def test_scan_server_rbac_crawls_aces_across_catalog() -> None:
 
 def test_scan_server_rbac_resolves_effective_permissions() -> None:
     client = _server_client()
-    footprint = scan_server_rbac("https://host.local/arcgis/admin", client)
+    footprint = scan_server_rbac("https://host.local/admin-api", client)
 
-    wells_url = "https://host.local/arcgis/admin/services/Hosted/Wells.FeatureServer"
+    wells_url = "https://host.local/admin-api/services/Hosted/Wells.FeatureServer"
     wells = [
         p for p in footprint.effective_permissions if p.service_url == wells_url
     ]
@@ -163,7 +163,7 @@ def test_ace_crawl_soft_failures_degrade_to_diagnostics() -> None:
         }
     )
 
-    footprint = scan_server_rbac("https://host.local/arcgis/admin", client)
+    footprint = scan_server_rbac("https://host.local/admin-api", client)
 
     crawled = {p.service_url for p in footprint.service_permissions}
     # Parcels (reachable) is present; Wells/PrintingTools (soft-failed) are absent.

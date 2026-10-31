@@ -37,9 +37,9 @@ SCHEMA_HASHES = {
     "geoservices-rest-footprint-v0.1.json": "a7776eb3019f9898e9057484b774be99f5de48926c4f9f61a97cc54743f0cd02",
     "geoservices-rest-footprint-v0.2.json": "77cf8d30c0770f204491c471854217760e1c984086d7a8e63b5500bf50adf933",
     "geoservices-rest-footprint-v0.3.json": "f448d79ba892cbec1bf308f02d63c9dac907a8554fa682060f9bc4b964a4a9dd",
-    "geoservices-rest-access-footprint-v0.1.json": "76ea38ec78e7a43e01297f90bd03ac54e68e0768b880c9a63625c586f34a7722",
-    "geoservices-rest-access-footprint-v0.2.json": "b03c27096704400813b6e9d56d200f29a67e014c4f29f25f7203bf995e1c214b",
-    "geoservices-rest-access-footprint-v0.3.json": "d47a57eb675f531668f9381f48fb769c0b2cbd14fa7d95a0d2406b2d6664a9a1",
+    "geoservices-rest-access-footprint-v0.1.json": "e801f44cb41d4f8057bed8ae0d65d7a44eba575187ac1c9a48a4d50563cc8857",
+    "geoservices-rest-access-footprint-v0.2.json": "1f74b243bd450b60c77045fe82b677e263354251af918df89d0e4e655dc3ba5e",
+    "geoservices-rest-access-footprint-v0.3.json": "6b2bbe4d0479fdc4679b2147817891bfd2d3b215b1a157d1cfdf0df823538f39",
 }
 
 

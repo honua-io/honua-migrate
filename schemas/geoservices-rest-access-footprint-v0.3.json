@@ -58,7 +58,7 @@
     },
     "servicePermissions": {
       "type": "array",
-      "description": "Per-service access-control entries (ACEs) observed by crawling documented admin security endpoints (/arcgis/admin/services/<service>/permissions). Each entry is one principal->effect ACE on one service.",
+      "description": "Per-service access-control entries (ACEs) observed by crawling documented admin security endpoint `services/<service>/permissions` relative to the configured admin base. Each entry is one principal->effect ACE on one service.",
       "items": {
         "$ref": "#/$defs/ServicePermission"
       }

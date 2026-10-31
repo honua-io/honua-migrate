@@ -93,7 +93,7 @@ def test_server_scan_locator_is_credential_free() -> None:
         }
     )
     footprint = scan_server_rbac(
-        "https://admin:secret@host.local/arcgis/admin?token=topsecret-token", client
+        "https://admin:secret@host.local/admin-api?token=topsecret-token", client
     )
     artifact = build_access_footprint(footprint)
     assert "@" not in artifact["source"]["locator"]

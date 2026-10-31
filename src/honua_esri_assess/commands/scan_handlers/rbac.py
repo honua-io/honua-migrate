@@ -6,8 +6,8 @@ scanner into the ``scan rbac`` command and renders its result into the
 :func:`honua_esri_assess.footprint.access.build_access_footprint`.
 
 For ArcGIS Server targets the scanner now crawls the documented admin service
-catalog (``/arcgis/admin/services``) and reads each service's ACEs from
-``/arcgis/admin/services/<service>/permissions``, then collapses them into a
+catalog (``/admin-api/services``) and reads each service's ACEs from
+``/admin-api/services/<service>/permissions``, then collapses them into a
 deterministic effective-permission grant per (service, principal). Portal
 targets continue to model the identity / RBAC posture exposed by the documented
 ``admin``/``community`` endpoints.

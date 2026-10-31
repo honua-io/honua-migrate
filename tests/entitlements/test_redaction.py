@@ -18,7 +18,7 @@ from .conftest import StubHttpClient, respond
 
 def test_safe_url_redacts_token_query_param() -> None:
     redacted = safe_url(
-        "https://example.com/arcgis/admin/info?f=json&token=ABCDEF123456"
+        "https://example.com/admin-api/info?f=json&token=ABCDEF123456"
     )
     assert "ABCDEF123456" not in redacted
     assert "token=REDACTED" in redacted

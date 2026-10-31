@@ -107,7 +107,7 @@ def test_build_full_footprint_validates() -> None:
 
 def test_build_empty_footprint_validates() -> None:
     artifact = build_access_footprint(
-        AccessFootprint(source_kind="geoservices-server", locator="https://host.local/arcgis/admin")
+        AccessFootprint(source_kind="geoservices-server", locator="https://host.local/admin-api")
     )
     assert validate_access_footprint(artifact) is True
     assert artifact["users"] == []
@@ -118,7 +118,7 @@ def test_service_permission_url_is_redacted_and_schema_valid() -> None:
     artifact = build_access_footprint(
         AccessFootprint(
             source_kind="geoservices-server",
-            locator="https://host.local/arcgis/admin",
+            locator="https://host.local/admin-api",
             service_permissions=[
                 ServicePermission(
                     service_url="https://u:p@host.local/server/rest/services/X/FeatureServer?token=secret",
@@ -176,7 +176,7 @@ def test_effective_permissions_auto_derived_in_artifact() -> None:
     artifact = build_access_footprint(
         AccessFootprint(
             source_kind="geoservices-server",
-            locator="https://host.local/arcgis/admin",
+            locator="https://host.local/admin-api",
             service_permissions=[
                 ServicePermission(url, "role", "pub", "allow", operations=["Query"]),
                 ServicePermission(url, "role", "pub", "deny", operations=["Delete"]),

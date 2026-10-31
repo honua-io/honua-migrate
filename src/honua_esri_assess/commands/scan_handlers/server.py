@@ -167,11 +167,10 @@ def _collect_admin_usage(
 
 
 def _admin_base(rest_root: str) -> str:
-    """Derive the ``/arcgis/`` admin base from the canonical REST root.
+    """Derive the admin base from the caller-supplied canonical REST root.
 
-    ``rest_root`` is ``https://host/arcgis/rest/services``; the Admin-API lives
-    at ``https://host/arcgis/admin/...`` so the collector base is the
-    ``/arcgis/`` prefix (the collector appends ``admin/...`` itself).
+    The configured scanner target supplies the URL prefix; the collector
+    derives the parent base and appends its documented endpoint suffixes.
     """
 
     parts = urlsplit(rest_root)

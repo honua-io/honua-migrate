@@ -164,7 +164,7 @@ def test_rbac_server_kind_reads_admin_security(
             "--kind",
             "server",
             "--target",
-            "https://host.local/arcgis/admin",
+            "https://host.local/admin-api",
             "--output",
             str(output),
             "--validate",
