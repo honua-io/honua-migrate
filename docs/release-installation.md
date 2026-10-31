@@ -47,10 +47,10 @@ Run a local assessment workflow with your own FileGDB inventory descriptor:
 ```bash
 honua-migrate assess scan filegdb \
   --target ./sample.gdb \
-  --output EsriFootprint.json \
+  --output GeoServicesRestFootprint.json \
   --validate
 honua-migrate assess report \
-  --input EsriFootprint.json \
+  --input GeoServicesRestFootprint.json \
   --output readiness-report.md
 ```
 

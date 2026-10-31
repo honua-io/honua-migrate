@@ -63,7 +63,7 @@ Before the environment-protected upload job can start, the workflow requires:
 - isolated wheel and sdist installs with `pip check`, both console commands,
   both module invocations, the canonical typed-package marker, the complete
   fixture-backed smoke suite, and an
-  installed `scan -> EsriFootprint.json -> report` workflow; and
+  installed `scan -> GeoServicesRestFootprint.json -> report` workflow; and
 - exact PyPI filename/hash parity when a version already exists; and
 - a matching GitHub release that accepts new assets or byte-identical existing
   assets without overwrite.

@@ -24,11 +24,11 @@ from honua_esri_assess.server.models import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-V02_SCHEMA = REPO_ROOT / "schemas" / "esri-footprint-v0.2.json"
+V03_SCHEMA = REPO_ROOT / "schemas" / "geoservices-rest-footprint-v0.3.json"
 
 
 def _v02_validator() -> Draft202012Validator:
-    schema = json.loads(V02_SCHEMA.read_text(encoding="utf-8"))
+    schema = json.loads(V03_SCHEMA.read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(schema)
     return Draft202012Validator(schema, format_checker=FormatChecker())
 
@@ -68,7 +68,7 @@ def test_webmap_service_edges_emitted_and_validate() -> None:
     ]
     fp = to_footprint_v0_1(_portal_result(items), tool_version="0.0.0")
 
-    assert fp["schemaVersion"] == "v0.2"
+    assert fp["schemaVersion"] == "v0.3"
     # Edge to "unscanned" is dropped because the target is not in the inventory.
     assert fp["dependencyEdges"] == [
         {"from": "map1", "to": "svc1", "relation": RELATION_WEBMAP_SERVICE},
@@ -109,7 +109,7 @@ def test_service_layer_edges_emitted_and_validate() -> None:
     fp = to_footprint_v0_1(result, tool_version="0.0.0")
     base = "https://gis.example.com/arcgis/rest/services/Hydro/Watersheds/FeatureServer"
 
-    assert fp["schemaVersion"] == "v0.2"
+    assert fp["schemaVersion"] == "v0.3"
     assert fp["dependencyEdges"] == [
         {"from": base, "to": f"{base}#0", "relation": RELATION_SERVICE_LAYER},
         {"from": base, "to": f"{base}#1", "relation": RELATION_SERVICE_LAYER},
@@ -181,7 +181,7 @@ def test_dependency_order_covers_cycles_without_dropping_nodes() -> None:
 )
 def test_v02_schema_accepts_both_in_band_versions(schema_version: str) -> None:
     sample = json.loads(
-        (REPO_ROOT / "tests" / "fixtures" / "esri-footprint-sample.json").read_text(
+        (REPO_ROOT / "tests" / "fixtures" / "geoservices-rest-footprint-sample.json").read_text(
             encoding="utf-8"
         )
     )

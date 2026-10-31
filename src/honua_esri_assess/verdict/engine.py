@@ -1,6 +1,6 @@
 """Deterministic migratability verdict engine.
 
-Maps an ``EsriFootprint.json`` dictionary plus the capability registry to a
+Maps an ``GeoServicesRestFootprint.json`` dictionary plus the capability registry to a
 per-shop-profile verdict (``go`` / ``conditional`` / ``no-go``), an effort band,
 and an explicit list of named migration boundaries. Hard Esri lock-ins
 (Utility Network, Parcel Fabric, LRS) are always surfaced as explicit

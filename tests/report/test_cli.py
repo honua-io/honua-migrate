@@ -13,7 +13,7 @@ import zipfile
 from honua_esri_assess import cli
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SAMPLE_FOOTPRINT = REPO_ROOT / "docs" / "samples" / "esri-footprint.sample.json"
+SAMPLE_FOOTPRINT = REPO_ROOT / "docs" / "samples" / "geoservices-rest-footprint.sample.json"
 
 
 def test_report_writes_output_file(tmp_path: Path, capsys) -> None:
@@ -173,7 +173,8 @@ def test_packaged_report_strict_schema_failure_is_typed(tmp_path: Path) -> None:
     )
     wheel = next(wheel_dir.glob("honua_migrate-*.whl"))
     with zipfile.ZipFile(wheel) as archive:
-        assert "honua_esri_assess/schemas/esri-footprint-v0.1.json" in archive.namelist()
+        assert "honua_esri_assess/schemas/geoservices-rest-footprint-v0.1.json" in archive.namelist()
+        assert "honua_esri_assess/schemas/geoservices-rest-footprint-v0.3.json" in archive.namelist()
 
     subprocess.run(
         [sys.executable, "-m", "pip", "install", "--no-deps", "--target", str(target_dir), str(wheel)],
@@ -255,7 +256,7 @@ def _mixed_invalid_type_footprint() -> dict:
         "generatedAt": "2026-05-22T14:08:33Z",
         "tool": {"name": "honua-esri-assess", "version": "0.1.0"},
         "source": {
-            "kind": "arcgis-online",
+            "kind": "portal",
             "locator": "example.maps.arcgis.com/0123ABCDEF456789",
             "capturedAt": "2026-05-22T14:02:11Z",
         },

@@ -176,10 +176,10 @@ jobs:
         run: |
           .venv/bin/honua-migrate assess scan filegdb \
             --target tests/smoke/fixtures/filegdb/happy/sample.gdb \
-            --output EsriFootprint.json --validate
+            --output GeoServicesRestFootprint.json --validate
           .venv/bin/honua-migrate assess report \
-            --input EsriFootprint.json --output readiness-report.md
-          jq -e '.schemaVersion == "v0.2"' EsriFootprint.json
+            --input GeoServicesRestFootprint.json --output readiness-report.md
+          jq -e '.schemaVersion == "v0.2"' GeoServicesRestFootprint.json
           test -s readiness-report.md
       - name: Install and verify source distribution
         run: |

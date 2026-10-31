@@ -1,13 +1,13 @@
 {
-  "schemaVersion": "v0.2",
+  "schemaVersion": "v0.3",
   "generatedAt": "2026-05-31T16:00:00Z",
   "tool": {
-    "name": "honua-esri-assess",
+    "name": "honua-migrate",
     "version": "0.1.0"
   },
   "source": {
-    "kind": "arcgis-server",
-    "locator": "https://gis.example.com/arcgis",
+    "kind": "geoservices-server",
+    "locator": "https://gis.example.com/arcgis/rest/services",
     "capturedAt": "2026-05-31T15:55:00Z"
   },
   "inventory": [
@@ -48,8 +48,8 @@
     "folders": [
       "Base",
       "Imagery",
-      "Tools",
-      "Roads"
+      "Roads",
+      "Tools"
     ],
     "serviceCounts": {
       "FeatureServer": 1,
@@ -57,43 +57,13 @@
       "GeocodeServer": 1,
       "NAServer": 1
     },
-    "version": "11.2",
-    "bindingPlan": {
-      "usageRankedServices": [
-        {
-          "service": "Base/Parcels.FeatureServer",
-          "requests": 12840,
-          "rank": 1
-        },
-        {
-          "service": "Imagery/Ortho2024.ImageServer",
-          "requests": 5120,
-          "rank": 2
-        },
-        {
-          "service": "Tools/Geocode.GeocodeServer",
-          "requests": 900,
-          "rank": 3
-        },
-        {
-          "service": "Roads/Network.NAServer",
-          "requests": 120,
-          "rank": 4
-        }
-      ],
-      "datasetBindings": [
-        {
-          "datasetId": "ds-1",
-          "storageType": "egdb",
-          "connectionKind": "enterprise-geodatabase",
-          "bindingMode": "federate"
-        }
-      ]
-    }
+    "version": "11.2"
   },
   "counts": {
     "items": {
-      "server-service": 4
+      "portal-item": 0,
+      "server-service": 4,
+      "filegdb-feature-class": 0
     },
     "layers": 9,
     "featureClasses": 0

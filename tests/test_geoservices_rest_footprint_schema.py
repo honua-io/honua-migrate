@@ -1,4 +1,4 @@
-"""Smoke tests for the EsriFootprint v0.1 schema and its canonical sample."""
+"""Smoke tests for the GeoServicesRestFootprint v0.3 schema and its canonical sample."""
 
 from __future__ import annotations
 
@@ -12,15 +12,15 @@ import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCHEMA_PATH = REPO_ROOT / "schemas" / "esri-footprint-v0.1.json"
+SCHEMA_PATH = REPO_ROOT / "schemas" / "geoservices-rest-footprint-v0.3.json"
 PACKAGED_SCHEMA_PATH = (
     REPO_ROOT
     / "src"
     / "honua_esri_assess"
     / "schemas"
-    / "esri-footprint-v0.1.json"
+    / "geoservices-rest-footprint-v0.3.json"
 )
-SAMPLE_PATH = REPO_ROOT / "docs" / "samples" / "esri-footprint.sample.json"
+SAMPLE_PATH = REPO_ROOT / "docs" / "samples" / "geoservices-rest-footprint.sample.json"
 
 LOCKED_DIAGNOSTIC_CODES_V01 = frozenset(
     {
@@ -74,11 +74,11 @@ def validator(schema: dict) -> Draft202012Validator:
 
 def _valid_artifact_for_kind(sample: dict, source_kind: str) -> dict:
     artifact = copy.deepcopy(sample)
-    if source_kind == "arcgis-online":
+    if source_kind == "portal":
         return artifact
-    if source_kind == "arcgis-server":
+    if source_kind == "geoservices-server":
         artifact["source"] = {
-            "kind": "arcgis-server",
+            "kind": "geoservices-server",
             "locator": "https://gis.example.com/arcgis/rest/services",
             "capturedAt": "2026-05-22T14:02:11Z",
         }
@@ -177,7 +177,7 @@ def _inventory_item_for_kind(sample: dict, item_kind: str) -> dict:
 
 def test_schema_id_carries_full_semver(schema: dict) -> None:
     assert schema["$id"] == (
-        "https://schemas.honua.io/esri-footprint/v0.1.0/esri-footprint.json"
+        "https://schemas.honua.io/geoservices-rest-footprint/v0.3.0/geoservices-rest-footprint.json"
     )
 
 
@@ -196,14 +196,14 @@ def test_canonical_sample_validates(validator: Draft202012Validator, sample: dic
     )
 
 
-def test_sample_schema_version_is_v01(sample: dict) -> None:
-    assert sample["schemaVersion"] == "v0.1"
+def test_sample_schema_version_is_v03(sample: dict) -> None:
+    assert sample["schemaVersion"] == "v0.3"
 
 
 def test_sample_diagnostic_codes_are_in_locked_enum(sample: dict) -> None:
     codes = {entry["code"] for entry in sample["diagnostics"]}
     unknown = codes - LOCKED_DIAGNOSTIC_CODES_V01
-    assert not unknown, f"Sample uses diagnostic codes outside v0.1 vocabulary: {unknown}"
+    assert not unknown, f"Sample uses diagnostic codes outside the published diagnostic vocabulary: {unknown}"
 
 
 def test_schema_diagnostic_enum_matches_locked_vocabulary(schema: dict) -> None:
@@ -216,7 +216,7 @@ def test_top_level_is_closed(schema: dict) -> None:
 
 
 def test_server_service_variant_validates(validator: Draft202012Validator, sample: dict) -> None:
-    artifact = _valid_artifact_for_kind(sample, "arcgis-server")
+    artifact = _valid_artifact_for_kind(sample, "geoservices-server")
     errors = sorted(validator.iter_errors(artifact), key=lambda e: list(e.path))
     assert errors == [], "\n".join(
         f"{list(err.path)}: {err.message}" for err in errors
@@ -242,7 +242,7 @@ def test_unknown_diagnostic_code_is_rejected(
             "code": "made-up-code",
             "severity": "warn",
             "message": "should be rejected",
-            "scope": "arcgis-online",
+            "scope": "portal",
         }
     )
     assert not validator.is_valid(artifact)
@@ -267,8 +267,8 @@ def test_spatial_reference_requires_at_least_one_identifier(
 @pytest.mark.parametrize(
     ("source_kind", "required_facet"),
     [
-        ("arcgis-online", "portal"),
-        ("arcgis-server", "server"),
+        ("portal", "portal"),
+        ("geoservices-server", "server"),
         ("filegdb", "filegdb"),
     ],
 )
@@ -286,10 +286,10 @@ def test_source_kind_requires_matching_facet(
 @pytest.mark.parametrize(
     ("source_kind", "sibling_facet"),
     [
-        ("arcgis-online", "server"),
-        ("arcgis-online", "filegdb"),
-        ("arcgis-server", "portal"),
-        ("arcgis-server", "filegdb"),
+        ("portal", "server"),
+        ("portal", "filegdb"),
+        ("geoservices-server", "portal"),
+        ("geoservices-server", "filegdb"),
         ("filegdb", "portal"),
         ("filegdb", "server"),
     ],
@@ -308,10 +308,10 @@ def test_source_kind_rejects_sibling_facets(
 @pytest.mark.parametrize(
     ("source_kind", "inventory_kind"),
     [
-        ("arcgis-online", "server-service"),
-        ("arcgis-online", "filegdb-feature-class"),
-        ("arcgis-server", "portal-item"),
-        ("arcgis-server", "filegdb-feature-class"),
+        ("portal", "server-service"),
+        ("portal", "filegdb-feature-class"),
+        ("geoservices-server", "portal-item"),
+        ("geoservices-server", "filegdb-feature-class"),
         ("filegdb", "portal-item"),
         ("filegdb", "server-service"),
     ],
@@ -330,19 +330,19 @@ def test_source_kind_rejects_mismatched_inventory_variants(
 @pytest.mark.parametrize(
     ("source_kind", "locator"),
     [
-        ("arcgis-online", "https://example.maps.arcgis.com/0123ABCDEF456789"),
-        ("arcgis-online", "C:/Users/Alice/customer.gdb"),
-        ("arcgis-online", r"C:\Users\Alice\customer.gdb"),
-        ("arcgis-online", "token=secret"),
-        ("arcgis-online", "user:pass@example.maps.arcgis.com/0123ABCDEF456789"),
-        ("arcgis-online", "example.maps.arcgis.com/0123ABCDEF456789?token=secret"),
-        ("arcgis-online", "example.maps.arcgis.com/0123ABCDEF456789#fragment"),
+        ("portal", "https://example.maps.example.com/0123ABCDEF456789"),
+        ("portal", "C:/Users/Alice/customer.gdb"),
+        ("portal", r"C:\Users\Alice\customer.gdb"),
+        ("portal", "token=secret"),
+        ("portal", "user:pass@example.maps.example.com/0123ABCDEF456789"),
+        ("portal", "example.maps.example.com/0123ABCDEF456789?token=secret"),
+        ("portal", "example.maps.example.com/0123ABCDEF456789#fragment"),
         (
-            "arcgis-server",
+            "geoservices-server",
             "https://user:pass@gis.example.com/arcgis/rest/services",
         ),
-        ("arcgis-server", "https://gis.example.com/arcgis/rest/services?token=secret"),
-        ("arcgis-server", "https://gis.example.com/arcgis/rest/services#fragment"),
+        ("geoservices-server", "https://gis.example.com/arcgis/rest/services?token=secret"),
+        ("geoservices-server", "https://gis.example.com/arcgis/rest/services#fragment"),
         ("filegdb", "C:/data/parcels.gdb"),
     ],
 )
@@ -362,7 +362,7 @@ def test_server_service_url_rejects_query_string(
 ) -> None:
     artifact = copy.deepcopy(sample)
     artifact["source"] = {
-        "kind": "arcgis-server",
+        "kind": "geoservices-server",
         "locator": "https://gis.example.com/arcgis/rest/services",
         "capturedAt": "2026-05-22T14:02:11Z",
     }
@@ -393,7 +393,7 @@ def test_server_service_url_rejects_userinfo(
 ) -> None:
     artifact = copy.deepcopy(sample)
     artifact["source"] = {
-        "kind": "arcgis-server",
+        "kind": "geoservices-server",
         "locator": "https://gis.example.com/arcgis/rest/services",
         "capturedAt": "2026-05-22T14:02:11Z",
     }
@@ -422,9 +422,9 @@ def test_server_service_url_rejects_userinfo(
 @pytest.mark.parametrize(
     "org_url",
     [
-        "https://user:pass@example.maps.arcgis.com",
-        "https://example.maps.arcgis.com?token=secret",
-        "https://example.maps.arcgis.com/#fragment",
+        "https://user:pass@example.maps.example.com",
+        "https://example.maps.example.com?token=secret",
+        "https://example.maps.example.com/#fragment",
     ],
 )
 def test_portal_org_url_rejects_secret_bearing_urls(
@@ -439,19 +439,19 @@ def test_portal_org_url_rejects_secret_bearing_urls(
     ("source_kind", "map_path", "unsafe_key"),
     [
         (
-            "arcgis-online",
+            "portal",
             ("portal", "itemCounts"),
             "https://collector.example.com/hook?token=secret",
         ),
-        ("arcgis-online", ("portal", "itemCounts"), "https://collector.example.com/hook"),
-        ("arcgis-online", ("portal", "itemCounts"), "token=secret"),
+        ("portal", ("portal", "itemCounts"), "https://collector.example.com/hook"),
+        ("portal", ("portal", "itemCounts"), "token=secret"),
         (
-            "arcgis-server",
+            "geoservices-server",
             ("server", "serviceCounts"),
             "https://collector.example.com/hook?token=secret",
         ),
-        ("arcgis-server", ("server", "serviceCounts"), "https://collector.example.com/hook"),
-        ("arcgis-server", ("server", "serviceCounts"), "token=secret"),
+        ("geoservices-server", ("server", "serviceCounts"), "https://collector.example.com/hook"),
+        ("geoservices-server", ("server", "serviceCounts"), "token=secret"),
     ],
 )
 def test_count_maps_reject_url_or_token_like_keys(

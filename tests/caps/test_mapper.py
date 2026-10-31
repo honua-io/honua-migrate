@@ -9,9 +9,9 @@ from honua_esri_assess.caps.crosswalk import load_bundled_crosswalk
 from honua_esri_assess.caps.mapper import evaluate
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SAMPLE = REPO_ROOT / "docs" / "samples" / "esri-footprint.sample.json"
-UTILITY_NETWORK = REPO_ROOT / "tests" / "fixtures" / "esri-footprint-utility-network.json"
-PORTAL_FEDERATION = REPO_ROOT / "tests" / "fixtures" / "esri-footprint-portal-federation.json"
+SAMPLE = REPO_ROOT / "docs" / "samples" / "geoservices-rest-footprint.sample.json"
+UTILITY_NETWORK = REPO_ROOT / "tests" / "fixtures" / "geoservices-rest-footprint-utility-network.json"
+PORTAL_FEDERATION = REPO_ROOT / "tests" / "fixtures" / "geoservices-rest-footprint-portal-federation.json"
 
 
 def _load(path: Path) -> dict:
@@ -130,7 +130,7 @@ def test_evaluate_never_drops_a_detected_capability() -> None:
 
 
 def test_evaluate_empty_inventory_yields_no_capabilities_or_unmapped() -> None:
-    footprint = {"source": {"kind": "arcgis-online"}, "inventory": []}
+    footprint = {"source": {"kind": "portal"}, "inventory": []}
     crosswalk = load_bundled_crosswalk()
 
     result = evaluate(footprint, crosswalk)

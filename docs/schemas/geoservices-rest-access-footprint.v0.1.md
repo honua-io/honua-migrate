@@ -1,20 +1,20 @@
 ---
 type: reference
-title: "esri-access-footprint v0.1 schema"
+title: "geoservices-rest-access-footprint v0.1 schema"
 description: "The access-footprint schema: what the assessment records about permissions and reachability, separate from the estate itself."
 resource: "https://github.com/honua-io/honua-migrate/tree/trunk/schemas"
 tags: [schema, access, permissions]
 ---
-# EsriAccessFootprint v0.1 reference
+# GeoServicesRestAccessFootprint v0.1 reference
 
-- Schema id: `https://schemas.honua.io/esri-access-footprint/v0.1.0/esri-access-footprint.json`
-- Schema file: [`schemas/esri-access-footprint-v0.1.json`](../../schemas/esri-access-footprint-v0.1.json)
+- Schema id: `https://schemas.honua.io/geoservices-rest-access-footprint/v0.1.0/geoservices-rest-access-footprint.json`
+- Schema file: [`schemas/geoservices-rest-access-footprint-v0.1.json`](../../schemas/geoservices-rest-access-footprint-v0.1.json)
 - JSON Schema dialect: draft-2020-12
 
 ## Purpose
 
-`EsriAccessFootprint.json` is a documented **sibling** of
-[`EsriFootprint.json`](./esri-footprint.v0.1.md). Where `EsriFootprint.json`
+`GeoServicesRestAccessFootprint.json` is a documented **sibling** of
+[`GeoServicesRestFootprint.json`](./geoservices-rest-footprint.v0.1.md). Where `GeoServicesRestFootprint.json`
 inventories *content*, the access footprint captures the estate's
 **identity / RBAC posture**: users, roles + privileges, groups, per-service
 permissions, item sharing, and org security configuration.
@@ -23,7 +23,7 @@ Auth is the hardest, most-manual migration step. This artifact is read-only,
 prospect-safe, and drives the **Honua RBAC** model and the **Portal facade**
 access policies (see the mapping transform below).
 
-## Promises (same constraints as EsriFootprint.json)
+## Promises (same constraints as GeoServicesRestFootprint.json)
 
 - **Read-only.** The scanner only issues HTTP `GET`s against documented
   endpoints and never writes to the source Esri system. ArcSDE/GDB internals
@@ -33,7 +33,7 @@ access policies (see the mapping transform below).
   any residual userinfo (`@`), query string (`?`), fragment (`#`), or
   whitespace. Passwords and tokens are never modeled into any field.
 - **Prospect-safe diagnostics.** `diagnostics[].code` is the same locked v0.1
-  enum used by `EsriFootprint.json`.
+  enum used by `GeoServicesRestFootprint.json`.
 
 ## Source endpoints (all read-only)
 
@@ -51,7 +51,7 @@ access policies (see the mapping transform below).
 | `schemaVersion`      | yes      | const `"v0.1"`                | Contract major.minor carried in-band. |
 | `generatedAt`        | yes      | RFC3339 UTC                   | When the scan finished. |
 | `tool`               | yes      | `{ name, version }`           | Scanner provenance (`name` const `honua-esri-assess`). |
-| `source`             | yes      | `{ kind, locator, capturedAt }` | `kind` is `arcgis-online` or `arcgis-server`. |
+| `source`             | yes      | `{ kind, locator, capturedAt }` | `kind` is `portal` or `geoservices-server`. |
 | `users`              | yes      | `User[]`                      | Identity principals. |
 | `roles`              | yes      | `Role[]`                      | Roles + granted privileges. |
 | `groups`             | yes      | `Group[]`                     | Groups + membership linkage. |
@@ -87,13 +87,13 @@ privileges; it is intentionally conservative.
 
 ## Stability policy
 
-Same as `EsriFootprint.json`: v0.x is unstable (breaking changes permitted
+Same as `GeoServicesRestFootprint.json`: v0.x is unstable (breaking changes permitted
 between minor bumps); v1.0 is the first stable promise. Pin on
 `schemaVersion`.
 
 ## Deferred at v0.1 (out of scope of the foundational slice)
 
-- A `scan rbac` CLI surface and `EsriAccessFootprint.json` write path.
+- A `scan rbac` CLI surface and `GeoServicesRestAccessFootprint.json` write path.
 - Per-service ACE enumeration from `/arcgis/admin/services/<svc>/permissions`
   (the `ServicePermission`/`ItemSharing` shapes are defined and validated; the
   scanner skeleton models them via helpers but does not yet crawl every

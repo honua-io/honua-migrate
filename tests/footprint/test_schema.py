@@ -18,7 +18,7 @@ def test_find_schema_path_accepts_semver_for_minor_schema_file(
     tmp_path: Path,
     monkeypatch: MonkeyPatch,
 ) -> None:
-    schema_path = tmp_path / "esri-footprint.v0.1.json"
+    schema_path = tmp_path / "geoservices-rest-footprint.v0.1.json"
     schema_path.write_text("{}", encoding="utf-8")
     monkeypatch.setattr(schema_module, "_SCHEMA_DIR_CANDIDATES", (tmp_path,))
 
@@ -29,7 +29,7 @@ def test_validate_footprint_uses_documented_minor_schema_name(
     tmp_path: Path,
     monkeypatch: MonkeyPatch,
 ) -> None:
-    schema_path = tmp_path / "esri-footprint.v0.1.json"
+    schema_path = tmp_path / "geoservices-rest-footprint.v0.1.json"
     schema_path.write_text(json.dumps({"type": "object"}), encoding="utf-8")
     monkeypatch.setattr(schema_module, "_SCHEMA_DIR_CANDIDATES", (tmp_path,))
     monkeypatch.setattr(schema_module, "_PACKAGE_SCHEMA_DIR", "__missing_schemas__")
@@ -41,9 +41,9 @@ def test_packaged_schema_resource_matches_published_schema() -> None:
     packaged = (
         resources.files("honua_esri_assess")
         .joinpath("schemas")
-        .joinpath("esri-footprint-v0.1.json")
+        .joinpath("geoservices-rest-footprint-v0.1.json")
     )
-    published = REPO_ROOT / "schemas" / "esri-footprint-v0.1.json"
+    published = REPO_ROOT / "schemas" / "geoservices-rest-footprint-v0.1.json"
 
     assert json.loads(packaged.read_text(encoding="utf-8")) == json.loads(
         published.read_text(encoding="utf-8")
@@ -54,7 +54,7 @@ def test_validate_footprint_uses_packaged_schema_when_repo_paths_are_absent(
     monkeypatch: MonkeyPatch,
 ) -> None:
     sample = json.loads(
-        (REPO_ROOT / "tests" / "fixtures" / "esri-footprint-sample.json").read_text(
+        (REPO_ROOT / "tests" / "fixtures" / "geoservices-rest-footprint-sample.json").read_text(
             encoding="utf-8"
         )
     )
@@ -68,11 +68,11 @@ def test_validate_footprint_prefers_packaged_schema_over_cwd_candidate(
     monkeypatch: MonkeyPatch,
 ) -> None:
     sample = json.loads(
-        (REPO_ROOT / "tests" / "fixtures" / "esri-footprint-sample.json").read_text(
+        (REPO_ROOT / "tests" / "fixtures" / "geoservices-rest-footprint-sample.json").read_text(
             encoding="utf-8"
         )
     )
-    shadow = tmp_path / "esri-footprint-v0.1.json"
+    shadow = tmp_path / "geoservices-rest-footprint-v0.1.json"
     shadow.write_text(json.dumps({"type": "null"}), encoding="utf-8")
     monkeypatch.setattr(schema_module, "_SCHEMA_DIR_CANDIDATES", (tmp_path,))
 

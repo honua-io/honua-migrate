@@ -13,7 +13,7 @@
 An Apache-2.0 migration command-line suite whose **read-only assessment
 surface** inventories an organization's Esri
 footprint — ArcGIS Online, ArcGIS Server / Enterprise, and FileGDB workspaces —
-and produces a versioned `EsriFootprint.json` artifact plus human-readable
+and produces a versioned `GeoServicesRestFootprint.json` artifact plus human-readable
 Markdown reports: a readiness report, a per-shop-profile migratability
 verdict, and a crosswalk from that footprint to Honua capability keys. It
 exists so GIS teams can size a migration to
@@ -56,7 +56,7 @@ grant. An anonymous "Tier 1" scan needs no credentials at all.
 ## Status
 
 Alpha, pre-1.0 (current source version 0.7.x — see the [CHANGELOG](CHANGELOG.md)).
-The `EsriFootprint.json` schema is at **v0.2** and unstable until v1.0:
+The `GeoServicesRestFootprint.json` schema is at **v0.3** and unstable until v1.0:
 breaking changes are permitted between v0.x minors, per the
 [versioning policy](docs/schemas/versioning.md). An installed command's
 `--version` output is the authoritative application version.
@@ -88,23 +88,23 @@ export AGOL_TOKEN="..."   # optional, pre-existing token
 honua-migrate assess scan agol \
   --target https://yourorg.maps.arcgis.com/sharing/rest \
   --token-env AGOL_TOKEN \
-  --output EsriFootprint.json \
+  --output GeoServicesRestFootprint.json \
   --validate
 ```
 
 Then render the human-readable companions:
 
 ```bash
-honua-migrate assess report  --input EsriFootprint.json --output readiness-report.md
-honua-migrate assess verdict --input EsriFootprint.json
-honua-migrate assess caps    --input EsriFootprint.json
+honua-migrate assess report  --input GeoServicesRestFootprint.json --output readiness-report.md
+honua-migrate assess verdict --input GeoServicesRestFootprint.json
+honua-migrate assess caps    --input GeoServicesRestFootprint.json
 ```
 
 Inspect or validate against the bundled schema at any time:
 
 ```bash
 honua-migrate assess schema show
-honua-migrate assess schema validate EsriFootprint.json
+honua-migrate assess schema validate GeoServicesRestFootprint.json
 ```
 
 ## Commands
@@ -120,14 +120,14 @@ available. Every assessment `scan` subcommand is read-only against the target.
 | `scan server` | Walk an ArcGIS Server REST catalog (folders, services, layer detail). |
 | `scan filegdb` | Read a local FileGDB inventory descriptor (`_inventory.json`); no network. |
 | `scan filegdb-workspace` | Read-only `pyogrio`/GDAL metadata scan of a local `.gdb` directory (requires the `filegdb` extra). |
-| `scan rbac` | Export identity/RBAC posture (users, roles, groups, per-service permissions) to the sibling `EsriAccessFootprint.json`. |
+| `scan rbac` | Export identity/RBAC posture (users, roles, groups, per-service permissions) to the sibling `GeoServicesRestAccessFootprint.json`. |
 | `report` | Render a Markdown readiness report from a footprint. |
 | `verdict` | Render a per-shop-profile migratability verdict (go / conditional / no-go, with explicit hard lock-in boundaries such as Utility Network, Parcel Fabric, and LRS). |
 | `caps` | Crosswalk a footprint to Honua capability keys: `honua-caps.json` + a Markdown summary + a shareable catalog URL. See [Capability crosswalk](#capability-crosswalk-caps). |
 | `schema show` / `schema validate <file>` | Print the bundled JSON Schema / validate an artifact against it. |
 | `version` | Print package and bundled schema versions (also `--version`). |
 
-Common `scan` options: `--output` (default `./EsriFootprint.json`; existing
+Common `scan` options: `--output` (default `./GeoServicesRestFootprint.json`; existing
 files are not overwritten unless you pass `--force`), `--token-env VAR`,
 `--validate`, `--timeout`, `--max-retries`, `--user-agent`, `--log-format
 text|json`, `--log-level`. `report`, `verdict`, and `caps` accept `--input -` /
@@ -139,17 +139,17 @@ instead of rendering warnings.
 `caps` maps the same deterministic capability detection the `verdict` engine
 uses (`honua_esri_assess.verdict.registry` — portal item types, server
 `serviceType`s, and per-service capability tokens already in
-`EsriFootprint.json`) onto **Honua capability keys**, via a versioned
+`GeoServicesRestFootprint.json`) onto **Honua capability keys**, via a versioned
 crosswalk document:
 
 ```bash
-honua-migrate assess caps --input EsriFootprint.json
+honua-migrate assess caps --input GeoServicesRestFootprint.json
 # writes ./honua-caps.json, prints a Markdown summary + the shareable URL
 ```
 
 ```bash
 honua-migrate assess caps \
-  --input EsriFootprint.json \
+  --input GeoServicesRestFootprint.json \
   --json honua-caps.json \
   --output caps-summary.md
 ```
@@ -196,7 +196,7 @@ file (e.g. a copy of the published artifact carried into an air-gapped
 network) with zero network access:
 
 ```bash
-honua-migrate assess caps --input EsriFootprint.json --crosswalk ./capability-keys.v1.json
+honua-migrate assess caps --input GeoServicesRestFootprint.json --crosswalk ./capability-keys.v1.json
 ```
 
 `--crosswalk` also accepts an `http(s)://` URL once the canonical artifact is
@@ -204,7 +204,7 @@ published — this is the *one* deliberate, explicit exception to the tool's
 no-network posture, and it only runs when you pass a URL yourself:
 
 ```bash
-honua-migrate assess caps --input EsriFootprint.json \
+honua-migrate assess caps --input GeoServicesRestFootprint.json \
   --crosswalk https://example.com/capability-keys.v1.json
 ```
 
@@ -221,7 +221,7 @@ mapping nothing.
 | ArcGIS Server | `https://host`, `https://host/arcgis`, `…/arcgis/rest`, or `…/arcgis/rest/services` — canonicalized internally | Deep layer probes run for `MapServer`/`FeatureServer`/`ImageServer`/`SceneServer`/`StreamServer`; other service types are recorded from the catalog walk. Add `--admin-usage` (admin token required) to also read `/admin/usagereports` and `/admin/data/items` for usage-ranked ordering and datastore binding modes — it degrades to a diagnostic if denied. |
 | FileGDB (descriptor) | Directory containing `_inventory.json`, or the descriptor file itself | Local filesystem only. |
 | FileGDB (workspace) | A local `.gdb` directory | Uses optional `pyogrio`/GDAL read-only metadata calls (`pip install ".[filegdb]"`). Without the extra, the command still exits 0 and records a `partial-coverage` diagnostic. Also available as the `honua_esri_assess.filegdb.scan_filegdb_workspace` library function. |
-| RBAC / access | Portal Sharing REST base (`--kind portal`, default) or ArcGIS Server admin URL (`--kind server`) | Writes `EsriAccessFootprint.json` (defaults to stdout). |
+| RBAC / access | Portal Sharing REST base (`--kind portal`, default) or ArcGIS Server admin URL (`--kind server`) | Writes `GeoServicesRestAccessFootprint.json` (defaults to stdout). |
 
 Transient upstream failures (`429`, `502`, `503`, `504`) are retried with
 capped exponential backoff honoring `Retry-After`; per-endpoint failures
@@ -230,8 +230,8 @@ diagnostics inside the artifact rather than aborting the scan.
 
 ## Artifacts and schemas
 
-`EsriFootprint.json` is the sole machine-readable handoff into the closed
-Honua migration product; `EsriAccessFootprint.json` is its documented sibling
+`GeoServicesRestFootprint.json` is the sole machine-readable handoff into the closed
+Honua migration product; `GeoServicesRestAccessFootprint.json` is its documented sibling
 for identity/RBAC posture. Both are published JSON Schemas (draft 2020-12) in
 this repository. Pass `--validate` on scan to check the artifact against the
 packaged schema copy before it is written, or run `schema validate <file>` on
@@ -239,10 +239,10 @@ any artifact after the fact.
 
 | Artifact | Schema | Reference |
 |----------|--------|-----------|
-| `EsriFootprint.json` v0.2 | [`schemas/esri-footprint-v0.2.json`](schemas/esri-footprint-v0.2.json) | [v0.1 reference](docs/schemas/esri-footprint.v0.1.md) + [v0.2 delta](docs/schemas/esri-footprint.v0.2.md) (additive: dependency edges, content-type classification, per-layer detail) |
-| `EsriAccessFootprint.json` | [`schemas/esri-access-footprint-v0.2.json`](schemas/esri-access-footprint-v0.2.json) | [v0.1 reference](docs/schemas/esri-access-footprint.v0.1.md) |
+| `GeoServicesRestFootprint.json` v0.3 | [`schemas/geoservices-rest-footprint-v0.3.json`](schemas/geoservices-rest-footprint-v0.3.json) | [v0.3 reference](docs/schemas/geoservices-rest-footprint.v0.3.md) (breaking neutral artifact, schema, and source identifiers) |
+| `GeoServicesRestAccessFootprint.json` v0.3 | [`schemas/geoservices-rest-access-footprint-v0.3.json`](schemas/geoservices-rest-access-footprint-v0.3.json) | [v0.3 reference](docs/schemas/geoservices-rest-access-footprint.v0.3.md) |
 
-- Canonical sample footprint: [`docs/samples/esri-footprint.sample.json`](docs/samples/esri-footprint.sample.json)
+- Canonical sample footprint: [`docs/samples/geoservices-rest-footprint.sample.json`](docs/samples/geoservices-rest-footprint.sample.json)
 - Sample readiness report: [`docs/samples/readiness-report.sample.md`](docs/samples/readiness-report.sample.md)
 - `honua-caps.json` is produced by `caps` (see [Capability crosswalk](#capability-crosswalk-caps)); it is not yet a published JSON Schema since its crosswalk input is a draft fixture pending honua-io/honua-server#2893.
 - Readiness report guide (exit codes, sections, heuristics): [`docs/readiness-report.md`](docs/readiness-report.md)
@@ -253,7 +253,7 @@ Artifact `diagnostics[].code` is a locked enum (`rate-limited`,
 `partial-coverage`, `missing-permission`, `unresolved-reference`,
 `unsupported-item-type`, `redacted-field`) so reviewers can audit exactly what
 a diagnostic may say; see the
-[diagnostic code catalog](docs/schemas/esri-footprint.v0.1.md#diagnostic-code-catalog).
+[diagnostic code catalog](docs/schemas/geoservices-rest-footprint.v0.1.md#diagnostic-code-catalog).
 
 ## Resuming service imports
 
@@ -424,7 +424,7 @@ pytest tests/smoke -v     # fixture-backed end-to-end pipeline, no live Esri sys
 ruff check && mypy
 ```
 
-The smoke suite exercises the full `scan → EsriFootprint.json → report`
+The smoke suite exercises the full `scan → GeoServicesRestFootprint.json → report`
 pipeline against checked-in HTTP fixtures and runs as a separate CI job; the
 dedicated no-network tests block outbound sockets while scans run. See
 [`tests/smoke/fixtures/README.md`](tests/smoke/fixtures/README.md) for the

@@ -10,7 +10,7 @@ from typing import Any
 
 from honua_esri_assess.diagnostics import PortalSchemaError
 
-SCHEMA_FILENAME = "esri-footprint-v0.2.json"
+SCHEMA_FILENAME = "geoservices-rest-footprint-v0.3.json"
 SCHEMA_PACKAGE = "honua_esri_assess.schemas"
 _PACKAGE_ROOT = "honua_esri_assess"
 _PACKAGE_SCHEMA_DIR = "schemas"
@@ -40,8 +40,8 @@ def _version_aliases(version: str) -> list[str]:
 def _schema_file_names(version: str) -> list[str]:
     names: list[str] = []
     for alias in _version_aliases(version):
-        names.append(f"esri-footprint.v{alias}.json")
-        names.append(f"esri-footprint-v{alias}.json")
+        names.append(f"geoservices-rest-footprint.v{alias}.json")
+        names.append(f"geoservices-rest-footprint-v{alias}.json")
     return list(dict.fromkeys(names))
 
 
@@ -96,7 +96,7 @@ def load_schema() -> dict[str, Any]:
         raw = traversable.read_text(encoding="utf-8")
     except (FileNotFoundError, ModuleNotFoundError, OSError) as exc:
         raise PortalSchemaError(
-            "The EsriFootprint.json schema is not bundled with the installed package.",
+            "The GeoServicesRestFootprint.json schema is not bundled with the installed package.",
             context={"schema": SCHEMA_FILENAME},
         ) from exc
 
@@ -104,13 +104,13 @@ def load_schema() -> dict[str, Any]:
         payload = json.loads(raw)
     except ValueError as exc:
         raise PortalSchemaError(
-            "The bundled EsriFootprint.json schema is not valid JSON.",
+            "The bundled GeoServicesRestFootprint.json schema is not valid JSON.",
             context={"schema": SCHEMA_FILENAME},
         ) from exc
 
     if not isinstance(payload, dict):
         raise PortalSchemaError(
-            "The EsriFootprint.json schema is not a JSON object.",
+            "The GeoServicesRestFootprint.json schema is not a JSON object.",
             context={"schema": SCHEMA_FILENAME},
         )
     return payload
@@ -126,7 +126,7 @@ def validate_footprint(footprint: dict[str, Any], *, version: str | None = None)
         import jsonschema
     except ImportError as exc:
         raise PortalSchemaError(
-            "The jsonschema package is required to validate EsriFootprint.json."
+            "The jsonschema package is required to validate GeoServicesRestFootprint.json."
         ) from exc
 
     try:
@@ -137,7 +137,7 @@ def validate_footprint(footprint: dict[str, Any], *, version: str | None = None)
         validator.validate(footprint)
     except jsonschema.ValidationError as exc:
         field = ".".join(str(part) for part in exc.absolute_path)
-        message = "Generated EsriFootprint.json does not match the declared schema."
+        message = "Generated GeoServicesRestFootprint.json does not match the declared schema."
         context = {"field": field} if field else {}
         raise PortalSchemaError(message, context=context) from exc
     return True

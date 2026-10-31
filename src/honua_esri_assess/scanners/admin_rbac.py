@@ -55,7 +55,7 @@ from honua_esri_assess.footprint.access import (
 from honua_esri_assess.redaction import sanitize_handoff_url
 
 _PROVIDER_ALIASES: dict[str, IdentityProvider] = {
-    "arcgis": "arcgis",
+    "portal": "portal",
     "enterprise": "enterprise",
     "saml": "saml",
     "oidc": "oidc",
@@ -95,7 +95,7 @@ def scan_portal_rbac(
     groups = _portal_groups(groups_payload)
 
     return AccessFootprint(
-        source_kind="arcgis-online",
+        source_kind="portal",
         locator=_portal_locator(target, portal_self),
         users=users,
         roles=roles,
@@ -136,7 +136,7 @@ def scan_server_rbac(
     effective_permissions = resolve_effective_permissions(service_permissions)
 
     return AccessFootprint(
-        source_kind="arcgis-server",
+        source_kind="geoservices-server",
         locator=sanitize_handoff_url(target),
         users=users,
         roles=roles,
@@ -347,7 +347,7 @@ def _portal_locator(target: str, portal_self: Any) -> str:
 
 
 def _org_security(portal_self: Mapping[str, Any]) -> OrgSecurity:
-    providers: list[IdentityProvider] = ["arcgis"]
+    providers: list[IdentityProvider] = ["portal"]
     if portal_self.get("samlEnabled") or portal_self.get("canSignInIDP"):
         providers.append("saml")
     if portal_self.get("openIdConnectEnabled") or portal_self.get("oidcEnabled"):

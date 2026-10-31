@@ -8,7 +8,7 @@ from pathlib import Path
 from honua_esri_assess.report import RenderOptions, render
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SAMPLE_FOOTPRINT = REPO_ROOT / "docs" / "samples" / "esri-footprint.sample.json"
+SAMPLE_FOOTPRINT = REPO_ROOT / "docs" / "samples" / "geoservices-rest-footprint.sample.json"
 SAMPLE_REPORT = REPO_ROOT / "docs" / "samples" / "readiness-report.sample.md"
 
 
@@ -34,7 +34,7 @@ def test_render_handles_empty_inventory() -> None:
         "generatedAt": "2026-05-22T14:08:33Z",
         "tool": {"name": "honua-esri-assess", "version": "0.1.0"},
         "source": {
-            "kind": "arcgis-online",
+            "kind": "portal",
             "locator": "example.maps.arcgis.com/0123ABCDEF456789",
             "capturedAt": "2026-05-22T14:02:11Z",
         },

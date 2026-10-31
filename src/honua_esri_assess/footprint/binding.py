@@ -2,7 +2,7 @@
 
 This module is *pure*: it turns already-fetched, already-redacted Admin-API
 payloads (`/admin/data/items` registrations and `/admin/usagereports`
-summaries) into two migration-planning facets for ``EsriFootprint.json``:
+summaries) into two migration-planning facets for ``GeoServicesRestFootprint.json``:
 
 * a **usage-ranked service ordering** so migration sequencing is driven by
   real request volume rather than alphabetical or folder heuristics, and

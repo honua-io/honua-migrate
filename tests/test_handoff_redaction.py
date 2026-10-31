@@ -52,7 +52,7 @@ def _assert_no_secrets(value: Any, *extra: str) -> None:
 
 def test_footprint_builder_sanitizes_source_target_credentials() -> None:
     footprint = build_footprint(
-        source_kind="arcgis-online",
+        source_kind="portal",
         target=SECRET_TARGET,
         inventory=[],
         diagnostics=[],
@@ -77,7 +77,7 @@ def test_scan_cli_uses_raw_target_but_writes_sanitized_handoff(
 
     def _fake_scan(options: ScanOptions) -> ScanResult:
         seen["target"] = options.target
-        source_kind = "arcgis-online" if backend == "agol" else "arcgis-server"
+        source_kind = "portal" if backend == "agol" else "geoservices-server"
         kwargs: dict[str, Any]
         if backend == "agol":
             kwargs = {
@@ -101,7 +101,7 @@ def test_scan_cli_uses_raw_target_but_writes_sanitized_handoff(
 
     register(ScanHandler(name=backend, run=_fake_scan))
 
-    output = tmp_path / "EsriFootprint.json"
+    output = tmp_path / "GeoServicesRestFootprint.json"
     exit_code = cli_main(
         ["scan", backend, "--target", SECRET_TARGET, "--output", str(output)]
     )
@@ -122,7 +122,7 @@ def test_report_over_scan_output_does_not_render_target_credentials(
     def _fake_scan(options: ScanOptions) -> ScanResult:
         return ScanResult(
             footprint=build_footprint(
-                source_kind="arcgis-online",
+                source_kind="portal",
                 target=options.target,
                 inventory=[],
                 diagnostics=[],
@@ -135,7 +135,7 @@ def test_report_over_scan_output_does_not_render_target_credentials(
         )
 
     register(ScanHandler(name="agol", run=_fake_scan))
-    footprint_path = tmp_path / "EsriFootprint.json"
+    footprint_path = tmp_path / "GeoServicesRestFootprint.json"
     scan_exit = cli_main(
         ["scan", "agol", "--target", SECRET_TARGET, "--output", str(footprint_path)]
     )

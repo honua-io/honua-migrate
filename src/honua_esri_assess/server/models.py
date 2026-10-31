@@ -1,7 +1,7 @@
 """Dataclass shapes returned by the ArcGIS Server scanner.
 
 These types are the in-Python data model. The wire-format mapping into
-``EsriFootprint.json`` lives in :mod:`honua_esri_assess.footprint.v0_1`;
+``GeoServicesRestFootprint.json`` lives in :mod:`honua_esri_assess.footprint.v0_1`;
 deliberately decoupled so a future schema bump only touches the emitter.
 """
 

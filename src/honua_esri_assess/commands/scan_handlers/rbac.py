@@ -2,7 +2,7 @@
 
 Wires the documented, GET-only :mod:`honua_esri_assess.scanners.admin_rbac`
 scanner into the ``scan rbac`` command and renders its result into the
-``EsriAccessFootprint.json`` v0.1 wire shape via
+``GeoServicesRestAccessFootprint.json`` v0.1 wire shape via
 :func:`honua_esri_assess.footprint.access.build_access_footprint`.
 
 For ArcGIS Server targets the scanner now crawls the documented admin service

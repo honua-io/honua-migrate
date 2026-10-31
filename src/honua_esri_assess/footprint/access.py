@@ -1,7 +1,7 @@
-"""EsriAccessFootprint v0.2 models, builder, and schema validation.
+"""GeoServicesRestAccessFootprint v0.3 models, builder, and schema validation.
 
-``EsriAccessFootprint.json`` is a documented **sibling** of
-``EsriFootprint.json``. It captures the identity / RBAC posture of an Esri
+``GeoServicesRestAccessFootprint.json`` is a documented **sibling** of
+``GeoServicesRestFootprint.json``. It captures the identity / RBAC posture of an Esri
 estate -- users, roles + privileges, groups, per-service permissions, item
 sharing, and org security configuration -- read-only from documented ArcGIS
 ``/arcgis/admin/security`` and Portal ``admin``/``community`` endpoints.
@@ -18,7 +18,7 @@ Hard guarantees mirrored from the rest of the project:
   any residual unsafe URL component.
 
 Dataclass attributes are ``snake_case``; the emitted JSON is ``camelCase`` to
-match the EsriFootprint facets.
+match the GeoServicesRestFootprint facets.
 """
 
 from __future__ import annotations
@@ -34,13 +34,13 @@ from honua_esri_assess.diagnostics import Diagnostic, PortalSchemaError
 from honua_esri_assess.footprint.artifact import installed_tool_version
 from honua_esri_assess.redaction import sanitize_handoff_url
 
-SCHEMA_VERSION = "v0.2"
-TOOL_NAME = "honua-esri-assess"
-SCHEMA_FILENAME = "esri-access-footprint-v0.2.json"
+SCHEMA_VERSION = "v0.3"
+TOOL_NAME = "honua-migrate"
+SCHEMA_FILENAME = "geoservices-rest-access-footprint-v0.3.json"
 SCHEMA_PACKAGE = "honua_esri_assess.schemas"
 
-SourceKind = Literal["arcgis-online", "arcgis-server"]
-IdentityProvider = Literal["arcgis", "enterprise", "saml", "oidc", "unknown"]
+SourceKind = Literal["portal", "geoservices-server"]
+IdentityProvider = Literal["portal", "enterprise", "saml", "oidc", "unknown"]
 RoleType = Literal["administrator", "publisher", "user", "viewer", "custom"]
 GroupAccess = Literal["private", "org", "public"]
 PrincipalType = Literal["role", "user", "group", "everyone"]
@@ -276,7 +276,7 @@ def build_access_footprint(
     generated_at: datetime | None = None,
     captured_at: datetime | None = None,
 ) -> dict[str, Any]:
-    """Render an :class:`AccessFootprint` to the v0.2 wire shape.
+    """Render an :class:`AccessFootprint` to the v0.3 wire shape.
 
     ``effectivePermissions`` is derived from ``service_permissions`` via
     :func:`resolve_effective_permissions` when the footprint does not already
@@ -317,27 +317,27 @@ def access_footprint_to_json(footprint: Mapping[str, Any]) -> str:
 
 
 def write_access_footprint(footprint: Mapping[str, Any], output: Path) -> None:
-    """Write an ``EsriAccessFootprint.json`` artifact."""
+    """Write an ``GeoServicesRestAccessFootprint.json`` artifact."""
 
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(access_footprint_to_json(footprint), encoding="utf-8")
 
 
 def load_access_schema() -> dict[str, Any]:
-    """Return the bundled EsriAccessFootprint v0.1 JSON Schema."""
+    """Return the bundled GeoServicesRestAccessFootprint v0.3 JSON Schema."""
 
     try:
         traversable = resources.files(SCHEMA_PACKAGE).joinpath(SCHEMA_FILENAME)
         raw = traversable.read_text(encoding="utf-8")
     except (FileNotFoundError, ModuleNotFoundError, OSError) as exc:
         raise PortalSchemaError(
-            "The EsriAccessFootprint.json schema is not bundled with the package.",
+            "The GeoServicesRestAccessFootprint.json schema is not bundled with the package.",
             context={"schema": SCHEMA_FILENAME},
         ) from exc
     payload = json.loads(raw)
     if not isinstance(payload, dict):
         raise PortalSchemaError(
-            "The EsriAccessFootprint.json schema is not a JSON object.",
+            "The GeoServicesRestAccessFootprint.json schema is not a JSON object.",
             context={"schema": SCHEMA_FILENAME},
         )
     return payload
@@ -351,7 +351,7 @@ def validate_access_footprint(footprint: Mapping[str, Any]) -> bool:
         import jsonschema
     except ImportError as exc:  # pragma: no cover - dev dependency present in CI
         raise PortalSchemaError(
-            "The jsonschema package is required to validate EsriAccessFootprint.json."
+            "The jsonschema package is required to validate GeoServicesRestAccessFootprint.json."
         ) from exc
 
     validator = jsonschema.Draft202012Validator(
@@ -363,7 +363,7 @@ def validate_access_footprint(footprint: Mapping[str, Any]) -> bool:
         field_path = ".".join(str(part) for part in exc.absolute_path)
         context = {"field": field_path} if field_path else {}
         raise PortalSchemaError(
-            "Generated EsriAccessFootprint.json does not match the v0.2 schema.",
+            "Generated GeoServicesRestAccessFootprint.json does not match the v0.3 schema.",
             context=context,
         ) from exc
     return True

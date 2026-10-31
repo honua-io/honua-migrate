@@ -11,8 +11,8 @@ import responses
 from honua_esri_assess import cli
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SAMPLE = REPO_ROOT / "docs" / "samples" / "esri-footprint.sample.json"
-UTILITY_NETWORK = REPO_ROOT / "tests" / "fixtures" / "esri-footprint-utility-network.json"
+SAMPLE = REPO_ROOT / "docs" / "samples" / "geoservices-rest-footprint.sample.json"
+UTILITY_NETWORK = REPO_ROOT / "tests" / "fixtures" / "geoservices-rest-footprint-utility-network.json"
 
 
 def test_caps_writes_json_and_markdown(tmp_path: Path, capsys) -> None:

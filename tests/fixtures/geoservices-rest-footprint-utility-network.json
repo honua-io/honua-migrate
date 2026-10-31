@@ -1,13 +1,13 @@
 {
-  "schemaVersion": "v0.1",
+  "schemaVersion": "v0.3",
   "generatedAt": "2026-05-22T14:08:33Z",
   "tool": {
-    "name": "honua-esri-assess",
+    "name": "honua-migrate",
     "version": "0.1.0"
   },
   "source": {
-    "kind": "arcgis-server",
-    "locator": "gis.example.com/arcgis",
+    "kind": "geoservices-server",
+    "locator": "https://gis.example.com/arcgis/rest/services",
     "capturedAt": "2026-05-22T14:02:11Z"
   },
   "inventory": [
@@ -17,7 +17,11 @@
       "serviceType": "FeatureServer",
       "folder": "Electric",
       "layerCount": 12,
-      "capabilities": ["Query", "Editing", "UtilityNetwork"]
+      "capabilities": [
+        "Query",
+        "Editing",
+        "UtilityNetwork"
+      ]
     },
     {
       "kind": "server-service",
@@ -25,7 +29,10 @@
       "serviceType": "MapServer",
       "folder": "Basemaps",
       "layerCount": 4,
-      "capabilities": ["Map", "Query"]
+      "capabilities": [
+        "Map",
+        "Query"
+      ]
     }
   ],
   "counts": {
@@ -37,5 +44,16 @@
     "layers": 16,
     "featureClasses": 0
   },
-  "diagnostics": []
+  "diagnostics": [],
+  "server": {
+    "folders": [
+      "Basemaps",
+      "Electric"
+    ],
+    "serviceCounts": {
+      "FeatureServer": 1,
+      "MapServer": 1
+    },
+    "version": "11.2"
+  }
 }

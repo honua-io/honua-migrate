@@ -123,12 +123,12 @@ def test_user_type_count_omits_unset_numerics() -> None:
 
 def test_licensing_blocks_validate_inside_v01_schema() -> None:
     schema = json.loads(
-        (REPO_ROOT / "schemas" / "esri-footprint-v0.1.json").read_text(
+        (REPO_ROOT / "schemas" / "geoservices-rest-footprint-v0.1.json").read_text(
             encoding="utf-8"
         )
     )
     sample = json.loads(
-        (REPO_ROOT / "docs" / "samples" / "esri-footprint.sample.json").read_text(
+        (REPO_ROOT / "docs" / "samples" / "geoservices-rest-footprint.sample.json").read_text(
             encoding="utf-8"
         )
     )
@@ -141,7 +141,7 @@ def test_licensing_blocks_validate_inside_v01_schema() -> None:
 
     server_artifact = copy.deepcopy(sample)
     server_artifact["source"] = {
-        "kind": "arcgis-server",
+        "kind": "geoservices-server",
         "locator": "https://example.com/arcgis/rest/services",
         "capturedAt": "2026-05-22T14:02:11Z",
     }

@@ -1,1 +1,1 @@
-"""Backend-specific scanners that produce EsriFootprint inventory entries."""
+"""Backend-specific scanners that produce GeoServicesRestFootprint inventory entries."""

@@ -8,5 +8,5 @@ dist/
 *.egg-info/
 *.pyc
 *.log
-EsriFootprint.json
+GeoServicesRestFootprint.json
 reports/

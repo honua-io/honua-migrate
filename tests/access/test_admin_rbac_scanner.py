@@ -31,7 +31,7 @@ def test_scan_portal_rbac_models_identity_and_validates() -> None:
     # Built-in roles plus the custom one from the fixture.
     assert {"org_admin", "org_publisher", "org_user", "org_viewer", "custom-editor"} <= role_ids
 
-    assert footprint.org_security.allowed_providers == ["arcgis", "saml", "oidc"]
+    assert footprint.org_security.allowed_providers == ["portal", "saml", "oidc"]
     assert footprint.org_security.multi_factor_auth_required is True
 
     group_ids = {g.id for g in footprint.groups}
@@ -67,7 +67,7 @@ def test_scan_server_rbac_reads_admin_security_endpoints() -> None:
 
     footprint = scan_server_rbac("https://host.local/arcgis/admin", client)
 
-    assert footprint.source_kind == "arcgis-server"
+    assert footprint.source_kind == "geoservices-server"
     assert {r.name for r in footprint.roles} == {"publishers", "viewers"}
     assert footprint.users[0].username == "svc_publish"
     assert footprint.users[0].provider == "enterprise"

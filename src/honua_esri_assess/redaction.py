@@ -6,7 +6,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 
 def sanitize_handoff_url(value: str) -> str:
-    """Return a URL identifier safe to persist in ``EsriFootprint.json``.
+    """Return a URL identifier safe to persist in ``GeoServicesRestFootprint.json``.
 
     Esri targets may be supplied with auth material in userinfo, query strings,
     URL path parameters, or fragments. Those bytes are useful for scanner

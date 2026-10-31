@@ -15,7 +15,7 @@ def test_scan_agol_writes_footprint_file(
     happy_path_responses: Callable[..., None],
 ) -> None:
     happy_path_responses(responses, include_users=False, include_service=False)
-    output = tmp_path / "EsriFootprint.json"
+    output = tmp_path / "GeoServicesRestFootprint.json"
 
     exit_code = main(
         [
@@ -31,8 +31,8 @@ def test_scan_agol_writes_footprint_file(
     captured = capsys.readouterr()
     footprint = json.loads(output.read_text(encoding="utf-8"))
     assert exit_code == 0
-    assert footprint["schemaVersion"] == "v0.2"
-    assert footprint["source"]["kind"] == "arcgis-online"
+    assert footprint["schemaVersion"] == "v0.3"
+    assert footprint["source"]["kind"] == "portal"
     assert len(footprint["inventory"]) == 3
     assert "scanned 3 item(s)" in captured.err
 

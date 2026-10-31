@@ -1,10 +1,8 @@
-"""Emitter for the published EsriFootprint.json contract (v0.2).
+"""Emitter for the published GeoServicesRestFootprint.json contract (v0.3).
 
-v0.2 is additive over v0.1: it populates the optional top-level
-``dependencyEdges`` array (webmap -> service -> layer) the v0.1 schema reserved
-but left empty, so batch orchestration can order migrations. The artifact shape
-is otherwise unchanged and validates against both v0.1 readers (edges ignored)
-and the v0.2 schema.
+The v0.3 artifact retains dependency edges (webmap -> service -> layer) and
+other additions introduced in v0.2, while using neutral producer, source, and
+schema identifiers. Its output validates against the v0.3 schema.
 """
 
 from __future__ import annotations
@@ -38,20 +36,19 @@ from honua_esri_assess.server.models import (
     ServiceRecord,
 )
 
-SCHEMA_VERSION = "v0.2"
-PRODUCER_NAME = "honua-esri-assess"
+SCHEMA_VERSION = "v0.3"
+PRODUCER_NAME = "honua-migrate"
 
 #: Dependency-edge relation tags emitted at v0.2.
 RELATION_WEBMAP_SERVICE = "webmap-references-service"
 RELATION_SERVICE_LAYER = "service-contains-layer"
 
-#: Cross-repo handoff target for geoprocessing migration. GPServer/GP task
-#: migration is owned by honua-sdk-python's ArcPy scanner/translator/runner;
-#: this repo only records a read-only pointer at it, never the translation.
-GP_HANDOFF_TARGET = "honua-sdk-python:arcpy"
+#: Cross-repo handoff target for geoprocessing migration. This artifact
+#: records a read-only pointer to the owning migration workflow.
+GP_HANDOFF_TARGET = "honua-sdk-python:geoprocessing"
 GP_HANDOFF_NOTE = (
-    "Geoprocessing migration is handled by honua-sdk-python's ArcPy "
-    "scanner/translator/runner; this footprint only records a pointer."
+    "Geoprocessing migration is handled by the honua-sdk-python workflow; "
+    "this footprint only records a pointer."
 )
 
 __all__ = [
@@ -115,7 +112,7 @@ def to_footprint_v0_1(
     target_url: str | None = None,
     binding_plan: BindingPlan | None = None,
 ) -> dict[str, Any]:
-    """Return a JSON-serializable EsriFootprint.json v0.1 object.
+    """Return a JSON-serializable GeoServicesRestFootprint.json v0.3 object.
 
     ``binding_plan`` is an additive v0.2 server-only facet: when supplied (the
     admin usage pull ran and reached the Admin-API), the usage-ranked service
@@ -160,7 +157,7 @@ def _portal_to_footprint(
         "generatedAt": _format_rfc3339(emitted_at),
         "tool": {"name": PRODUCER_NAME, "version": tool_version},
         "source": {
-            "kind": "arcgis-online",
+            "kind": "portal",
             "locator": _portal_locator(result.org.portal_url, result.org.id),
             "capturedAt": _format_rfc3339(captured_at),
         },
@@ -253,7 +250,7 @@ def _server_to_footprint(
         "generatedAt": _format_rfc3339(generated_stamp),
         "tool": {"name": PRODUCER_NAME, "version": tool_version},
         "source": {
-            "kind": "arcgis-server",
+            "kind": "geoservices-server",
             "locator": _server_locator(result.info.url or target_url or ""),
             "capturedAt": _format_rfc3339(captured_stamp),
         },
@@ -367,8 +364,7 @@ def _server_service_to_dict(service: ServiceRecord) -> dict[str, Any]:
     ]
     if layer_details:
         payload["layers"] = layer_details
-    # Additive v0.2 cross-repo handoff for geoprocessing services. GPServer
-    # migration is owned by honua-sdk-python's ArcPy pipeline, so the footprint
+    # Additive cross-repo handoff for geoprocessing services. The footprint
     # records only a pointer (service URL + any known task names + a note).
     # Emitted for GP services exclusively; v0.1/v0.2 readers ignore the field.
     handoff = _gp_migration_handoff(service)
@@ -403,8 +399,8 @@ def _gp_migration_handoff(service: ServiceRecord) -> dict[str, Any] | None:
     Returns ``None`` for any non-geoprocessing service so the additive field is
     present only where it applies. The pointer is fully read-only: it captures
     the credential-free service URL, the geoprocessing task names already read
-    from the service body (if a deep probe ran), and a note that the ArcPy
-    translation lives in honua-sdk-python. No task is crawled or translated.
+    from the service body (if a deep probe ran), and a note identifying the
+    owning migration workflow. No task is crawled or translated.
     """
 
     if service.kind != "geoprocessingService":
@@ -666,7 +662,7 @@ def _server_diagnostic_to_dict(diagnostic: ScanDiagnostic) -> dict[str, Any]:
         "code": SERVER_DIAGNOSTIC_CODE_MAP.get(diagnostic.code, "partial-coverage"),
         "severity": _severity(diagnostic.severity),
         "message": diagnostic.message,
-        "scope": diagnostic.field or "arcgis-server",
+        "scope": diagnostic.field or "geoservices-server",
     }
 
 
@@ -711,7 +707,7 @@ def _diagnostic_scope(diagnostic: Diagnostic) -> str:
     item_id = diagnostic.context.get("itemId") if diagnostic.context else None
     if item_id:
         return str(item_id)
-    return "arcgis-online"
+    return "portal"
 
 
 def _extent_from_item(item: ItemRecord) -> dict[str, Any] | None:

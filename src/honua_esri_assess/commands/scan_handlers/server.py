@@ -188,7 +188,7 @@ def _to_cli_diagnostic(diagnostic: ScanDiagnostic) -> Diagnostic:
         code=diagnostic.code,
         severity=diagnostic.severity,
         message=diagnostic.message,
-        scope=diagnostic.field or "arcgis-server",
+        scope=diagnostic.field or "geoservices-server",
     )
 
 

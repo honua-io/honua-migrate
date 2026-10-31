@@ -36,7 +36,7 @@ from honua_esri_assess.log_config import configure_logging
 from honua_esri_assess.schema import validate_footprint
 
 LOGGER = logging.getLogger(__name__)
-DEFAULT_OUTPUT = Path("EsriFootprint.json")
+DEFAULT_OUTPUT = Path("GeoServicesRestFootprint.json")
 DEFAULT_ACCESS_OUTPUT = Path("-")
 STDOUT_SENTINEL = Path("-")
 DEFAULT_USER_AGENT = f"honua-esri-assess/{__version__}"
@@ -96,7 +96,7 @@ OutputOption = Annotated[
     Path,
     typer.Option(
         "--output",
-        help="Destination path for EsriFootprint.json.",
+        help="Destination path for GeoServicesRestFootprint.json.",
         dir_okay=True,
         file_okay=True,
         metavar="PATH",
@@ -157,7 +157,7 @@ ValidateOption = Annotated[
     bool,
     typer.Option(
         "--validate/--no-validate",
-        help="Validate the generated EsriFootprint.json against the bundled schema.",
+        help="Validate the generated GeoServicesRestFootprint.json against the bundled schema.",
     ),
 ]
 ForceOption = Annotated[
@@ -184,7 +184,7 @@ AccessOutputOption = Annotated[
     Path,
     typer.Option(
         "--output",
-        help="Destination path for EsriAccessFootprint.json ('-' writes to stdout).",
+        help="Destination path for GeoServicesRestAccessFootprint.json ('-' writes to stdout).",
         dir_okay=True,
         file_okay=True,
         metavar="PATH",
@@ -201,7 +201,7 @@ AccessValidateOption = Annotated[
     bool,
     typer.Option(
         "--validate/--no-validate",
-        help="Validate the generated EsriAccessFootprint.json against the bundled schema.",
+        help="Validate the generated GeoServicesRestAccessFootprint.json against the bundled schema.",
     ),
 ]
 

@@ -11,7 +11,7 @@ fixtures/
   agol/
     happy/         # all-200 walk of portal + search + per-item probes
     diagnostics/   # 429 on a paginated search page + 403 on an item probe
-  arcgis-server/
+  geoservices-server/
     happy/         # /services?f=json + one folder traversal + service probes
     diagnostics/   # 200 error-envelope probes for rate-limit/permission paths
   filegdb/
@@ -26,7 +26,7 @@ than a silent skip. The FileGDB corpus is filesystem-only. Real FileGDB scans
 should call the `honua_esri_assess.filegdb.scan_filegdb_workspace` library
 function with the optional `pyogrio`/GDAL metadata backend against a real
 `.gdb` directory; the synthetic fixture files here are only test scaffolding
-and are not part of the `EsriFootprint.json` handoff contract. The smoke suite
+and are not part of the `GeoServicesRestFootprint.json` handoff contract. The smoke suite
 exercises the `scan filegdb --target ...` descriptor CLI path so fixture tests
 stay dependency-light.
 

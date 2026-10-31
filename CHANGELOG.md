@@ -93,7 +93,7 @@
 
 ### Features
 
-* **cli:** add scan rbac command writing EsriAccessFootprint.json ([#30](https://github.com/honua-io/honua-esri-assess/issues/30)) ([#55](https://github.com/honua-io/honua-esri-assess/issues/55)) ([7993086](https://github.com/honua-io/honua-esri-assess/commit/7993086e631b847b60a10bfa49fbc6d17d71e08f))
+* **cli:** add scan rbac command writing GeoServicesRestAccessFootprint.json ([#30](https://github.com/honua-io/honua-esri-assess/issues/30)) ([#55](https://github.com/honua-io/honua-esri-assess/issues/55)) ([7993086](https://github.com/honua-io/honua-esri-assess/commit/7993086e631b847b60a10bfa49fbc6d17d71e08f))
 * **footprint:** persist usage ranking and datastore binding-mode ([#31](https://github.com/honua-io/honua-esri-assess/issues/31)) ([#57](https://github.com/honua-io/honua-esri-assess/issues/57)) ([d1bc6a3](https://github.com/honua-io/honua-esri-assess/commit/d1bc6a3e0247e57e10431e0e3bb64489291ddaf7))
 * **footprint:** record federation topology and advanced server roles ([#54](https://github.com/honua-io/honua-esri-assess/issues/54)) ([#58](https://github.com/honua-io/honua-esri-assess/issues/58)) ([f1fff24](https://github.com/honua-io/honua-esri-assess/commit/f1fff2429bf90bfd8971c84393b085d3c9eba9e2))
 * **rbac:** per-service ACE crawl and effective-permission resolution ([#30](https://github.com/honua-io/honua-esri-assess/issues/30)) ([#59](https://github.com/honua-io/honua-esri-assess/issues/59)) ([d818ad9](https://github.com/honua-io/honua-esri-assess/commit/d818ad9d9cc849578bc9849771a2d1eb82dd8cda))
@@ -149,7 +149,7 @@
 ### Features
 
 * E10: Add fixture-backed CI smoke test (#honua-esri-assess-10) ([d71ef0a](https://github.com/honua-io/honua-esri-assess/commit/d71ef0a9518e1888eb6ec39a76352a8d71eecbdf))
-* E2: Publish EsriFootprint.json v0.1 schema and reference doc (#honua-esri-assess-2) ([f87920a](https://github.com/honua-io/honua-esri-assess/commit/f87920a8a8a13bbc2f1653d51ad78a76a7c07f48))
+* E2: Publish GeoServicesRestFootprint.json v0.1 schema and reference doc (#honua-esri-assess-2) ([f87920a](https://github.com/honua-io/honua-esri-assess/commit/f87920a8a8a13bbc2f1653d51ad78a76a7c07f48))
 * E3: Document schema versioning and closed-product handoff contract (#honua-esri-assess-3) ([f6cba57](https://github.com/honua-io/honua-esri-assess/commit/f6cba574211f75bae501b9cba9086cb51b1b2ecf))
 * E4: Implement read-only ArcGIS Online Portal scanner (#honua-esri-assess-4) ([c248705](https://github.com/honua-io/honua-esri-assess/commit/c2487053ce5f1568be27e6ca27a3511f294dd910))
 * E5: Implement read-only ArcGIS Server REST scanner (#honua-esri-assess-5) ([acd49a1](https://github.com/honua-io/honua-esri-assess/commit/acd49a1df915517192ed2489334bb60be826a332))
@@ -162,4 +162,4 @@
 
 - Initial Typer command framework for `scan`, `schema`, `report`, and `version`.
 - Package release path through release-please and PyPI Trusted Publishing.
-- Bundled EsriFootprint v0.1 schema access for CLI validation.
+- Bundled GeoServicesRestFootprint v0.1 schema access for CLI validation.

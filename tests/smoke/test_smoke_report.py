@@ -17,7 +17,7 @@ def test_report_renders_against_agol_happy_footprint(
     mocked_routes,
     tmp_output_dir: Path,
 ) -> None:
-    footprint_path = tmp_output_dir / "EsriFootprint.json"
+    footprint_path = tmp_output_dir / "GeoServicesRestFootprint.json"
     with mocked_routes("agol/happy"):
         scan_exit = cli_main(
             [

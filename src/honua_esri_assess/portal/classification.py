@@ -19,7 +19,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 #: Stable functional-category vocabulary surfaced in the footprint. Keys are
-#: prospect-safe display-label tokens accepted by the schema EsriTypeCountMap.
+#: prospect-safe display-label tokens accepted by the schema GeoServicesRestTypeCountMap.
 CATEGORY_WEB_MAP = "web-map"
 CATEGORY_WEB_SCENE = "web-scene"
 CATEGORY_DASHBOARD = "dashboard"

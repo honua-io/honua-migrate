@@ -5,21 +5,21 @@ description: "The prospect-facing summary of what an assessment hands over: whic
 resource: "https://github.com/honua-io/honua-migrate/tree/trunk/schemas"
 tags: [handoff, contracts, artifacts]
 ---
-# Handoff Contract: `EsriFootprint.json`
+# Handoff Contract: `GeoServicesRestFootprint.json`
 
 This document is the short, prospect-facing summary of what an assessment
 hands over to the rest of the migration.
 
 For semver rules, deprecation policy, and full producer/consumer contracts,
 see [versioning.md](./versioning.md). The published JSON Schema body for the
-current `0.1.x` line lives in
-[`docs/schemas/esri-footprint.v0.1.md`](./esri-footprint.v0.1.md)
-(schema file: [`schemas/esri-footprint-v0.1.json`](../../schemas/esri-footprint-v0.1.json),
-canonical sample: [`docs/samples/esri-footprint.sample.json`](../samples/esri-footprint.sample.json)).
+current `0.3.x` line lives in
+[`docs/schemas/geoservices-rest-footprint.v0.3.md`](./geoservices-rest-footprint.v0.3.md)
+(schema file: [`schemas/geoservices-rest-footprint-v0.3.json`](../../schemas/geoservices-rest-footprint-v0.3.json),
+canonical sample: [`docs/samples/geoservices-rest-footprint.sample.json`](../samples/geoservices-rest-footprint.sample.json)).
 
 ## The sole handoff
 
-`EsriFootprint.json` is the **only** supported handoff out of an assessment.
+`GeoServicesRestFootprint.json` is the **only** supported handoff out of an assessment.
 
 - No side-channel data exchange. Consumers do not call the
   customer's Esri systems on their own, does not consume scanner logs, and does
@@ -36,7 +36,7 @@ canonical sample: [`docs/samples/esri-footprint.sample.json`](../samples/esri-fo
   session IDs.
 
 If a future deliverable needs to flow from the assessment to its consumers,
-it either lands inside `EsriFootprint.json` (with a schema bump) or
+it either lands inside `GeoServicesRestFootprint.json` (with a schema bump) or
 it does not flow. There is no "small exception."
 
 The Markdown readiness report produced by `honua-esri-assess report` is a
@@ -45,22 +45,22 @@ does not extend the handoff contract.
 
 ## What each side declares
 
-**Producer (`honua-esri-assess`)** writes a top-level header on every emit:
+**Producer (`honua-migrate`)** writes a top-level header on every v0.3 emit:
 
 ```json
 {
-  "schemaVersion": "v0.1",
-  "tool": { "name": "honua-esri-assess", "version": "<cli version>" },
+  "schemaVersion": "v0.3",
+  "tool": { "name": "honua-migrate", "version": "<cli version>" },
   "generatedAt": "<RFC3339 UTC>",
-  "source": { "kind": "arcgis-online|arcgis-server|filegdb", "locator": "<prospect-safe id>", "capturedAt": "<RFC3339 UTC>" }
+  "source": { "kind": "portal|geoservices-server|filegdb", "locator": "<prospect-safe id>", "capturedAt": "<RFC3339 UTC>" }
 }
 ```
 
-At v0.1 the in-band `schemaVersion` is the literal major.minor `"v0.1"`;
+At v0.3 the in-band `schemaVersion` is the literal major.minor `"v0.3"`;
 the full SemVer for the schema build lives in the schema's `$id`. The
 producer also writes a single matching facet (`portal`, `server`, or
 `filegdb`) based on `source.kind`; sibling facets are schema-rejected
-(see [Discriminator rules](./esri-footprint.v0.1.md#discriminator-rules)).
+(see [Discriminator rules](./geoservices-rest-footprint.v0.1.md#discriminator-rules)).
 For Portal and Server footprints, the matching facet may include an optional
 `licensing` block with read-only entitlement observations. Missing licensing
 means the producer did not include entitlement enumeration in that footprint;
@@ -74,7 +74,7 @@ Server details in the matching `server` facet:
 ```json
 {
   "source": {
-    "kind": "arcgis-server",
+    "kind": "geoservices-server",
     "locator": "https://gis.example.com/arcgis/rest/services",
     "capturedAt": "2026-05-22T14:02:11Z"
   },
@@ -118,11 +118,11 @@ Per release line, a consumer receives:
    the release line (e.g., the `0.1.x` line emits `schemaVersion: "v0.1"`;
    patch lives in the schema `$id` and `tool.version`).
 2. The JSON Schema body for that line under
-   [`docs/schemas/`](./esri-footprint.v0.1.md) (published for v0.1).
+   [`docs/schemas/`](./geoservices-rest-footprint.v0.1.md) (published for v0.1).
 3. A `CHANGELOG.md` entry summarizing what changed, including any
    deprecations and their planned removal window.
 4. At least one canonical sample footprint under
-   [`docs/samples/`](../samples/esri-footprint.sample.json)
+   [`docs/samples/`](../samples/geoservices-rest-footprint.sample.json)
    that a consumer can use as a conformance check, plus fixture
    corpora and golden expectations under `tests/smoke/` for scanner-backed
    conformance checks. Scanner-specific unit fixtures may live under
@@ -136,17 +136,17 @@ A prospect or a consumer can verify a footprint locally:
 1. Check it parses as JSON.
 2. Check `schemaVersion` matches the line the consumer accepts.
 3. Validate against the published JSON Schema for that version
-   ([`schemas/esri-footprint-v0.1.json`](../../schemas/esri-footprint-v0.1.json)
-   for the current `0.1.x` line), with `date-time` format assertions or
+   ([`schemas/geoservices-rest-footprint-v0.1.json`](../../schemas/geoservices-rest-footprint-v0.1.json)
+   for the current `0.3.x` line), with `date-time` format assertions or
    equivalent RFC3339 checks enabled. The bundled CLI exposes this directly:
-   `honua-esri-assess schema validate EsriFootprint.json` exits `0` on a
+   `honua-esri-assess schema validate GeoServicesRestFootprint.json` exits `0` on a
    conforming footprint and `30` with a typed `schema-validation-failed`
    stderr diagnostic otherwise.
 4. Inspect `diagnostics[]`. Treat `error`-severity entries as a failed
    scan; treat `warn`-severity entries as actionable but non-blocking.
-   The v0.1 vocabulary is locked — see the
-   [v0.1 diagnostic code catalog](./esri-footprint.v0.1.md#diagnostic-code-catalog).
-5. Confirm `tool.name == "honua-esri-assess"` and the `source.kind`
+   The v0.3 vocabulary is locked — see the
+   [v0.1 diagnostic code catalog](./geoservices-rest-footprint.v0.1.md#diagnostic-code-catalog).
+5. Confirm `tool.name == "honua-migrate"` and the `source.kind`
    matches the target system the customer expected to scan.
 
 No part of this verification requires contacting a Honua-operated service.
@@ -208,7 +208,7 @@ or the footprint. If the CLI cannot produce or save the artifact, it exits
 nonzero with a prospect-safe typed diagnostic on stderr. The
 artifact diagnostic shape is fixed by the[versioning policy](./versioning.md#diagnostics-surface); the vocabulary is
 closed per release line. At v0.1 the catalog is locked to six codes; see the
-[v0.1 diagnostic code catalog](./esri-footprint.v0.1.md#diagnostic-code-catalog).
+[v0.1 diagnostic code catalog](./geoservices-rest-footprint.v0.1.md#diagnostic-code-catalog).
 
 For the FileGDB workspace library function, missing optional reader
 dependencies, invalid workspaces, layer-listing failures, and per-layer
@@ -218,10 +218,10 @@ CLI process-level stderr diagnostics (`scanner-error`, `output-write-failed`,
 `schema-validation-failed`, `report.input.*`, `report.schema.invalid`,
 `report.render.internal`, `internal-error`) are **not** part of the schema enum.
 They describe local CLI process state and never appear inside
-`EsriFootprint.json`. A consumer reads the artifact and ignores CLI
+`GeoServicesRestFootprint.json`. A consumer reads the artifact and ignores CLI
 stderr.
 
-`honua-esri-assess schema validate EsriFootprint.json` is the supported local
+`honua-esri-assess schema validate GeoServicesRestFootprint.json` is the supported local
 validation command for prospects and for a consumer's ingest path. It
 prints `valid: <path>` on success and exits with a typed process diagnostic on
 schema or JSON-read failure.
@@ -229,19 +229,19 @@ schema or JSON-read failure.
 ## Readiness report
 
 The Markdown readiness report is a human-facing companion to
-`EsriFootprint.json`, not a second machine handoff contract. It is generated
+`GeoServicesRestFootprint.json`, not a second machine handoff contract. It is generated
 from a parsed footprint and summarizes header metadata, schema warnings,
 service inventory, layer counts, complexity, manual-review items, migration
 ordering, and diagnostics without contacting Esri systems.
 
-The renderer is a pure deterministic API: parsed `EsriFootprint.json` dict in,
+The renderer is a pure deterministic API: parsed `GeoServicesRestFootprint.json` dict in,
 Markdown string out. File reads, file writes, schema validation, and
 stdout/stderr are owned by the CLI layer, not by
 `honua_esri_assess.report.render()`.
 
 `honua-esri-assess report` accepts `--input` as a path or `-` for stdin.
 `--output` defaults to stdout and accepts `-` for stdout. The CLI validates
-with the packaged v0.1 schema and runtime `jsonschema` dependency. By default,
+with the packaged v0.3 schema and runtime `jsonschema` dependency. By default,
 schema validation failures or validation-unavailable notices are rendered as a
 `Schema Warnings` section so a prospect can still review the footprint;
 `--strict` fails the command with the typed `report.schema.invalid` error
@@ -253,7 +253,7 @@ The sample report is published at
 The renderer is deterministic, performs no I/O, and the test suite compares
 the committed sample report byte-for-byte with freshly rendered output.
 
-The `honua-esri-assess report` CLI handles JSON parsing, packaged v0.1 schema
+The `honua-esri-assess report` CLI handles JSON parsing, packaged v0.3 schema
 validation, stdin/stdout, file output, local logging, and typed prospect-safe
 errors. By default, validation issues are rendered into a `Schema Warnings`
 section and the command exits successfully; with `--strict`, invalid v0.1
@@ -264,10 +264,10 @@ CLI response contract and the v0.1 report heuristics:
 ## Pointers
 
 - Versioning policy: [versioning.md](./versioning.md)
-- Schema body for v0.1: [`docs/schemas/esri-footprint.v0.1.md`](./esri-footprint.v0.1.md)
+- Schema body for v0.1: [`docs/schemas/geoservices-rest-footprint.v0.1.md`](./geoservices-rest-footprint.v0.1.md)
 - Entitlement enumeration: [`../entitlements.md`](../entitlements.md)
-- JSON Schema file: [`schemas/esri-footprint-v0.1.json`](../../schemas/esri-footprint-v0.1.json)
-- Canonical sample: [`docs/samples/esri-footprint.sample.json`](../samples/esri-footprint.sample.json)
+- JSON Schema file: [`schemas/geoservices-rest-footprint-v0.1.json`](../../schemas/geoservices-rest-footprint-v0.1.json)
+- Canonical sample: [`docs/samples/geoservices-rest-footprint.sample.json`](../samples/geoservices-rest-footprint.sample.json)
 - Sample readiness report: [`docs/samples/readiness-report.sample.md`](../samples/readiness-report.sample.md)
 - Readiness report guide: [`docs/readiness-report.md`](../readiness-report.md)
 - Repository landing page: [`../../README.md`](../../README.md)

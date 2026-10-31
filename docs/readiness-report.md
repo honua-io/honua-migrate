@@ -7,11 +7,11 @@ tags: [reports, readiness]
 # Markdown readiness report
 
 The readiness report is the human-readable companion to
-`EsriFootprint.json`. It helps a prospect review inventory, rough migration
+`GeoServicesRestFootprint.json`. It helps a prospect review inventory, rough migration
 complexity, manual-review flags, suggested sequencing, and diagnostics before
 the footprint is handed to Honua.
 
-It is **not** a second handoff contract. `EsriFootprint.json` remains the sole
+It is **not** a second handoff contract. `GeoServicesRestFootprint.json` remains the sole
 machine-readable contract the migration commands consume. The
 report is read-only by construction: it is rendered from an already captured
 footprint and does not contact ArcGIS Online, ArcGIS Server, FileGDB paths,
@@ -31,7 +31,7 @@ returns deterministic Markdown.
 
 The committed sample report is generated from the canonical footprint:
 
-- Footprint: [`docs/samples/esri-footprint.sample.json`](./samples/esri-footprint.sample.json)
+- Footprint: [`docs/samples/geoservices-rest-footprint.sample.json`](./samples/geoservices-rest-footprint.sample.json)
 - Report: [`docs/samples/readiness-report.sample.md`](./samples/readiness-report.sample.md)
 
 The test suite compares the sample report byte-for-byte with freshly rendered
@@ -41,26 +41,26 @@ output.
 
 ```bash
 honua-esri-assess report \
-  --input EsriFootprint.json \
+  --input GeoServicesRestFootprint.json \
   --output readiness-report.md
 
 honua-esri-assess report \
-  --input docs/samples/esri-footprint.sample.json \
+  --input docs/samples/geoservices-rest-footprint.sample.json \
   --output -
 
 honua-esri-assess report --input - --output -
-honua-esri-assess report --input EsriFootprint.json --strict
+honua-esri-assess report --input GeoServicesRestFootprint.json --strict
 ```
 
 | Flag | Required | Description |
 | --- | --- | --- |
-| `--input` | yes | Path to `EsriFootprint.json`, or `-` to read JSON from stdin. |
+| `--input` | yes | Path to `GeoServicesRestFootprint.json`, or `-` to read JSON from stdin. |
 | `--output` | no | Markdown output path, or `-` for stdout. Defaults to stdout. |
 | `--strict` | no | Exit with a typed schema error when v0.1 validation fails. |
 
 Schema validation uses the v0.1 schema packaged with the CLI and the runtime
 `jsonschema` dependency. The published schema also remains available for audit
-at [`schemas/esri-footprint-v0.1.json`](../schemas/esri-footprint-v0.1.json).
+at [`schemas/geoservices-rest-footprint-v0.1.json`](../schemas/geoservices-rest-footprint-v0.1.json).
 
 Without `--strict`, validation failures are rendered into a `Schema Warnings`
 section and the report still exits successfully. If validation cannot run
@@ -159,11 +159,11 @@ passes; it does not add write or migration semantics to the footprint.
 ## Samples and tests
 
 - Canonical footprint:
-  [`docs/samples/esri-footprint.sample.json`](./samples/esri-footprint.sample.json)
+  [`docs/samples/geoservices-rest-footprint.sample.json`](./samples/geoservices-rest-footprint.sample.json)
 - Sample report:
   [`docs/samples/readiness-report.sample.md`](./samples/readiness-report.sample.md)
 - Schema reference:
-  [`docs/schemas/esri-footprint.v0.1.md`](./schemas/esri-footprint.v0.1.md)
+  [`docs/schemas/geoservices-rest-footprint.v0.1.md`](./schemas/geoservices-rest-footprint.v0.1.md)
 - Handoff contract:
   [`docs/schemas/handoff-contract.md`](./schemas/handoff-contract.md)
 

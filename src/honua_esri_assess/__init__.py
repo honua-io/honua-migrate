@@ -9,7 +9,7 @@ from ._deprecation import warn_legacy_surface
 
 __all__ = ["SCHEMA_VERSION", "__version__", "bundled_schema_version"]
 
-SCHEMA_VERSION = "v0.2"
+SCHEMA_VERSION = "v0.3"
 
 # The unified CLI sets this marker only while mounting the exact same Typer app.
 # Direct use of the legacy package still receives a visible stderr warning.
@@ -25,6 +25,6 @@ except PackageNotFoundError:
 
 
 def bundled_schema_version() -> str:
-    """Return the in-band EsriFootprint schema version bundled with the tool."""
+    """Return the in-band GeoServicesRestFootprint schema version bundled with the tool."""
 
     return SCHEMA_VERSION

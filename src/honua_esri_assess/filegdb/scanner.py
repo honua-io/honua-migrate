@@ -1,4 +1,4 @@
-"""FileGDB scanner that emits EsriFootprint v0.1 inventory records."""
+"""FileGDB scanner that emits GeoServicesRestFootprint v0.1 inventory records."""
 
 from __future__ import annotations
 
@@ -66,7 +66,7 @@ def scan_filegdb_workspace(
     options: FileGdbScanOptions | None = None,
     reader: FileGdbMetadataReader | None = None,
 ) -> JsonObject:
-    """Scan a local ``.gdb`` directory and return an EsriFootprint v0.1 artifact.
+    """Scan a local ``.gdb`` directory and return an GeoServicesRestFootprint v0.1 artifact.
 
     The scanner only calls metadata/list operations on the reader. Recoverable
     failures are surfaced as v0.1 diagnostics; raw exception text is never copied
@@ -265,7 +265,7 @@ def _inventory_item(
                 code="unsupported-item-type",
                 severity="info",
                 message=(
-                    "Layer geometry type is not modeled in EsriFootprint v0.1 "
+                    "Layer geometry type is not modeled in GeoServicesRestFootprint v0.1 "
                     "and was emitted as null."
                 ),
                 scope=_safe_scope(layer.name),

@@ -2,7 +2,7 @@
 
 Exercises ``scan server --admin-usage``: the server catalog walk plus the
 opt-in ``/admin/usagereports`` + ``/admin/data/items`` pull are stubbed with
-``responses`` (GET-only), and the emitted ``EsriFootprint.json`` is asserted to
+``responses`` (GET-only), and the emitted ``GeoServicesRestFootprint.json`` is asserted to
 carry the usage-ranked ordering and per-dataset binding modes, to validate
 against the v0.2 schema, and to never leak credentials drawn from the
 data-store registrations.
@@ -77,7 +77,7 @@ def _run(output: Path, *extra: str):
 
 @responses.activate
 def test_admin_usage_emits_binding_plan_and_validates(tmp_path: Path) -> None:
-    output = tmp_path / "EsriFootprint.json"
+    output = tmp_path / "GeoServicesRestFootprint.json"
     _register_server_catalog()
     _register_admin_endpoints()
     result = _run(output, "--admin-usage")
@@ -104,7 +104,7 @@ def test_admin_usage_emits_binding_plan_and_validates(tmp_path: Path) -> None:
 def test_admin_usage_artifact_never_leaks_registration_credentials(
     tmp_path: Path,
 ) -> None:
-    output = tmp_path / "EsriFootprint.json"
+    output = tmp_path / "GeoServicesRestFootprint.json"
     _register_server_catalog()
     _register_admin_endpoints()
     result = _run(output, "--admin-usage")
@@ -129,7 +129,7 @@ def test_admin_usage_artifact_never_leaks_registration_credentials(
 
 @responses.activate
 def test_plain_server_scan_omits_binding_plan(tmp_path: Path) -> None:
-    output = tmp_path / "EsriFootprint.json"
+    output = tmp_path / "GeoServicesRestFootprint.json"
     _register_server_catalog()
     # No admin endpoints registered: --admin-usage is off, so the catalog walk
     # must not touch /admin and the artifact must be unchanged.
@@ -143,7 +143,7 @@ def test_plain_server_scan_omits_binding_plan(tmp_path: Path) -> None:
 
 @responses.activate
 def test_admin_usage_missing_scope_degrades_to_diagnostic(tmp_path: Path) -> None:
-    output = tmp_path / "EsriFootprint.json"
+    output = tmp_path / "GeoServicesRestFootprint.json"
     _register_server_catalog()
     responses.add(
         responses.GET,

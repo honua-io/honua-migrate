@@ -1,4 +1,4 @@
-"""Bundled EsriFootprint schema helpers."""
+"""Bundled GeoServicesRestFootprint schema helpers."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 from . import SCHEMA_VERSION
 from .diagnostics import SchemaValidationError
 
-SCHEMA_FILENAME = "esri-footprint-v0.2.json"
+SCHEMA_FILENAME = "geoservices-rest-footprint-v0.3.json"
 
 
 def _repo_schema_path() -> Path:
@@ -50,7 +50,7 @@ def validate_footprint(footprint: dict[str, Any]) -> None:
         location = _safe_error_location(first.path)
         keyword = str(first.validator or "schema")
         raise SchemaValidationError(
-            f"EsriFootprint.json does not conform to schema {SCHEMA_VERSION}: "
+            f"GeoServicesRestFootprint.json does not conform to schema {SCHEMA_VERSION}: "
             f"{location}: failed {keyword} validation."
         )
 
@@ -65,7 +65,7 @@ def validate_footprint_file(path: Path) -> None:
         ) from exc
 
     if not isinstance(payload, dict):
-        raise SchemaValidationError("EsriFootprint.json must be a JSON object.")
+        raise SchemaValidationError("GeoServicesRestFootprint.json must be a JSON object.")
     validate_footprint(payload)
 
 

@@ -1,0 +1,1506 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.honua.io/geoservices-rest-footprint/v0.3.0/geoservices-rest-footprint.json",
+  "title": "GeoServicesRestFootprint",
+  "description": "Neutral v0.3 read-only source inventory contract. This breaking revision uses GeoServices REST artifact identifiers and is emitted as GeoServicesRestFootprint.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "generatedAt",
+    "tool",
+    "source",
+    "inventory",
+    "counts",
+    "diagnostics"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "enum": [
+        "v0.3"
+      ],
+      "description": "Major.minor of this artifact contract. v0.3 introduces neutral artifact, schema, and source identifiers."
+    },
+    "generatedAt": {
+      "$ref": "#/$defs/RFC3339",
+      "description": "When the scanner finished producing this artifact (RFC3339 UTC)."
+    },
+    "tool": {
+      "$ref": "#/$defs/ToolProvenance"
+    },
+    "source": {
+      "$ref": "#/$defs/Source"
+    },
+    "portal": {
+      "$ref": "#/$defs/PortalFacet"
+    },
+    "server": {
+      "$ref": "#/$defs/ServerFacet"
+    },
+    "filegdb": {
+      "$ref": "#/$defs/FileGdbFacet"
+    },
+    "inventory": {
+      "type": "array",
+      "description": "Normalized records from the scanned source, discriminated by GeoServicesRestItem.kind. Portal items, Server services, and FileGDB feature classes coexist in a single list.",
+      "items": {
+        "$ref": "#/$defs/GeoServicesRestItem"
+      }
+    },
+    "counts": {
+      "$ref": "#/$defs/Counts"
+    },
+    "diagnostics": {
+      "type": "array",
+      "description": "Typed, prospect-safe diagnostics surfaced during scanning. Raw exceptions and stack traces are forbidden by project constraint and excluded from the schema.",
+      "items": {
+        "$ref": "#/$defs/Diagnostic"
+      }
+    },
+    "dependencyEdges": {
+      "$ref": "#/$defs/DependencyEdges"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "source": {
+            "properties": {
+              "kind": {
+                "const": "portal"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        },
+        "required": [
+          "source"
+        ]
+      },
+      "then": {
+        "required": [
+          "portal"
+        ],
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "server"
+              ]
+            },
+            {
+              "required": [
+                "filegdb"
+              ]
+            }
+          ]
+        },
+        "properties": {
+          "inventory": {
+            "items": {
+              "$ref": "#/$defs/PortalItem"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "source": {
+            "properties": {
+              "kind": {
+                "const": "geoservices-server"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        },
+        "required": [
+          "source"
+        ]
+      },
+      "then": {
+        "required": [
+          "server"
+        ],
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "portal"
+              ]
+            },
+            {
+              "required": [
+                "filegdb"
+              ]
+            }
+          ]
+        },
+        "properties": {
+          "inventory": {
+            "items": {
+              "$ref": "#/$defs/ServerService"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "source": {
+            "properties": {
+              "kind": {
+                "const": "filegdb"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        },
+        "required": [
+          "source"
+        ]
+      },
+      "then": {
+        "required": [
+          "filegdb"
+        ],
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "portal"
+              ]
+            },
+            {
+              "required": [
+                "server"
+              ]
+            }
+          ]
+        },
+        "properties": {
+          "inventory": {
+            "items": {
+              "$ref": "#/$defs/FileGdbFeatureClass"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "RFC3339": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?Z$",
+      "description": "RFC3339 UTC date-time string with an explicit Z suffix."
+    },
+    "SemVer": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+      "description": "Semantic version string (MAJOR.MINOR.PATCH with optional pre-release/build metadata)."
+    },
+    "ToolProvenance": {
+      "type": "object",
+      "description": "Scanner provenance. version is required so consumers can reason about which scanner produced the artifact.",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "const": "honua-migrate",
+          "description": "Producer identity for the neutral v0.3 contract."
+        },
+        "version": {
+          "$ref": "#/$defs/SemVer"
+        }
+      }
+    },
+    "Source": {
+      "type": "object",
+      "description": "Identifies the scanned source. Discriminated by kind. locator must be a prospect-safe identifier — never credentials, never raw on-prem paths; FileGDB paths are surfaced as a salted hash. locator format is constrained by kind via the allOf branches below.",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "locator",
+        "capturedAt"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "portal",
+            "geoservices-server",
+            "filegdb"
+          ],
+          "description": "Origin family of the scanned data."
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Prospect-safe identifier for the source. Portal: host + organization id (e.g. tenant.example.com/0123ABC). Server: base services URL with no query string, fragment, or userinfo. FileGDB: salted sha256 of the gdb path (sha256:<64 hex>)."
+        },
+        "capturedAt": {
+          "$ref": "#/$defs/RFC3339",
+          "description": "When the scan against this source began."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "filegdb"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "locator": {
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "portal"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "locator": {
+                "pattern": "^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}/[A-Za-z0-9][A-Za-z0-9_-]{0,127}$"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "geoservices-server"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "locator": {
+                "pattern": "^https?://[^@?#\\s]+(/[^?#\\s]*)?$"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "SpatialReference": {
+      "type": "object",
+      "description": "Spatial reference identification. The GeoServices REST response may provide wkid, latestWkid, or wkt inconsistently — at least one must be present. Closed object: producers must normalize to the documented keys before emitting.",
+      "additionalProperties": false,
+      "properties": {
+        "wkid": {
+          "type": "integer"
+        },
+        "latestWkid": {
+          "type": "integer"
+        },
+        "wkt": {
+          "type": "string"
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "wkid"
+          ]
+        },
+        {
+          "required": [
+            "latestWkid"
+          ]
+        },
+        {
+          "required": [
+            "wkt"
+          ]
+        }
+      ]
+    },
+    "Extent": {
+      "type": "object",
+      "description": "Bounding box and spatial reference for an item or layer.",
+      "additionalProperties": false,
+      "required": [
+        "bbox",
+        "crs"
+      ],
+      "properties": {
+        "bbox": {
+          "type": "array",
+          "description": "[xmin, ymin, xmax, ymax] in the crs coordinate system.",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "number"
+          }
+        },
+        "crs": {
+          "$ref": "#/$defs/SpatialReference"
+        }
+      }
+    },
+    "GeometryType": {
+      "description": "Geometry type identifier reported by the service. null is allowed for tables and non-spatial items.",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "esriGeometryPoint",
+            "esriGeometryMultipoint",
+            "esriGeometryPolyline",
+            "esriGeometryPolygon",
+            "esriGeometryEnvelope"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "FieldDescriptor": {
+      "type": "object",
+      "description": "Minimal field metadata captured for FileGDB feature classes. Closed object: extras require a schema bump.",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "type"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "description": "Field type identifier reported by the service (e.g. esriFieldTypeOID, esriFieldTypeString)."
+        },
+        "nullable": {
+          "type": "boolean"
+        }
+      }
+    },
+    "GeoServicesRestTypeCountMap": {
+      "type": "object",
+      "description": "Map of source item or service type labels to counts. Property names are constrained to display-label characters so URLs, query tokens, credential strings, and raw path fragments cannot be carried as map keys.",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._()+-]{0,79}$"
+      },
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "DependencyNodeId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "description": "Prospect-safe identifier for a dependency-graph node. Portal items use the portal item id. Server services use the credential-free serviceUrl. Server layers use \"<serviceUrl>#<layerId>\". Identifiers must already appear in the inventory (or be derivable from it) and must never carry credentials, query strings, fragments other than the layer suffix, or raw on-prem paths."
+    },
+    "DependencyEdge": {
+      "type": "object",
+      "description": "A single directed dependency edge used for migration ordering. The \"from\" node depends on / references the \"to\" node, so \"to\" must be migrated first. Closed object: extras require a schema bump.",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "to",
+        "relation"
+      ],
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/DependencyNodeId"
+        },
+        "to": {
+          "$ref": "#/$defs/DependencyNodeId"
+        },
+        "relation": {
+          "type": "string",
+          "enum": [
+            "webmap-references-service",
+            "service-contains-layer"
+          ],
+          "description": "Edge kind. webmap-references-service: a portal Web Map references a service (item id or service). service-contains-layer: an a map service contains a layer."
+        }
+      }
+    },
+    "DependencyEdges": {
+      "type": "array",
+      "description": "Optional, deterministic list of directed dependency edges (webmap -> service -> layer) reserved but left empty at v0.1 and populated at v0.2. Absent or empty for sources without resolvable edges. Consumers use these to order migrations: for an edge {from, to}, \"to\" is migrated before \"from\".",
+      "items": {
+        "$ref": "#/$defs/DependencyEdge"
+      }
+    },
+    "PortalFacet": {
+      "type": "object",
+      "description": "Facet required iff source.kind == portal. Closed at v0.1: vendor extras, callback URLs, and credential-like fields are schema-rejected so the artifact cannot smuggle telemetry or secrets.",
+      "additionalProperties": false,
+      "required": [
+        "orgId",
+        "orgUrl",
+        "itemCounts"
+      ],
+      "properties": {
+        "orgId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "orgUrl": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://[^@?#\\s]+(/[^?#\\s]*)?$",
+          "description": "Portal organization base URL. Schema pattern rejects userinfo, query strings, and fragments so credentials and session tokens cannot ride along."
+        },
+        "itemCounts": {
+          "$ref": "#/$defs/GeoServicesRestTypeCountMap",
+          "description": "Map of portal item type → count (e.g. \"Feature Service\": 12). Keys are constrained to prospect-safe type labels."
+        },
+        "contentTypeCounts": {
+          "$ref": "#/$defs/GeoServicesRestTypeCountMap",
+          "description": "Additive at v0.2: map of functional content category → count (e.g. \"web-map\": 8, \"survey123-form\": 3, \"unknown\": 1). Categories are derived from the item type and typeKeywords (apps, forms, notebooks, hosted vs referenced layers, etc.); unrecognized content is counted as \"unknown\". v0.1 readers ignore this property."
+        },
+        "sharingSummary": {
+          "type": "object",
+          "description": "Roll-up of sharing levels across portal items.",
+          "additionalProperties": false,
+          "properties": {
+            "private": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "org": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "public": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "shared": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "licensing": {
+          "$ref": "#/$defs/PortalLicensing",
+          "description": "Read-only license entitlement observations from documented Portal Sharing endpoints."
+        },
+        "federation": {
+          "$ref": "#/$defs/Federation",
+          "description": "Additive at v0.2: federation topology (federated server URLs + assigned hosting/federated roles) and advanced server roles (GeoEvent/GeoAnalytics/Notebook/Knowledge) advertised by the documented portals/self/servers surface. Present only when the federation surface was reachable and returned servers; absent for unfederated orgs and ignored by v0.1 readers."
+        }
+      }
+    },
+    "Federation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Federation topology of a Portal: the server sites federated with it and the advanced server roles observed across them. Deep per-server configuration is intentionally excluded (covered by the per-service migration children). Read-only: server URLs are credential-free with no query string, fragment, or userinfo.",
+      "required": [
+        "servers"
+      ],
+      "properties": {
+        "servers": {
+          "type": "array",
+          "description": "Federated server sites, sorted by url for determinism.",
+          "items": {
+            "$ref": "#/$defs/FederatedServer"
+          }
+        },
+        "advancedRoles": {
+          "type": "array",
+          "description": "Union of advanced server roles observed across all federated servers. Sorted, de-duplicated. Omitted when none are advertised.",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/AdvancedServerRole"
+          }
+        }
+      }
+    },
+    "AdvancedServerRole": {
+      "type": "string",
+      "enum": [
+        "geoevent",
+        "geoanalytics",
+        "notebook",
+        "knowledge"
+      ],
+      "description": "Advanced server capability/role whose presence changes the migration story. Recorded as presence only; deep configuration is out of scope."
+    },
+    "FederatedServer": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One server site federated with a Portal, with its assigned role and any advanced server functions advertised read-only. Credential-free.",
+      "required": [
+        "url"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://[^@?#\\s]+(/[^?#\\s]*)?$",
+          "description": "Credential-free federated server URL with no query string, fragment, or userinfo."
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "hosting",
+            "federated"
+          ],
+          "description": "Coarse hosting vs federated role assignment derived from the federation surface (isHosted / serverRole). Omitted when undeterminable."
+        },
+        "functions": {
+          "type": "array",
+          "description": "Raw serverFunction tokens advertised for the server (e.g. GeoAnalytics, GeoEvent, NotebookServer). Preserves source order. Omitted when none are advertised.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "advancedRoles": {
+          "type": "array",
+          "description": "Advanced server roles recognized for this server, normalized from its functions. Sorted, de-duplicated. Omitted when none.",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/AdvancedServerRole"
+          }
+        }
+      }
+    },
+    "ServerFacet": {
+      "type": "object",
+      "description": "Facet required iff source.kind == geoservices-server. Closed at v0.1: vendor extras, callback URLs, and credential-like fields are schema-rejected so the artifact cannot smuggle telemetry or secrets.",
+      "additionalProperties": false,
+      "required": [
+        "folders",
+        "serviceCounts"
+      ],
+      "properties": {
+        "folders": {
+          "type": "array",
+          "description": "Top-level service folder names visited by the scan. Empty array if all services live at the root; filtered scans may contain only the requested folder.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "serviceCounts": {
+          "$ref": "#/$defs/GeoServicesRestTypeCountMap",
+          "description": "Map of service type → count (e.g. \"MapServer\": 4). Keys are constrained to prospect-safe type labels."
+        },
+        "version": {
+          "type": "string",
+          "description": "Reported server version (e.g. \"11.2\")."
+        },
+        "licensing": {
+          "$ref": "#/$defs/ServerLicensing",
+          "description": "Read-only license entitlement observations from documented REST/admin endpoints."
+        },
+        "bindingPlan": {
+          "$ref": "#/$defs/BindingPlan",
+          "description": "Additive at v0.2: usage-ranked migration ordering and per-dataset binding-mode recommendations derived from read-only Admin-API usage reports (/admin/usagereports) and data-store registrations (/admin/data/items). Present only when the admin usage pull was enabled and the admin endpoints were reachable; absent otherwise so plain scans and v0.1 readers are unchanged."
+        }
+      }
+    },
+    "UsageRankedService": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One service ranked by observed request volume from /admin/usagereports. Drives usage-driven migration sequencing rather than alphabetical/folder heuristics.",
+      "required": [
+        "service",
+        "requests",
+        "rank"
+      ],
+      "properties": {
+        "service": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Service identifier as the Admin-API reports it (folder/Name.Type style), with the leading services/ prefix stripped. Never carries credentials or query strings."
+        },
+        "requests": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total observed request count summed across the usage-report samples."
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "1-based migration rank; lower rank = higher observed usage. Ties break alphabetically for determinism."
+        }
+      }
+    },
+    "DatasetBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Per-dataset binding-mode recommendation derived only from a data-store registration's declared storage type. Connection strings, hosts, usernames, and passwords are never read or emitted; ArcSDE/GDB internals are never parsed.",
+      "required": [
+        "datasetId",
+        "storageType",
+        "connectionKind",
+        "bindingMode"
+      ],
+      "properties": {
+        "datasetId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Registration path/id as reported by /admin/data/items (e.g. /enterpriseDatabases/parcels_egdb). Never carries a connection string or credentials."
+        },
+        "storageType": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Declared registration type token verbatim (e.g. egdb, cloudStore, folder). Read from the registration's declared type only, never inferred from internals."
+        },
+        "connectionKind": {
+          "type": "string",
+          "enum": [
+            "enterprise-geodatabase",
+            "relational",
+            "cloud-store",
+            "file-share",
+            "object-store",
+            "big-data-file-share",
+            "unknown"
+          ],
+          "description": "Coarse, credential-free classification of the registration derived from its declared storageType. Unknown tokens map to \"unknown\"."
+        },
+        "bindingMode": {
+          "type": "string",
+          "enum": [
+            "federate",
+            "connect-in-place",
+            "materialize"
+          ],
+          "description": "Recommended Honua binding mode. federate: query in place at scale (enterprise geodatabases / relational stores). connect-in-place: register a direct read-only connection without copying (cloud/object/big-data file shares). materialize: copy/snapshot into Honua-managed storage (file shares and unmapped types)."
+        }
+      }
+    },
+    "BindingPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Combined usage-ranking + binding-mode planning facet derived from read-only Admin-API endpoints. Both arrays may be empty when the corresponding endpoint returned no data.",
+      "required": [
+        "usageRankedServices",
+        "datasetBindings"
+      ],
+      "properties": {
+        "usageRankedServices": {
+          "type": "array",
+          "description": "Services ranked by observed request volume (descending), used to drive usage-driven migration sequencing.",
+          "items": {
+            "$ref": "#/$defs/UsageRankedService"
+          }
+        },
+        "datasetBindings": {
+          "type": "array",
+          "description": "Per-dataset binding-mode recommendations derived only from data-store registration storage types.",
+          "items": {
+            "$ref": "#/$defs/DatasetBinding"
+          }
+        }
+      }
+    },
+    "ExtensionEntitlement": {
+      "type": "object",
+      "description": "One extension or add-on observed during read-only entitlement enumeration.",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "name",
+        "status",
+        "source"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Extension code as reported by the source, or the catalog-normalized equivalent."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable extension name."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "licensed",
+            "evaluation",
+            "expired",
+            "unknown"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "server-admin-licenses",
+            "service-extensions",
+            "portal-subscription"
+          ]
+        }
+      }
+    },
+    "UserTypeCount": {
+      "type": "object",
+      "description": "Portal user-type entitlement count. Seat counts are omitted when the endpoint does not expose them for the scanner credential.",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "assigned": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "PortalPremiumContent": {
+      "type": "object",
+      "description": "Portal premium content and add-on entitlement summary. Credit balances are intentionally reduced to a boolean.",
+      "additionalProperties": false,
+      "required": [
+        "allowedAddOns"
+      ],
+      "properties": {
+        "creditsEnabled": {
+          "type": "boolean"
+        },
+        "allowedAddOns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "PortalLicensing": {
+      "type": "object",
+      "description": "Portal licensing observations from read-only Sharing API endpoints.",
+      "additionalProperties": false,
+      "required": [
+        "userTypes",
+        "premiumContent",
+        "extensionsObserved"
+      ],
+      "properties": {
+        "tier": {
+          "type": "string",
+          "minLength": 1
+        },
+        "subscriptionType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "userTypes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/UserTypeCount"
+          }
+        },
+        "premiumContent": {
+          "$ref": "#/$defs/PortalPremiumContent"
+        },
+        "extensionsObserved": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ExtensionEntitlement"
+          }
+        }
+      }
+    },
+    "ServiceExtensionRecord": {
+      "type": "object",
+      "description": "SOEs and SOIs enabled on one server service.",
+      "additionalProperties": false,
+      "required": [
+        "serviceUrl",
+        "soes",
+        "sois"
+      ],
+      "properties": {
+        "serviceUrl": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://[^@?#\\s]+(/[^?#\\s]*)?$",
+          "description": "Credentials-stripped service URL. Query strings, fragments, and userinfo are forbidden."
+        },
+        "soes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "sois": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "ServerLicensing": {
+      "type": "object",
+      "description": "Server licensing observations from read-only REST/admin endpoints.",
+      "additionalProperties": false,
+      "required": [
+        "extensions",
+        "serviceExtensions"
+      ],
+      "properties": {
+        "productName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "currentVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "edition": {
+          "type": "string",
+          "minLength": 1
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ExtensionEntitlement"
+          }
+        },
+        "serviceExtensions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ServiceExtensionRecord"
+          }
+        }
+      }
+    },
+    "FileGdbFacet": {
+      "type": "object",
+      "description": "Facet required iff source.kind == filegdb. Closed at v0.1: vendor extras, callback URLs, and credential-like fields are schema-rejected so the artifact cannot smuggle telemetry or secrets.",
+      "additionalProperties": false,
+      "required": [
+        "pathHash",
+        "featureClassCount"
+      ],
+      "properties": {
+        "pathHash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "Salted sha256 of the FileGDB path. The raw path is never published."
+        },
+        "featureClassCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "version": {
+          "type": "string",
+          "description": "FileGDB format version reported by the reader, when available."
+        }
+      }
+    },
+    "GeoServicesRestItem": {
+      "description": "Discriminated union of normalized inventory records. Variants are closed at v0.1: extras require a schema bump so the artifact cannot smuggle credentials or telemetry fields per item.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/PortalItem"
+        },
+        {
+          "$ref": "#/$defs/ServerService"
+        },
+        {
+          "$ref": "#/$defs/FileGdbFeatureClass"
+        }
+      ]
+    },
+    "PortalItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id",
+        "type",
+        "owner",
+        "title",
+        "sharing",
+        "modified"
+      ],
+      "properties": {
+        "kind": {
+          "const": "portal-item"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Portal item id."
+        },
+        "type": {
+          "type": "string",
+          "description": "Portal item type (e.g. \"Feature Service\", \"Web Map\")."
+        },
+        "contentCategory": {
+          "type": "string",
+          "enum": [
+            "web-map",
+            "web-scene",
+            "dashboard",
+            "storymap",
+            "experience-builder",
+            "instant-app",
+            "web-appbuilder",
+            "web-app",
+            "survey123-form",
+            "field-maps",
+            "workforce",
+            "quickcapture",
+            "notebook",
+            "hosted-feature-layer",
+            "referenced-feature-layer",
+            "hosted-tile-layer",
+            "tile-layer",
+            "vector-tile-layer",
+            "image-layer",
+            "scene-layer",
+            "map-service",
+            "unknown"
+          ],
+          "description": "Additive at v0.2: functional content category derived from the item type and typeKeywords (apps, forms, notebooks, hosted vs referenced layers, etc.). Unrecognized content is recorded as \"unknown\". v0.1 readers ignore this property."
+        },
+        "owner": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "sharing": {
+          "type": "string",
+          "enum": [
+            "private",
+            "org",
+            "public",
+            "shared"
+          ]
+        },
+        "modified": {
+          "$ref": "#/$defs/RFC3339"
+        },
+        "extent": {
+          "$ref": "#/$defs/Extent"
+        },
+        "dependencies": {
+          "type": "array",
+          "description": "Portal item ids this item references (e.g. webmap → services). Edges between layers/services are deferred to v0.2.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ServerService": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "serviceUrl",
+        "serviceType",
+        "folder",
+        "layerCount"
+      ],
+      "properties": {
+        "kind": {
+          "const": "server-service"
+        },
+        "serviceUrl": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://[^@?#\\s]+(/[^?#\\s]*)?$",
+          "description": "Fully-qualified service URL with no query string, fragment, or userinfo. Credentials must never appear in this field."
+        },
+        "serviceType": {
+          "type": "string",
+          "description": "Service type (e.g. MapServer, FeatureServer, ImageServer)."
+        },
+        "folder": {
+          "type": "string",
+          "description": "Folder name relative to the services root, or empty string if the service lives at the root."
+        },
+        "layerCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of layers observed for the service. Current producer output fills this from deep service probes; shallow or unprobed services emit 0."
+        },
+        "serviceKind": {
+          "type": "string",
+          "enum": [
+            "mapService",
+            "featureService",
+            "imageService",
+            "vectorTileService",
+            "geoprocessingService",
+            "geocodeService",
+            "networkAnalysisService",
+            "geometryService",
+            "sceneService",
+            "streamService",
+            "globeService",
+            "mobileService",
+            "other"
+          ],
+          "description": "Coarse migration bucket for serviceType. Non-feature/map services (image, geocode, geoprocessing, scene, stream, network-analysis, vector-tile, ...) are classified explicitly; unrecognized raw types map to \"other\" rather than being dropped."
+        },
+        "ogcCapabilities": {
+          "type": "array",
+          "description": "OGC interfaces advertised on the service via its supportedExtensions (WMS/WFS/WCS). Omitted when the service advertises none. Deterministic, sorted, de-duplicated.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "WMS",
+              "WFS",
+              "WCS"
+            ]
+          }
+        },
+        "geometryType": {
+          "$ref": "#/$defs/GeometryType"
+        },
+        "extent": {
+          "$ref": "#/$defs/Extent"
+        },
+        "sr": {
+          "$ref": "#/$defs/SpatialReference"
+        },
+        "layers": {
+          "type": "array",
+          "description": "Additive at v0.2: per-layer schema and behavior detail captured from each FeatureServer/MapServer layer's read-only metadata (fields, domains, relationships, attachments, editor tracking, renderer/labels/popups, definition query, spatial reference, versioning hints, attribute-rule presence). Present only when the layer-detail probe ran and at least one layer was resolved; absent otherwise so plain probes are unchanged. v0.1 readers ignore this property.",
+          "items": {
+            "$ref": "#/$defs/ServerLayerDetail"
+          }
+        },
+        "migrationHandoff": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Additive at v0.2: cross-repo migration handoff for geoprocessing (GPServer) services. Geoprocessing migration is handled by the honua-sdk-python workflow; this footprint records only a read-only pointer (service URL, any known task names, and a note). Present only on geoprocessingService entries; absent otherwise. v0.1 readers ignore this property.",
+          "required": [
+            "target",
+            "serviceUrl",
+            "note"
+          ],
+          "properties": {
+            "target": {
+              "type": "string",
+              "description": "Repository/pipeline that owns the migration (e.g. \"honua-sdk-python:arcpy\")."
+            },
+            "serviceUrl": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?://[^@?#\\s]+(/[^?#\\s]*)?$",
+              "description": "Credential-free GPServer URL. Credentials must never appear in this field."
+            },
+            "note": {
+              "type": "string",
+              "description": "Human-readable note identifying the owning migration workflow."
+            },
+            "taskNames": {
+              "type": "array",
+              "description": "Geoprocessing task names read from the GPServer body's tasks array (deep probe only). Omitted when no tasks were resolved. Deterministic, sorted, de-duplicated.",
+              "uniqueItems": true,
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "lockIns": {
+          "type": "array",
+          "description": "Additive at v0.2: enumerated hard platform dependencies (Utility Network / Parcel Fabric / LRS) carried by the service, with observed extent. Present only when the service carries at least one lock-in; absent otherwise so plain feature/map services and v0.1 readers are unchanged.",
+          "items": {
+            "$ref": "#/$defs/LockIn"
+          }
+        }
+      }
+    },
+    "ServerLayerDetail": {
+      "type": "object",
+      "description": "Schema and behavior detail for one FeatureServer/MapServer layer or table, read-only from its metadata resource. Closed object: extras require a schema bump.",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Layer/table id within the service."
+        },
+        "name": {
+          "type": "string",
+          "description": "Layer/table name as reported by the service."
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ServerLayerField"
+          }
+        },
+        "relationships": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ServerLayerRelationship"
+          }
+        },
+        "subtypeCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of subtypes defined on the layer."
+        },
+        "hasAttachments": {
+          "type": "boolean"
+        },
+        "editorTracking": {
+          "$ref": "#/$defs/ServerLayerEditorTracking"
+        },
+        "rendererType": {
+          "type": "string",
+          "description": "drawingInfo renderer type (e.g. simple, uniqueValue, classBreaks)."
+        },
+        "hasLabels": {
+          "type": "boolean"
+        },
+        "hasPopups": {
+          "type": "boolean"
+        },
+        "definitionQuery": {
+          "type": "string",
+          "description": "Layer definition expression/query, when present."
+        },
+        "sr": {
+          "$ref": "#/$defs/SpatialReference"
+        },
+        "versioning": {
+          "$ref": "#/$defs/ServerLayerVersioning"
+        },
+        "attributeRules": {
+          "$ref": "#/$defs/ServerLayerAttributeRules"
+        }
+      }
+    },
+    "ServerLayerField": {
+      "type": "object",
+      "description": "One attribute field on a layer/table. Domain presence is summarized as a coded/range/inherited type plus the domain name; coded-value lists are not copied.",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "description": "Field type identifier reported by the service (e.g. esriFieldTypeOID, esriFieldTypeString)."
+        },
+        "alias": {
+          "type": "string"
+        },
+        "nullable": {
+          "type": "boolean"
+        },
+        "domainType": {
+          "type": "string",
+          "description": "Domain kind summary: coded, range, inherited, or a raw type when unrecognized."
+        },
+        "domainName": {
+          "type": "string"
+        },
+        "editorTracking": {
+          "type": "boolean",
+          "description": "True when the field is one of the layer's editor-tracking columns."
+        }
+      }
+    },
+    "ServerLayerRelationship": {
+      "type": "object",
+      "description": "One relationship class advertised on a layer.",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "relatedTableId": {
+          "type": "integer"
+        },
+        "cardinality": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "ServerLayerEditorTracking": {
+      "type": "object",
+      "description": "Editor-tracking configuration observed on a layer.",
+      "additionalProperties": false,
+      "required": [
+        "enabled"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "creatorField": {
+          "type": "string"
+        },
+        "creationDateField": {
+          "type": "string"
+        },
+        "editorField": {
+          "type": "string"
+        },
+        "editDateField": {
+          "type": "string"
+        }
+      }
+    },
+    "ServerLayerVersioning": {
+      "type": "object",
+      "description": "Normalized versioning indicator read from a layer's read-only metadata (isDataBranchVersioned/isDataVersioned/isDataArchived). No version-management/admin endpoints are called. Present only when the metadata advertised a versioning hint.",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "branch",
+            "traditional",
+            "none"
+          ],
+          "description": "branch when the layer advertises branch versioning, traditional for state-based versioned data, none when the layer explicitly reports it is not versioned."
+        },
+        "archived": {
+          "type": "boolean",
+          "description": "Mirrors isDataArchived when advertised."
+        }
+      }
+    },
+    "ServerLayerAttributeRules": {
+      "type": "object",
+      "description": "Attribute-rule presence summarized from a layer's read-only metadata. present is true/false when the layer advertises a hasAttributeRules-style flag; the whole block is omitted (not-determinable) when presence cannot be read without admin endpoints, which this tool does not call. count is populated only when the metadata inlines an attributeRules array read-only.",
+      "additionalProperties": false,
+      "properties": {
+        "present": {
+          "type": "boolean",
+          "description": "Whether the layer advertises attribute rules in its read-only metadata."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of attribute rules, when the metadata inlines them read-only."
+        }
+      }
+    },
+    "LockIn": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "An enumerated hard Esri lock-in (Utility Network, Parcel Fabric, LRS) observed on a service, with extent. Additive at v0.2; v0.1 readers ignore it. The tool never migrates these capabilities — the enumeration exists so the migratability verdict can report extent (e.g. \"UN: N feature classes\") rather than a bare presence flag.",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "utility-network",
+            "parcel-fabric",
+            "lrs"
+          ],
+          "description": "Hard lock-in identifier, matching the verdict capability registry keys."
+        },
+        "featureClassCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of feature classes participating in the lock-in (Utility Network / Parcel Fabric)."
+        },
+        "domainNetworkCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of Utility Network domain networks observed."
+        },
+        "ruleCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of Utility Network rules observed."
+        },
+        "networkCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of LRS networks observed."
+        }
+      }
+    },
+    "FileGdbFeatureClass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "name",
+        "geometryType",
+        "sr"
+      ],
+      "properties": {
+        "kind": {
+          "const": "filegdb-feature-class"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "geometryType": {
+          "$ref": "#/$defs/GeometryType"
+        },
+        "sr": {
+          "$ref": "#/$defs/SpatialReference"
+        },
+        "featureCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FieldDescriptor"
+          }
+        }
+      }
+    },
+    "Counts": {
+      "type": "object",
+      "description": "Aggregate roll-up of the inventory. Top-level closed so adding a new aggregate is a deliberate schema bump.",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "layers",
+        "featureClasses"
+      ],
+      "properties": {
+        "items": {
+          "type": "object",
+          "description": "Totals by GeoServicesRestItem.kind: portal-item, server-service, filegdb-feature-class.",
+          "additionalProperties": false,
+          "properties": {
+            "portal-item": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "server-service": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "filegdb-feature-class": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "layers": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Sum of layerCount across server-service items."
+        },
+        "featureClasses": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Count of filegdb-feature-class inventory records."
+        }
+      }
+    },
+    "Diagnostic": {
+      "type": "object",
+      "description": "Typed, prospect-safe diagnostic. code is drawn from a locked v0.1 enum; new codes require a v0.2 vocabulary expansion. Clarifying existing codes may land in a v0.1.x doc bump.",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "severity",
+        "message",
+        "scope"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "rate-limited",
+            "partial-coverage",
+            "missing-permission",
+            "unresolved-reference",
+            "unsupported-item-type",
+            "redacted-field"
+          ]
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "info",
+            "warn",
+            "error"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable summary. Must not contain raw stack traces, credentials, or full on-prem paths."
+        },
+        "scope": {
+          "type": "string",
+          "description": "Identifier of the affected area — usually source.kind, a folder, or an GeoServicesRestItem identifier."
+        },
+        "hint": {
+          "type": "string",
+          "description": "Optional remediation hint surfaced to the prospect."
+        }
+      }
+    }
+  }
+}

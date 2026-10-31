@@ -1,20 +1,20 @@
 ---
 type: reference
-title: "esri-footprint v0.1 schema"
+title: "geoservices-rest-footprint v0.1 schema"
 description: "The original footprint schema: every field the assessment emits about an Esri estate, with types and meaning."
 resource: "https://github.com/honua-io/honua-migrate/tree/trunk/schemas"
 tags: [schema, footprint, v0.1]
 ---
-# EsriFootprint v0.1 reference
+# GeoServicesRestFootprint v0.1 reference
 
-- Schema id: `https://schemas.honua.io/esri-footprint/v0.1.0/esri-footprint.json`
-- Schema file: [`schemas/esri-footprint-v0.1.json`](../../schemas/esri-footprint-v0.1.json)
-- Canonical sample: [`docs/samples/esri-footprint.sample.json`](../samples/esri-footprint.sample.json)
+- Schema id: `https://schemas.honua.io/geoservices-rest-footprint/v0.1.0/geoservices-rest-footprint.json`
+- Schema file: [`schemas/geoservices-rest-footprint-v0.1.json`](../../schemas/geoservices-rest-footprint-v0.1.json)
+- Canonical sample: [`docs/samples/geoservices-rest-footprint.sample.json`](../samples/geoservices-rest-footprint.sample.json)
 - JSON Schema dialect: draft-2020-12
 
 ## Purpose
 
-`EsriFootprint.json` is the read-only artifact the assessment scan emits and
+`GeoServicesRestFootprint.json` is the read-only artifact the assessment scan emits and
 the report, capability crosswalk and migration planning consume. The contract describes the inventory of a single Esri source
 (ArcGIS Online, ArcGIS Server, or FileGDB) in enough detail for the
 migration product to plan a Honua takeover *without round-tripping back to
@@ -86,10 +86,10 @@ contract fields.
 | `generatedAt`   | yes      | RFC3339 UTC                       | When the scanner finished producing this artifact.                                                           |
 | `tool`          | yes      | [`ToolProvenance`](#toolprovenance) | Scanner provenance.                                                                                          |
 | `source`        | yes      | [`Source`](#source)               | Identifies the scanned Esri source. `source.kind` is the discriminator (see [Discriminator rules](#discriminator-rules)). |
-| `portal`        | conditional | [`PortalFacet`](#portalfacet)  | **Required** iff `source.kind == "arcgis-online"`; **forbidden** otherwise.                                  |
-| `server`        | conditional | [`ServerFacet`](#serverfacet)  | **Required** iff `source.kind == "arcgis-server"`; **forbidden** otherwise.                                  |
+| `portal`        | conditional | [`PortalFacet`](#portalfacet)  | **Required** iff `source.kind == "portal"`; **forbidden** otherwise.                                  |
+| `server`        | conditional | [`ServerFacet`](#serverfacet)  | **Required** iff `source.kind == "geoservices-server"`; **forbidden** otherwise.                                  |
 | `filegdb`       | conditional | [`FileGdbFacet`](#filegdbfacet)| **Required** iff `source.kind == "filegdb"`; **forbidden** otherwise.                                        |
-| `inventory`     | yes      | [`EsriItem[]`](#esriitem)         | Normalized records. Variant is constrained by `source.kind` (see [Discriminator rules](#discriminator-rules)). Empty array is valid. |
+| `inventory`     | yes      | [`GeoServicesRestItem[]`](#geoservicesrestitem)         | Normalized records. Variant is constrained by `source.kind` (see [Discriminator rules](#discriminator-rules)). Empty array is valid. |
 | `counts`        | yes      | [`Counts`](#counts)               | Aggregate roll-up.                                                                                           |
 | `diagnostics`   | yes      | [`Diagnostic[]`](#diagnostic)     | Typed, prospect-safe diagnostics. Empty array is valid.                                                      |
 
@@ -98,17 +98,17 @@ contract fields.
 `source.kind` is enforced by top-level `allOf` / `if`-`then` branches in
 the schema. For each value, the matching facet is required, sibling
 facets are forbidden, and `inventory[]` is constrained to the matching
-`EsriItem` variant. A single artifact describes exactly one source.
+`GeoServicesRestItem` variant. A single artifact describes exactly one source.
 
 | `source.kind`   | Required facet | Forbidden facets         | `inventory[]` variant                              |
 |-----------------|----------------|--------------------------|----------------------------------------------------|
-| `arcgis-online` | `portal`       | `server`, `filegdb`      | [`PortalItem`](#portalitem-kind-portal-item)       |
-| `arcgis-server` | `server`       | `portal`, `filegdb`      | [`ServerService`](#serverservice-kind-server-service) |
+| `portal` | `portal`       | `server`, `filegdb`      | [`PortalItem`](#portalitem-kind-portal-item)       |
+| `geoservices-server` | `server`       | `portal`, `filegdb`      | [`ServerService`](#serverservice-kind-server-service) |
 | `filegdb`       | `filegdb`      | `portal`, `server`       | [`FileGdbFeatureClass`](#filegdbfeatureclass-kind-filegdb-feature-class) |
 
-Mixing facets (e.g. an `arcgis-server` artifact that still carries
+Mixing facets (e.g. an `geoservices-server` artifact that still carries
 `portal`) or mixing inventory variants (e.g. a `filegdb-feature-class`
-record under an `arcgis-online` source) is a schema validation failure.
+record under an `portal` source) is a schema validation failure.
 
 ### ToolProvenance
 
@@ -120,12 +120,12 @@ record under an `arcgis-online` source) is a schema validation failure.
 ### Source
 
 `source.kind` is the discriminator. It pins the required facet and the
-allowed `EsriItem` variant, and it pins the `locator` pattern. See
+allowed `GeoServicesRestItem` variant, and it pins the `locator` pattern. See
 [Discriminator rules](#discriminator-rules) for the top-level effect.
 
 | Field        | Required | Type        | Description                                                                                                                                 |
 |--------------|----------|-------------|---------------------------------------------------------------------------------------------------------------------------------------------|
-| `kind`       | yes      | enum        | One of `arcgis-online`, `arcgis-server`, `filegdb`.                                                                                          |
+| `kind`       | yes      | enum        | One of `portal`, `geoservices-server`, `filegdb`.                                                                                          |
 | `locator`    | yes      | string      | Prospect-safe identifier; format is constrained by `kind` (see below). Never includes credentials, query strings, fragments, or raw on-prem paths. |
 | `capturedAt` | yes      | RFC3339 UTC | When the scan against this source began.                                                                                                    |
 
@@ -133,8 +133,8 @@ allowed `EsriItem` variant, and it pins the `locator` pattern. See
 
 | `source.kind`   | `locator` pattern                                                                                                     | Example                                            |
 |-----------------|-----------------------------------------------------------------------------------------------------------------------|----------------------------------------------------|
-| `arcgis-online` | `^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}/[A-Za-z0-9][A-Za-z0-9_-]{0,127}$`              | `honua.maps.arcgis.com/0123ABCDEF456789`           |
-| `arcgis-server` | `^https?://[^@?#\s]+(/[^?#\s]*)?$`                                                                                   | `https://gis.example.com/arcgis/rest/services`     |
+| `portal` | `^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}/[A-Za-z0-9][A-Za-z0-9_-]{0,127}$`              | `honua.maps.arcgis.com/0123ABCDEF456789`           |
+| `geoservices-server` | `^https?://[^@?#\s]+(/[^?#\s]*)?$`                                                                                   | `https://gis.example.com/arcgis/rest/services`     |
 | `filegdb`       | `^sha256:[0-9a-f]{64}$`                                                                                              | `sha256:0000…` (salted sha256 of the gdb path)     |
 
 The AGOL pattern rejects schemes, colons, backslashes, equals signs, and
@@ -145,7 +145,7 @@ path is schema-rejected for `filegdb` sources.
 
 ### PortalFacet
 
-Required iff `source.kind == "arcgis-online"`; forbidden otherwise (see [Discriminator rules](#discriminator-rules)). Extra facet fields are rejected at v0.1.
+Required iff `source.kind == "portal"`; forbidden otherwise (see [Discriminator rules](#discriminator-rules)). Extra facet fields are rejected at v0.1.
 
 | Field            | Required | Type                                                | Description                                              |
 |------------------|----------|-----------------------------------------------------|----------------------------------------------------------|
@@ -157,7 +157,7 @@ Required iff `source.kind == "arcgis-online"`; forbidden otherwise (see [Discrim
 
 ### ServerFacet
 
-Required iff `source.kind == "arcgis-server"`; forbidden otherwise (see [Discriminator rules](#discriminator-rules)). Extra facet fields are rejected at v0.1.
+Required iff `source.kind == "geoservices-server"`; forbidden otherwise (see [Discriminator rules](#discriminator-rules)). Extra facet fields are rejected at v0.1.
 
 | Field           | Required | Type                                    | Description                                                                 |
 |-----------------|----------|-----------------------------------------|-----------------------------------------------------------------------------|
@@ -213,7 +213,7 @@ The Python entitlement collectors (`honua_esri_assess.entitlements`) emit
 nested facet fragment documented here. That JSON fragment is a validation and
 integration surface only — the standalone `entitlements` CLI was retired in
 the CLI consolidation, and the handoff remains the full
-`EsriFootprint.json`.
+`GeoServicesRestFootprint.json`.
 
 ### ExtensionEntitlement
 
@@ -265,7 +265,7 @@ artifact. The raw workspace path is never part of the artifact.
 `featureClassCount` is the number of `filegdb-feature-class` inventory
 records emitted and matches `counts.featureClasses`.
 
-### EsriItem
+### GeoServicesRestItem
 
 Discriminated union via `kind`. Three variants — `portal-item`,
 `server-service`, `filegdb-feature-class`. Each variant is closed at v0.1;
@@ -372,7 +372,7 @@ Typed, prospect-safe diagnostic record. `additionalProperties: false`.
 | `code`     | yes      | enum    | One of the codes in the [diagnostic code catalog](#diagnostic-code-catalog).                |
 | `severity` | yes      | enum    | `info`, `warn`, or `error`.                                                                 |
 | `message`  | yes      | string  | Human-readable summary. **Must not contain raw stack traces, credentials, or on-prem paths.**|
-| `scope`    | yes      | string  | Identifier of the affected area — usually `source.kind`, a folder, or an `EsriItem` id.     |
+| `scope`    | yes      | string  | Identifier of the affected area — usually `source.kind`, a folder, or an `GeoServicesRestItem` id.     |
 | `hint`     | no       | string  | Optional remediation hint surfaced to the prospect.                                         |
 
 ### Reusable `$defs`
@@ -446,7 +446,7 @@ Expected FileGDB diagnostic cases at v0.1:
 ## Canonical sample
 
 The canonical sample footprint lives at
-[`docs/samples/esri-footprint.sample.json`](../samples/esri-footprint.sample.json)
+[`docs/samples/geoservices-rest-footprint.sample.json`](../samples/geoservices-rest-footprint.sample.json)
 and is exercised by `tests/test_esri_footprint_schema.py`.
 
 The sample readiness report generated from that footprint lives at
@@ -459,7 +459,7 @@ The report guide lives at
 [`docs/readiness-report.md`](../readiness-report.md). It documents the CLI
 usage, exit codes, report sections, complexity bands, manual-review reason
 codes, and migration-ordering heuristics. The report is derived from
-`EsriFootprint.json` and is not a second handoff contract for the closed
+`GeoServicesRestFootprint.json` and is not a second handoff contract for the closed
 migration product.
 
 ## Out of scope at v0.1
@@ -470,7 +470,7 @@ migration planning ingests real fixture-backed footprints.
 
 - Per-item readiness or risk flags.
 - Explicit dependency edges across kinds (webmap → service → layer) — landed
-  additively in [`v0.2`](./esri-footprint.v0.2.md) as the optional
+  additively in [`v0.2`](./geoservices-rest-footprint.v0.2.md) as the optional
   `dependencyEdges` array.
 - Scanner timing or performance metrics.
 - Any field that hints at write or migrate semantics.

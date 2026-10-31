@@ -27,7 +27,7 @@ def _footprint(*, items: int = 0, layers: int = 0, inventory: list[dict] | None 
         "generatedAt": "2026-05-22T14:08:33Z",
         "tool": {"name": "honua-esri-assess", "version": "0.1.0"},
         "source": {
-            "kind": "arcgis-online",
+            "kind": "portal",
             "locator": "example.maps.arcgis.com/0123ABCDEF456789",
             "capturedAt": "2026-05-22T14:02:11Z",
         },

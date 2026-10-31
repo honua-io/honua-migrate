@@ -1,4 +1,4 @@
-"""Schema + builder contract for the EsriAccessFootprint v0.2 artifact."""
+"""Schema + builder contract for the GeoServicesRestAccessFootprint v0.3 artifact."""
 
 from __future__ import annotations
 
@@ -27,22 +27,23 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # Both published access-footprint schema versions ship in the canonical and
 # package-data locations and must stay byte-identical between the two.
 ACCESS_SCHEMA_FILENAMES = (
-    "esri-access-footprint-v0.1.json",
-    "esri-access-footprint-v0.2.json",
+    "geoservices-rest-access-footprint-v0.1.json",
+    "geoservices-rest-access-footprint-v0.2.json",
+    "geoservices-rest-access-footprint-v0.3.json",
 )
-CANONICAL = REPO_ROOT / "schemas" / "esri-access-footprint-v0.2.json"
+CANONICAL = REPO_ROOT / "schemas" / "geoservices-rest-access-footprint-v0.3.json"
 PACKAGE = (
     REPO_ROOT
     / "src"
     / "honua_esri_assess"
     / "schemas"
-    / "esri-access-footprint-v0.2.json"
+    / "geoservices-rest-access-footprint-v0.3.json"
 )
 
 
 def _full_footprint() -> AccessFootprint:
     return AccessFootprint(
-        source_kind="arcgis-online",
+        source_kind="portal",
         locator="demo.maps.arcgis.com/0123ABCDEF456789",
         users=[
             AccessUser(
@@ -76,7 +77,7 @@ def _full_footprint() -> AccessFootprint:
             ItemSharing(item_id="item-1", owner="alice", access="org")
         ],
         org_security=OrgSecurity(
-            allowed_providers=["arcgis", "saml"], multi_factor_auth_required=True
+            allowed_providers=["portal", "saml"], multi_factor_auth_required=True
         ),
         diagnostics=[
             Diagnostic(
@@ -100,13 +101,13 @@ def test_packaged_schema_matches_canonical(filename: str) -> None:
 
 def test_build_full_footprint_validates() -> None:
     artifact = build_access_footprint(_full_footprint())
-    assert artifact["schemaVersion"] == "v0.2"
+    assert artifact["schemaVersion"] == "v0.3"
     assert validate_access_footprint(artifact) is True
 
 
 def test_build_empty_footprint_validates() -> None:
     artifact = build_access_footprint(
-        AccessFootprint(source_kind="arcgis-server", locator="https://host.local/arcgis/admin")
+        AccessFootprint(source_kind="geoservices-server", locator="https://host.local/arcgis/admin")
     )
     assert validate_access_footprint(artifact) is True
     assert artifact["users"] == []
@@ -116,7 +117,7 @@ def test_build_empty_footprint_validates() -> None:
 def test_service_permission_url_is_redacted_and_schema_valid() -> None:
     artifact = build_access_footprint(
         AccessFootprint(
-            source_kind="arcgis-server",
+            source_kind="geoservices-server",
             locator="https://host.local/arcgis/admin",
             service_permissions=[
                 ServicePermission(
@@ -174,7 +175,7 @@ def test_effective_permissions_auto_derived_in_artifact() -> None:
     url = "https://host.local/server/rest/services/X/FeatureServer"
     artifact = build_access_footprint(
         AccessFootprint(
-            source_kind="arcgis-server",
+            source_kind="geoservices-server",
             locator="https://host.local/arcgis/admin",
             service_permissions=[
                 ServicePermission(url, "role", "pub", "allow", operations=["Query"]),
@@ -190,4 +191,4 @@ def test_effective_permissions_auto_derived_in_artifact() -> None:
 
 def test_load_access_schema_is_v0_2() -> None:
     schema = access_module.load_access_schema()
-    assert schema["properties"]["schemaVersion"]["enum"] == ["v0.1", "v0.2"]
+    assert schema["properties"]["schemaVersion"]["enum"] == ["v0.3"]

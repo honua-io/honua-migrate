@@ -18,7 +18,7 @@ _VERDICT_LABELS = {"go": "GO", "conditional": "CONDITIONAL", "no-go": "NO-GO"}
 
 
 def render(footprint: Mapping[str, Any]) -> str:
-    """Render an EsriFootprint v0.1 dictionary to a Markdown verdict report."""
+    """Render an GeoServicesRestFootprint v0.1 dictionary to a Markdown verdict report."""
 
     if not isinstance(footprint, Mapping):
         raise ReportRenderError("Verdict renderer expected a footprint object.")

@@ -1,13 +1,13 @@
 {
-  "schemaVersion": "v0.2",
+  "schemaVersion": "v0.3",
   "generatedAt": "2026-05-31T16:10:00Z",
   "tool": {
-    "name": "honua-esri-assess",
+    "name": "honua-migrate",
     "version": "0.1.0"
   },
   "source": {
-    "kind": "arcgis-online",
-    "locator": "org.example.com/ORG123",
+    "kind": "portal",
+    "locator": "tenant.example.com/ORG123",
     "capturedAt": "2026-05-31T16:05:00Z"
   },
   "inventory": [
@@ -41,52 +41,20 @@
   ],
   "portal": {
     "orgId": "ORG123",
-    "orgUrl": "https://org.example.com/portal",
-    "itemCounts": {
-      "Web Map": 1,
-      "Feature Service": 1,
-      "Dashboard": 1
-    },
-    "contentTypeCounts": {
-      "web-map": 1,
-      "hosted-feature-layer": 1,
-      "dashboard": 1
-    },
-    "federation": {
-      "servers": [
-        {
-          "url": "https://gis.example.com/arcgis",
-          "role": "hosting",
-          "functions": [
-            "GeoEvent"
-          ],
-          "advancedRoles": [
-            "geoevent"
-          ]
-        },
-        {
-          "url": "https://analytics.example.com/arcgis",
-          "role": "federated",
-          "functions": [
-            "GeoAnalytics",
-            "NotebookServer"
-          ],
-          "advancedRoles": [
-            "geoanalytics",
-            "notebook"
-          ]
-        }
-      ],
-      "advancedRoles": [
-        "geoanalytics",
-        "geoevent",
-        "notebook"
-      ]
+    "orgUrl": "https://tenant.example.com",
+    "itemCounts": {},
+    "sharingSummary": {
+      "private": 0,
+      "org": 3,
+      "public": 0,
+      "shared": 0
     }
   },
   "counts": {
     "items": {
-      "portal-item": 3
+      "portal-item": 3,
+      "server-service": 0,
+      "filegdb-feature-class": 0
     },
     "layers": 0,
     "featureClasses": 0

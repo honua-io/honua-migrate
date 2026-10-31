@@ -20,8 +20,8 @@ def test_server_diagnostics_scan(
     tmp_output_dir: Path,
     capsys,
 ) -> None:
-    output = tmp_output_dir / "EsriFootprint.json"
-    with mocked_routes("arcgis-server/diagnostics"):
+    output = tmp_output_dir / "GeoServicesRestFootprint.json"
+    with mocked_routes("geoservices-server/diagnostics"):
         exit_code = cli_main(
             [
                 "scan",
@@ -40,7 +40,7 @@ def test_server_diagnostics_scan(
     footprint = json.loads(output.read_text(encoding="utf-8"))
     schema_validator.validate(footprint)
 
-    expected = expected_counts["arcgis-server-diagnostics-counts"]
+    expected = expected_counts["geoservices-server-diagnostics-counts"]
     assert footprint["counts"] == {
         "items": expected["items"],
         "layers": expected["layers"],

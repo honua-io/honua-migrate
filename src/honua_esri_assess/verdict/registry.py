@@ -9,7 +9,7 @@ surfaced as explicit boundaries and never silently dropped.
 
 Detection is heuristic and deterministic: it matches on portal item ``type``
 strings, server ``serviceType`` strings, per-service ``capabilities`` tokens,
-and feature-class hints already present in ``EsriFootprint.json``. No network
+and feature-class hints already present in ``GeoServicesRestFootprint.json``. No network
 calls are made — the registry only reads the offline artifact.
 """
 

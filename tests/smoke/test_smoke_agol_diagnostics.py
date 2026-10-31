@@ -20,7 +20,7 @@ def test_agol_diagnostics_scan(
     tmp_output_dir: Path,
     capsys,
 ) -> None:
-    output = tmp_output_dir / "EsriFootprint.json"
+    output = tmp_output_dir / "GeoServicesRestFootprint.json"
     with mocked_routes("agol/diagnostics"):
         exit_code = cli_main(
             [

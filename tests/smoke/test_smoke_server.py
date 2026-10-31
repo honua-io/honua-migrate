@@ -15,8 +15,8 @@ def test_server_happy_scan(
     expected_counts,
     tmp_output_dir: Path,
 ) -> None:
-    output = tmp_output_dir / "EsriFootprint.json"
-    with mocked_routes("arcgis-server/happy"):
+    output = tmp_output_dir / "GeoServicesRestFootprint.json"
+    with mocked_routes("geoservices-server/happy"):
         exit_code = cli_main(
             [
                 "scan",
@@ -34,9 +34,9 @@ def test_server_happy_scan(
     footprint = json.loads(output.read_text(encoding="utf-8"))
     schema_validator.validate(footprint)
 
-    assert footprint["source"]["kind"] == "arcgis-server"
+    assert footprint["source"]["kind"] == "geoservices-server"
 
-    expected = expected_counts["arcgis-server-happy-counts"]
+    expected = expected_counts["geoservices-server-happy-counts"]
     assert footprint["counts"] == {
         "items": expected["items"],
         "layers": expected["layers"],

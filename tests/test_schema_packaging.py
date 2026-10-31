@@ -1,10 +1,10 @@
-"""Ensure the bundled v0.1 schema ships and matches the canonical copy.
+"""Ensure every bundled schema ships and matches the canonical copy.
 
-The repository ships the EsriFootprint v0.1 contract in two locations:
+The repository ships the GeoServicesRestFootprint v0.1 contract in two locations:
 
-* The canonical, human-readable file at ``schemas/esri-footprint-v0.1.json``
+* The canonical, human-readable file at ``schemas/geoservices-rest-footprint-v0.1.json``
   (the same path referenced by ``docs/schemas/*``).
-* A package-data copy at ``src/honua_esri_assess/schemas/esri-footprint-v0.1.json``
+* A package-data copy at ``src/honua_esri_assess/schemas/geoservices-rest-footprint-v0.1.json``
   that the installed wheel exposes through :mod:`importlib.resources`.
 
 These tests fail loud if the two diverge or if the runtime loader cannot
@@ -26,8 +26,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 #: Every published schema version ships in both the canonical and package copies.
 SCHEMA_FILENAMES = (
-    "esri-footprint-v0.1.json",
-    "esri-footprint-v0.2.json",
+    "geoservices-rest-footprint-v0.1.json",
+    "geoservices-rest-footprint-v0.2.json",
+    "geoservices-rest-footprint-v0.3.json",
 )
 
 
@@ -40,8 +41,8 @@ def _packaged(filename: str) -> Path:
 
 
 # Back-compat aliases retained for any external references.
-CANONICAL_SCHEMA = _canonical("esri-footprint-v0.1.json")
-PACKAGE_SCHEMA = _packaged("esri-footprint-v0.1.json")
+CANONICAL_SCHEMA = _canonical("geoservices-rest-footprint-v0.1.json")
+PACKAGE_SCHEMA = _packaged("geoservices-rest-footprint-v0.1.json")
 
 
 @pytest.mark.parametrize("filename", SCHEMA_FILENAMES)
@@ -66,7 +67,7 @@ def test_package_schema_matches_canonical(filename: str) -> None:
 def test_load_schema_returns_current_version() -> None:
     schema_module.load_schema.cache_clear()
     schema = schema_module.load_schema()
-    assert "v0.2" in schema["properties"]["schemaVersion"]["enum"]
+    assert "v0.3" in schema["properties"]["schemaVersion"]["enum"]
 
 
 def test_load_schema_fails_closed_when_missing(monkeypatch: pytest.MonkeyPatch) -> None:

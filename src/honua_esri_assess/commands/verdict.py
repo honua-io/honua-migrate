@@ -26,7 +26,7 @@ def verdict_command(
         Path,
         typer.Option(
             "--input",
-            help="Path to EsriFootprint.json, or '-' for stdin.",
+            help="Path to GeoServicesRestFootprint.json, or '-' for stdin.",
         ),
     ],
     output: Annotated[
@@ -40,7 +40,7 @@ def verdict_command(
         bool,
         typer.Option(
             "--strict",
-            help="Fail if the input does not validate against EsriFootprint v0.1.",
+            help="Fail if the input does not validate against GeoServicesRestFootprint v0.1.",
         ),
     ] = False,
 ) -> None:
@@ -64,7 +64,7 @@ def _read_footprint(input_path: Path) -> Mapping[str, object]:
             raw = input_path.read_text(encoding="utf-8")
     except OSError as exc:
         raise ReportInputError(
-            "Could not read EsriFootprint.json.",
+            "Could not read GeoServicesRestFootprint.json.",
             code="report.input.read",
             exit_code=2,
         ) from exc
@@ -73,13 +73,13 @@ def _read_footprint(input_path: Path) -> Mapping[str, object]:
         payload = json.loads(raw)
     except json.JSONDecodeError as exc:
         raise ReportInputError(
-            "Could not parse EsriFootprint.json as JSON.",
+            "Could not parse GeoServicesRestFootprint.json as JSON.",
             code="report.input.parse",
             exit_code=2,
         ) from exc
     if not isinstance(payload, Mapping):
         raise ReportInputError(
-            "EsriFootprint.json must be a JSON object.",
+            "GeoServicesRestFootprint.json must be a JSON object.",
             code="report.input.parse",
             exit_code=2,
         )

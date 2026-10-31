@@ -1,4 +1,4 @@
-"""Markdown readiness report renderer for EsriFootprint v0.1 dictionaries."""
+"""Markdown readiness report renderer for GeoServicesRestFootprint v0.1 dictionaries."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ class RenderOptions:
 
 
 def render(footprint: Mapping[str, Any], *, options: RenderOptions | None = None) -> str:
-    """Render an EsriFootprint v0.1 dictionary to deterministic Markdown.
+    """Render an GeoServicesRestFootprint v0.1 dictionary to deterministic Markdown.
 
     The renderer performs no file, network, or logging I/O. Validation and
     reading/writing are intentionally handled by the CLI layer.
@@ -111,7 +111,7 @@ def _render_inventory(footprint: Mapping[str, Any], options: RenderOptions) -> s
     if hidden > 0:
         lines.append(
             f"{plural(hidden, 'inventory record')} hidden by the report row limit; "
-            "see `EsriFootprint.json` for the full inventory."
+            "see `GeoServicesRestFootprint.json` for the full inventory."
         )
     return "\n\n".join(lines)
 

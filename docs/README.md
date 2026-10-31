@@ -44,8 +44,10 @@ would rather see the shape than read about it. For machine consumers, the
 [assessment handoff contract](schemas/handoff-contract.md) summarises what is
 handed over, [migration artifact contracts](contracts/migration-contracts.md)
 covers the packaged JSON Schemas, and the footprint schemas are documented per
-version: [v0.1](schemas/esri-footprint.v0.1.md),
-[v0.2](schemas/esri-footprint.v0.2.md), and
-[access footprint v0.1](schemas/esri-access-footprint.v0.1.md).
+version: [v0.1](schemas/geoservices-rest-footprint.v0.1.md),
+[v0.2](schemas/geoservices-rest-footprint.v0.2.md),
+[v0.3](schemas/geoservices-rest-footprint.v0.3.md),
+[access footprint v0.1](schemas/geoservices-rest-access-footprint.v0.1.md), and
+[access footprint v0.3](schemas/geoservices-rest-access-footprint.v0.3.md).
 [Schema versioning policy](schemas/versioning.md) says what may change under you
 while the line is pre-1.0.

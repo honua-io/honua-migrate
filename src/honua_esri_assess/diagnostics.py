@@ -162,14 +162,14 @@ class BackendNotAvailableError(DiagnosticError):
 
 
 class OutputWriteError(DiagnosticError):
-    """Raised when the CLI cannot persist EsriFootprint.json."""
+    """Raised when the CLI cannot persist GeoServicesRestFootprint.json."""
 
     exit_code = 20
 
     def __init__(self, path: Path) -> None:
         del path
         super().__init__(
-            "Could not save EsriFootprint.json at the requested output path.",
+            "Could not save GeoServicesRestFootprint.json at the requested output path.",
             code="output-write-failed",
             scope="output",
         )
@@ -222,7 +222,7 @@ class ReportInputError(AssessmentError):
 
 
 class ReportSchemaValidationError(AssessmentError):
-    """A strict report input failed EsriFootprint schema validation."""
+    """A strict report input failed GeoServicesRestFootprint schema validation."""
 
     def __init__(
         self,

@@ -1,23 +1,23 @@
 ---
 type: reference
-title: "esri-footprint v0.2 schema"
+title: "geoservices-rest-footprint v0.2 schema"
 description: "An additive, back-compatible revision of the footprint schema. What v0.2 adds over v0.1 and why a v0.1 consumer keeps working."
 resource: "https://github.com/honua-io/honua-migrate/tree/trunk/schemas"
 tags: [schema, footprint, v0.2]
 ---
-# EsriFootprint.json v0.2
+# GeoServicesRestFootprint.json v0.2
 
-`esri-footprint/v0.2` is an **additive, back-compatible** revision of
-[`v0.1`](./esri-footprint.v0.1.md). It populates the dependency edges the v0.1
+`geoservices-rest-footprint/v0.2` is an **additive, back-compatible** revision of
+[`v0.1`](./geoservices-rest-footprint.v0.1.md). It populates the dependency edges the v0.1
 schema reserved but left empty so batch orchestration can order migrations
 (webmap → service → layer), and it classifies portal items by functional
 content type so migration effort reflects what users actually touch.
 Everything documented for v0.1 still applies; this page covers only the delta.
 
 The canonical schema lives at
-[`schemas/esri-footprint-v0.2.json`](../../schemas/esri-footprint-v0.2.json),
+[`schemas/geoservices-rest-footprint-v0.2.json`](../../schemas/geoservices-rest-footprint-v0.2.json),
 mirrored as a package resource at
-`src/honua_esri_assess/schemas/esri-footprint-v0.2.json`.
+`src/honua_esri_assess/schemas/geoservices-rest-footprint-v0.2.json`.
 
 ## What changed from v0.1
 
@@ -25,7 +25,7 @@ mirrored as a package resource at
 |--------|--------|
 | `schemaVersion` | Now accepts `"v0.1"` **or** `"v0.2"`. v0.2 producers emit `"v0.2"`; v0.1 artifacts still validate against the v0.2 reader. |
 | `dependencyEdges` | New **optional** top-level array of [`DependencyEdge`](#dependencyedge). Absent or empty when no edges resolve. |
-| `portal.contentTypeCounts` | New **optional** `EsriTypeCountMap` of [functional content category](#portal-content-type-classification) → count, alongside the existing raw `portal.itemCounts`. |
+| `portal.contentTypeCounts` | New **optional** `GeoServicesRestTypeCountMap` of [functional content category](#portal-content-type-classification) → count, alongside the existing raw `portal.itemCounts`. |
 | `PortalItem.contentCategory` | New **optional** per-item string drawn from the functional-category enum. |
 | `ServerService.layers` | New **optional** array of [`ServerLayerDetail`](#serverlayerdetail) capturing per-layer schema & behavior for FeatureServer/MapServer layers. Absent when no layer detail was resolved. |
 

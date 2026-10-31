@@ -3,7 +3,7 @@
 The pyogrio/GDAL workspace scanner is wired through the CLI here. The smoke
 environment does not install the optional ``filegdb`` extra, so this run
 exercises the dependency-unavailable path: the command must still exit 0 and
-write a schema-valid EsriFootprint.json whose ``diagnostics[]`` explains the
+write a schema-valid GeoServicesRestFootprint.json whose ``diagnostics[]`` explains the
 missing backend. When pyogrio is installed the same assertions hold because the
 fixture directory is not a real ``.gdb``, which is surfaced as a diagnostic
 rather than an error exit.
@@ -23,7 +23,7 @@ def test_filegdb_workspace_scan_writes_schema_valid_artifact(
     schema_validator,
     tmp_output_dir: Path,
 ) -> None:
-    output = tmp_output_dir / "EsriFootprint.json"
+    output = tmp_output_dir / "GeoServicesRestFootprint.json"
     exit_code = cli_main(
         [
             "scan",

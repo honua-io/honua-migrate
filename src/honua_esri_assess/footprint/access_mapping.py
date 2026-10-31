@@ -1,4 +1,4 @@
-"""Map an EsriAccessFootprint to Honua RBAC + Portal-facade access policies.
+"""Map an GeoServicesRestAccessFootprint to Honua RBAC + Portal-facade access policies.
 
 This is the auth-mapping transform half of the RBAC export. It is a pure,
 in-memory function over an :class:`~honua_esri_assess.footprint.access.AccessFootprint`

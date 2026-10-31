@@ -18,7 +18,7 @@ from honua_esri_assess.filegdb import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCHEMA_PATH = REPO_ROOT / "schemas" / "esri-footprint-v0.2.json"
+SCHEMA_PATH = REPO_ROOT / "schemas" / "geoservices-rest-footprint-v0.3.json"
 CAPTURED_AT = "2026-05-22T14:02:11Z"
 GENERATED_AT = "2026-05-22T14:08:33Z"
 

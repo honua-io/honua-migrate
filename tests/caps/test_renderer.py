@@ -18,8 +18,8 @@ from honua_esri_assess.caps.renderer import (
 from honua_esri_assess.diagnostics import ReportRenderError
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SAMPLE = REPO_ROOT / "docs" / "samples" / "esri-footprint.sample.json"
-UTILITY_NETWORK = REPO_ROOT / "tests" / "fixtures" / "esri-footprint-utility-network.json"
+SAMPLE = REPO_ROOT / "docs" / "samples" / "geoservices-rest-footprint.sample.json"
+UTILITY_NETWORK = REPO_ROOT / "tests" / "fixtures" / "geoservices-rest-footprint-utility-network.json"
 
 
 def _load(path: Path) -> dict:
@@ -56,7 +56,7 @@ def test_to_json_dict_shape_for_sample_footprint() -> None:
     assert payload["schemaVersion"] == "honua-caps.v1"
     assert payload["generatedAt"] == "2026-07-16T00:00:00Z"
     assert payload["source"] == {
-        "kind": "arcgis-online",
+        "kind": "portal",
         "locator": "example.maps.arcgis.com/0123ABCDEF456789",
     }
     assert payload["crosswalk"]["schemaVersion"] == "capability-keys.v1"
@@ -100,7 +100,7 @@ def test_render_markdown_has_expected_sections() -> None:
 
 def test_render_markdown_no_unmapped_entries_says_so() -> None:
     footprint = {
-        "source": {"kind": "arcgis-online"},
+        "source": {"kind": "portal"},
         "inventory": [
             {"kind": "portal-item", "type": "Feature Service", "id": "a"},
         ],

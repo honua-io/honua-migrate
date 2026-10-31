@@ -15,7 +15,7 @@ def test_filegdb_happy_scan(
     expected_counts,
     tmp_output_dir: Path,
 ) -> None:
-    output = tmp_output_dir / "EsriFootprint.json"
+    output = tmp_output_dir / "GeoServicesRestFootprint.json"
     exit_code = cli_main(
         [
             "scan",

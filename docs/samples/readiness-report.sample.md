@@ -62,11 +62,11 @@
 
 | Severity | Code | Count | Scopes |
 | --- | --- | --- | --- |
-| warn | missing-permission | 1 | arcgis-online |
+| warn | missing-permission | 1 | portal |
 | warn | unresolved-reference | 1 | c3d4e5f60718293a4b5c6d7e8f901122 |
-| info | rate-limited | 1 | arcgis-online |
+| info | rate-limited | 1 | portal |
 
 Details:
-- warn / missing-permission (arcgis-online): Skipped 2 items the scanner credential cannot read. Hint: Re-run with a credential that has read access to the GIS Admin group.
+- warn / missing-permission (portal): Skipped 2 items the scanner credential cannot read. Hint: Re-run with a credential that has read access to the GIS Admin group.
 - warn / unresolved-reference (c3d4e5f60718293a4b5c6d7e8f901122): Web map references one item that was not included in the scan result. Hint: Confirm the referenced item exists and is readable before migration.
-- info / rate-limited (arcgis-online): Sharing API throttled the scan for 3.2s.
+- info / rate-limited (portal): Sharing API throttled the scan for 3.2s.

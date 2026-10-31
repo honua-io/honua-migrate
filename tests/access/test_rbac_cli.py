@@ -107,7 +107,7 @@ def test_rbac_portal_writes_access_footprint_to_file(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     stub = _stub_client(monkeypatch, _portal_handlers())
-    output = tmp_path / "EsriAccessFootprint.json"
+    output = tmp_path / "GeoServicesRestAccessFootprint.json"
 
     result = runner.invoke(
         cli_app,
@@ -124,8 +124,8 @@ def test_rbac_portal_writes_access_footprint_to_file(
 
     assert result.exit_code == 0, result.output
     artifact = json.loads(output.read_text(encoding="utf-8"))
-    assert artifact["schemaVersion"] == "v0.2"
-    assert artifact["source"]["kind"] == "arcgis-online"
+    assert artifact["schemaVersion"] == "v0.3"
+    assert artifact["source"]["kind"] == "portal"
     assert {u["username"] for u in artifact["users"]} == {"alice", "bob"}
     # Portal is the default --kind, so portal endpoints were queried.
     assert any("portals/self" in url for url in stub.seen)
@@ -144,8 +144,8 @@ def test_rbac_writes_to_stdout_by_default(
 
     assert result.exit_code == 0, result.output
     artifact = json.loads(result.stdout)
-    assert artifact["schemaVersion"] == "v0.2"
-    assert artifact["source"]["kind"] == "arcgis-online"
+    assert artifact["schemaVersion"] == "v0.3"
+    assert artifact["source"]["kind"] == "portal"
 
 
 def test_rbac_server_kind_reads_admin_security(
@@ -154,7 +154,7 @@ def test_rbac_server_kind_reads_admin_security(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     stub = _stub_client(monkeypatch, _server_handlers())
-    output = tmp_path / "EsriAccessFootprint.json"
+    output = tmp_path / "GeoServicesRestAccessFootprint.json"
 
     result = runner.invoke(
         cli_app,
@@ -173,7 +173,7 @@ def test_rbac_server_kind_reads_admin_security(
 
     assert result.exit_code == 0, result.output
     artifact = json.loads(output.read_text(encoding="utf-8"))
-    assert artifact["source"]["kind"] == "arcgis-server"
+    assert artifact["source"]["kind"] == "geoservices-server"
     # Server scan reads only the documented admin security + services endpoints.
     assert all(("security/" in url or "/services" in url) for url in stub.seen)
     # ACE crawl produced per-service permissions and resolved effective grants.
@@ -187,7 +187,7 @@ def test_rbac_token_from_env_never_reaches_artifact_or_logs(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     stub = _stub_client(monkeypatch, _portal_handlers())
-    output = tmp_path / "EsriAccessFootprint.json"
+    output = tmp_path / "GeoServicesRestAccessFootprint.json"
     secret = "super-secret-rbac-token"
 
     result = runner.invoke(
@@ -227,7 +227,7 @@ def test_rbac_partial_coverage_still_writes_valid_artifact(
         "community/groups": respond(200, {"results": []}),
     }
     _stub_client(monkeypatch, handlers)  # type: ignore[arg-type]
-    output = tmp_path / "EsriAccessFootprint.json"
+    output = tmp_path / "GeoServicesRestAccessFootprint.json"
 
     result = runner.invoke(
         cli_app,

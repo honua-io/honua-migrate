@@ -16,7 +16,7 @@ from .conftest import StubHttpClient, respond_fixture
 
 def _footprint() -> AccessFootprint:
     return AccessFootprint(
-        source_kind="arcgis-online",
+        source_kind="portal",
         locator="demo.maps.arcgis.com/org",
         roles=[
             AccessRole(
@@ -85,7 +85,7 @@ def test_facade_policies_resolve_role_principal_to_honua_id() -> None:
 def test_facade_policies_prefer_effective_permissions_with_operations() -> None:
     url = "https://host.local/server/rest/services/X/FeatureServer"
     footprint = AccessFootprint(
-        source_kind="arcgis-server",
+        source_kind="geoservices-server",
         locator="https://host.local/arcgis/admin",
         roles=[
             AccessRole(id="publishers", name="publishers", type="custom", privileges=[]),

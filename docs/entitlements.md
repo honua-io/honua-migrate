@@ -8,9 +8,9 @@ tags: [entitlements, licensing, esri]
 
 The assessment enumerates Esri license entitlements and extension
 observations read-only. The collector output is designed to slot into the optional
-`portal.licensing` and `server.licensing` blocks in `EsriFootprint.json` v0.1.
+`portal.licensing` and `server.licensing` blocks in `GeoServicesRestFootprint.json` v0.1.
 
-`EsriFootprint.json` remains the sole handoff contract; entitlement
+`GeoServicesRestFootprint.json` remains the sole handoff contract; entitlement
 observations only reach downstream consumers when a `scan` handler
 attaches them to the emitted footprint.
 

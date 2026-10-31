@@ -40,17 +40,17 @@ def root(
 
 cli_app.add_typer(scan_app, name="scan")
 cli_app.add_typer(schema_app, name="schema")
-cli_app.command("report", help="Render EsriFootprint.json to Markdown.")(
+cli_app.command("report", help="Render GeoServicesRestFootprint.json to Markdown.")(
     report_command
 )
 cli_app.command(
     "verdict",
-    help="Render a per-shop-profile migratability verdict from EsriFootprint.json.",
+    help="Render a per-shop-profile migratability verdict from GeoServicesRestFootprint.json.",
 )(verdict_command)
 cli_app.command(
     "caps",
     help=(
-        "Crosswalk EsriFootprint.json to Honua capability keys, emitting "
+        "Crosswalk GeoServicesRestFootprint.json to Honua capability keys, emitting "
         "honua-caps.json plus a shareable catalog URL."
     ),
 )(caps_command)

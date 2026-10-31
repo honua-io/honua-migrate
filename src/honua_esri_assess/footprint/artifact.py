@@ -1,4 +1,4 @@
-"""EsriFootprint v0.1 builder and artifact utilities."""
+"""GeoServicesRestFootprint v0.3 builder and artifact utilities."""
 
 from __future__ import annotations
 
@@ -15,8 +15,8 @@ from honua_esri_assess.diagnostics import Diagnostic
 from honua_esri_assess.output_io import atomic_write_text
 from honua_esri_assess.redaction import sanitize_handoff_url
 
-SCHEMA_VERSION = "v0.2"
-TOOL_NAME = "honua-esri-assess"
+SCHEMA_VERSION = "v0.3"
+TOOL_NAME = "honua-migrate"
 DISTRIBUTION_NAME = "honua-migrate"
 ITEM_KINDS = ("portal-item", "server-service", "filegdb-feature-class")
 
@@ -31,7 +31,7 @@ def installed_tool_version() -> str:
 
 
 def utc_timestamp() -> str:
-    """Return an RFC3339 UTC timestamp accepted by the v0.1 schema."""
+    """Return an RFC3339 UTC timestamp accepted by the v0.3 schema."""
 
     return (
         datetime.now(timezone.utc)
@@ -71,9 +71,9 @@ def build_footprint(
         "counts": _counts(items),
         "diagnostics": [d.to_dict() for d in diagnostics],
     }
-    if source_kind == "arcgis-online":
+    if source_kind == "portal":
         footprint["portal"] = portal or _default_portal(target)
-    elif source_kind == "arcgis-server":
+    elif source_kind == "geoservices-server":
         footprint["server"] = server or {"folders": [], "serviceCounts": {}}
     elif source_kind == "filegdb":
         footprint["filegdb"] = filegdb or _default_filegdb(target)
@@ -93,13 +93,13 @@ def write_footprint(footprint: Mapping[str, Any], output: Path) -> None:
 
 
 def write_footprint_json(footprint: Mapping[str, Any], output_path: Path) -> None:
-    """Write an EsriFootprint.json artifact."""
+    """Write an GeoServicesRestFootprint.json artifact."""
 
     atomic_write_text(output_path, footprint_to_json(footprint))
 
 
 def path_hash(value: str | Path) -> str:
-    material = f"honua-esri-assess:v0.1:{Path(value)}"
+    material = f"honua-migrate:geoservices-rest-footprint:v0.3:{Path(value)}"
     return "sha256:" + sha256(material.encode("utf-8")).hexdigest()
 
 
@@ -111,13 +111,13 @@ def _source_block(
     filegdb: dict[str, Any] | None,
     captured_at: datetime,
 ) -> dict[str, Any]:
-    if source_kind == "arcgis-online":
+    if source_kind == "portal":
         facet = portal or _default_portal(target)
         org_url = str(facet.get("orgUrl") or _origin_url(target))
         org_id = str(facet.get("orgId") or "unknown")
         host = urlsplit(org_url).netloc or "unknown.local"
         locator = f"{host}/{org_id}"
-    elif source_kind == "arcgis-server":
+    elif source_kind == "geoservices-server":
         locator = sanitize_handoff_url(target)
     elif source_kind == "filegdb":
         facet = filegdb or _default_filegdb(target)

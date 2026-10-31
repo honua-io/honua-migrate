@@ -32,7 +32,7 @@ def test_agol_happy_scan(
     tmp_output_dir: Path,
     capsys,
 ) -> None:
-    output = tmp_output_dir / "EsriFootprint.json"
+    output = tmp_output_dir / "GeoServicesRestFootprint.json"
     with mocked_routes("agol/happy"):
         exit_code = cli_main(
             [
@@ -47,14 +47,14 @@ def test_agol_happy_scan(
 
     captured = capsys.readouterr()
     assert exit_code == 0, captured.err
-    assert output.exists(), "scan did not write EsriFootprint.json"
+    assert output.exists(), "scan did not write GeoServicesRestFootprint.json"
 
     footprint = json.loads(output.read_text(encoding="utf-8"))
     schema_validator.validate(footprint)
 
-    assert footprint["schemaVersion"] == "v0.2"
+    assert footprint["schemaVersion"] == "v0.3"
     assert footprint["tool"]["name"] == "honua-esri-assess"
-    assert footprint["source"]["kind"] == "arcgis-online"
+    assert footprint["source"]["kind"] == "portal"
     assert footprint["source"]["locator"] == "fixture.local/0123456789abcdef"
     assert footprint["portal"]["orgId"] == "0123456789abcdef"
     assert footprint["inventory"], "inventory should be non-empty"

@@ -31,7 +31,7 @@ from honua_esri_assess.commands.common import (
 )
 
 scan_app = typer.Typer(
-    help="Read-only scanners that produce EsriFootprint.json.",
+    help="Read-only scanners that produce GeoServicesRestFootprint.json.",
     no_args_is_help=True,
 )
 
@@ -168,7 +168,7 @@ def scan_filegdb_workspace(
     "rbac",
     help=(
         "Run the read-only RBAC scanner against a Portal or ArcGIS Server admin "
-        "target and write EsriAccessFootprint.json (defaults to stdout)."
+        "target and write GeoServicesRestAccessFootprint.json (defaults to stdout)."
     ),
 )
 def scan_rbac(

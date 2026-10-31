@@ -14,7 +14,7 @@
       "username": "bob",
       "fullName": "Bob Builder",
       "roleId": "custom-editor",
-      "provider": "arcgis",
+      "provider": "portal",
       "groups": [],
       "disabled": true
     }

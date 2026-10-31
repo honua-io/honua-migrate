@@ -25,7 +25,7 @@ from honua_esri_assess.portal.models import OrgInfo, PortalScanResult
 from honua_esri_assess.server.models import ServerInfo, ServerScanResult
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SAMPLE_PATH = REPO_ROOT / "tests" / "fixtures" / "esri-footprint-sample.json"
+SAMPLE_PATH = REPO_ROOT / "tests" / "fixtures" / "geoservices-rest-footprint-sample.json"
 MUTATION_WORDS = re.compile(r"\b(apply|update|mutate|delete|write|upload|push)\b", re.I)
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
@@ -138,7 +138,7 @@ def test_token_env_logs_name_without_value(
             "--token-env",
             "AGOL_TOKEN",
             "--output",
-            str(tmp_path / "EsriFootprint.json"),
+            str(tmp_path / "GeoServicesRestFootprint.json"),
         ],
         env={"AGOL_TOKEN": "super-secret-token"},
     )
@@ -231,7 +231,7 @@ def test_network_scan_options_reach_builtin_handlers_without_secret_leakage(
 
         monkeypatch.setattr(server_handler, "ServerClient", FakeServerClient)
         monkeypatch.setattr(server_handler, "ServerScanner", FakeServerScanner)
-    output = tmp_path / "EsriFootprint.json"
+    output = tmp_path / "GeoServicesRestFootprint.json"
 
     result = runner.invoke(
         cli_app,
@@ -278,7 +278,7 @@ def test_server_handler_uses_canonical_contract_and_retries_once(
     runner: CliRunner,
     tmp_path: Path,
 ) -> None:
-    output = tmp_path / "EsriFootprint.json"
+    output = tmp_path / "GeoServicesRestFootprint.json"
     responses.add(
         responses.GET,
         "https://fixture.local/server/rest/info",
@@ -365,7 +365,7 @@ def test_version_command_mentions_tool_and_schema_versions(runner: CliRunner) ->
 
     assert result.exit_code == 0
     assert f"honua-esri-assess {__version__}" in result.output
-    assert "EsriFootprint schema v0.2" in result.output
+    assert "GeoServicesRestFootprint schema v0.3" in result.output
 
 
 def test_root_version_option_mentions_tool_and_schema_versions(
@@ -375,7 +375,7 @@ def test_root_version_option_mentions_tool_and_schema_versions(
 
     assert result.exit_code == 0
     assert f"honua-esri-assess {__version__}" in result.output
-    assert "EsriFootprint schema v0.2" in result.output
+    assert "GeoServicesRestFootprint schema v0.3" in result.output
 
 
 def test_schema_validate_accepts_canonical_sample(runner: CliRunner) -> None:
@@ -395,7 +395,7 @@ def test_registered_handler_success_writes_validated_footprint(
         return ScanResult(footprint=deepcopy(sample_footprint))
 
     register(ScanHandler(name="agol", run=run))
-    output = tmp_path / "EsriFootprint.json"
+    output = tmp_path / "GeoServicesRestFootprint.json"
 
     result = runner.invoke(
         cli_app,
@@ -411,7 +411,7 @@ def test_registered_handler_success_writes_validated_footprint(
     )
 
     assert result.exit_code == 0
-    assert json.loads(output.read_text(encoding="utf-8"))["schemaVersion"] == "v0.1"
+    assert json.loads(output.read_text(encoding="utf-8"))["schemaVersion"] == "v0.3"
 
 
 def test_registered_handler_output_failure_returns_exit_20(

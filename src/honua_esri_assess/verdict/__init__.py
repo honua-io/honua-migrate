@@ -1,4 +1,4 @@
-"""Per-shop-profile migratability verdict over EsriFootprint.json."""
+"""Per-shop-profile migratability verdict over GeoServicesRestFootprint.json."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Licensing facet wire shape for the EsriFootprint.json 0.1.x line.
+"""Licensing facet wire shape for the GeoServicesRestFootprint.json 0.1.x line.
 
 The dataclasses in :mod:`honua_esri_assess.entitlements.models` are the
 canonical in-memory representation. This module is the **single point**

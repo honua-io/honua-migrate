@@ -25,7 +25,7 @@ tool's .NET gate is the `dotnet` job in `ci.yml`.
   operations live only under `honua_migrate`, behind a reviewable plan and an explicit apply gate.
 - No network telemetry, usage pings, crash uploads or update checks, and no opt-in sink.
   `tests/test_no_telemetry.py` enforces this.
-- `EsriFootprint.json` is the sole supported handoff into the closed Honua product. Never write
+- `GeoServicesRestFootprint.json` is the sole supported handoff into the closed Honua product. Never write
   credentials, tokens, query strings or URL userinfo into the artifact, diagnostics, cache keys
   or logs. Tokens come only from `--token-env VAR`; there is deliberately no `--token` flag.
 - Esri IP: proprietary formats are clean-room only (published specs, GDAL `OpenFileGDB`; never

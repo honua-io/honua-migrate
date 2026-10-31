@@ -1,4 +1,4 @@
-"""Crosswalk EsriFootprint.json to Honua capability keys.
+"""Crosswalk GeoServicesRestFootprint.json to Honua capability keys.
 
 See :mod:`honua_esri_assess.caps.crosswalk` for the draft-fixture notice.
 """

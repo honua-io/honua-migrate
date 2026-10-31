@@ -31,9 +31,9 @@ def restore_handlers() -> Iterator[None]:
 
 def _sample_footprint() -> dict:
     return {
-        "schemaVersion": "v0.1",
+        "schemaVersion": "v0.3",
         "generatedAt": "2026-01-01T00:00:00Z",
-        "tool": {"name": "honua-esri-assess", "version": "0.1.0"},
+        "tool": {"name": "honua-migrate", "version": "0.1.0"},
         "source": {
             "kind": "filegdb",
             "locator": "sha256:" + "0" * 64,
@@ -88,7 +88,7 @@ def _run_scan(tmp_path: Path, output: Path, *force: str) -> int:
 
 def test_scan_refuses_to_overwrite_without_force(tmp_path: Path, capsys) -> None:
     _stub_filegdb()
-    output = tmp_path / "EsriFootprint.json"
+    output = tmp_path / "GeoServicesRestFootprint.json"
     output.write_text("PRIOR ARTIFACT", encoding="utf-8")
 
     exit_code = _run_scan(tmp_path, output)
@@ -105,30 +105,30 @@ def test_scan_refuses_to_overwrite_without_force(tmp_path: Path, capsys) -> None
 
 def test_scan_overwrites_with_force(tmp_path: Path, capsys) -> None:
     _stub_filegdb()
-    output = tmp_path / "EsriFootprint.json"
+    output = tmp_path / "GeoServicesRestFootprint.json"
     output.write_text("PRIOR ARTIFACT", encoding="utf-8")
 
     exit_code = _run_scan(tmp_path, output, "--force")
 
     assert exit_code == 0
-    assert json.loads(output.read_text(encoding="utf-8"))["schemaVersion"] == "v0.1"
+    assert json.loads(output.read_text(encoding="utf-8"))["schemaVersion"] == "v0.3"
 
 
 def test_scan_writes_fresh_output_without_force(tmp_path: Path) -> None:
     _stub_filegdb()
-    output = tmp_path / "nested" / "EsriFootprint.json"
+    output = tmp_path / "nested" / "GeoServicesRestFootprint.json"
 
     exit_code = _run_scan(tmp_path, output)
 
     assert exit_code == 0
-    assert json.loads(output.read_text(encoding="utf-8"))["schemaVersion"] == "v0.1"
+    assert json.loads(output.read_text(encoding="utf-8"))["schemaVersion"] == "v0.3"
 
 
 # --- atomicity ------------------------------------------------------------
 
 
 def test_atomic_write_preserves_prior_file_on_failure(tmp_path: Path) -> None:
-    target = tmp_path / "EsriFootprint.json"
+    target = tmp_path / "GeoServicesRestFootprint.json"
     target.write_text("PRIOR VALID", encoding="utf-8")
 
     # Drive a mid-write failure: a lone surrogate is not encodable as UTF-8, so
@@ -139,7 +139,7 @@ def test_atomic_write_preserves_prior_file_on_failure(tmp_path: Path) -> None:
 
     # The original file survives and no temp files are left behind.
     assert target.read_text(encoding="utf-8") == "PRIOR VALID"
-    leftovers = [p for p in tmp_path.iterdir() if p.name != "EsriFootprint.json"]
+    leftovers = [p for p in tmp_path.iterdir() if p.name != "GeoServicesRestFootprint.json"]
     assert leftovers == []
 
 
@@ -176,7 +176,7 @@ def test_report_refuses_to_overwrite_without_force(tmp_path: Path, capsys) -> No
     footprint["counts"]["items"]["filegdb-feature-class"] = 0
     footprint["counts"]["featureClasses"] = 0
     footprint["filegdb"]["featureClassCount"] = 0
-    input_path = tmp_path / "EsriFootprint.json"
+    input_path = tmp_path / "GeoServicesRestFootprint.json"
     input_path.write_text(json.dumps(footprint), encoding="utf-8")
     output = tmp_path / "report.md"
     output.write_text("PRIOR REPORT", encoding="utf-8")
@@ -203,7 +203,7 @@ def test_report_overwrites_with_force(tmp_path: Path) -> None:
     footprint["counts"]["items"]["filegdb-feature-class"] = 0
     footprint["counts"]["featureClasses"] = 0
     footprint["filegdb"]["featureClassCount"] = 0
-    input_path = tmp_path / "EsriFootprint.json"
+    input_path = tmp_path / "GeoServicesRestFootprint.json"
     input_path.write_text(json.dumps(footprint), encoding="utf-8")
     output = tmp_path / "report.md"
     output.write_text("PRIOR REPORT", encoding="utf-8")
@@ -228,7 +228,7 @@ def test_report_overwrites_with_force(tmp_path: Path) -> None:
 
 def test_caps_refuses_to_overwrite_json_without_force(tmp_path: Path, capsys) -> None:
     footprint = _sample_footprint()
-    input_path = tmp_path / "EsriFootprint.json"
+    input_path = tmp_path / "GeoServicesRestFootprint.json"
     input_path.write_text(json.dumps(footprint), encoding="utf-8")
     json_output = tmp_path / "honua-caps.json"
     json_output.write_text("PRIOR CAPS", encoding="utf-8")
@@ -253,7 +253,7 @@ def test_caps_refuses_to_overwrite_json_without_force(tmp_path: Path, capsys) ->
 
 def test_caps_overwrites_json_with_force(tmp_path: Path) -> None:
     footprint = _sample_footprint()
-    input_path = tmp_path / "EsriFootprint.json"
+    input_path = tmp_path / "GeoServicesRestFootprint.json"
     input_path.write_text(json.dumps(footprint), encoding="utf-8")
     json_output = tmp_path / "honua-caps.json"
     json_output.write_text("PRIOR CAPS", encoding="utf-8")

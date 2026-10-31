@@ -14,7 +14,7 @@ from typing import Literal
 
 
 DiagnosticSeverity = Literal["info", "warn", "error"]
-"""Severity ladder mirrored from the EsriFootprint.json diagnostics surface."""
+"""Severity ladder mirrored from the GeoServicesRestFootprint.json diagnostics surface."""
 
 
 DiagnosticCode = Literal[

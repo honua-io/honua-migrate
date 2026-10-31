@@ -138,8 +138,8 @@ def total_feature_class_count(footprint: Mapping[str, Any]) -> int:
 
 def source_label(source_kind: Any) -> str:
     return {
-        "arcgis-online": "ArcGIS Online",
-        "arcgis-server": "ArcGIS Server",
+        "portal": "ArcGIS Online",
+        "geoservices-server": "ArcGIS Server",
         "filegdb": "FileGDB",
     }.get(source_kind, "Unknown source")
 

@@ -9,8 +9,8 @@ from pathlib import Path
 from honua_esri_assess import cli
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SAMPLE = REPO_ROOT / "tests" / "fixtures" / "esri-footprint-sample.json"
-UTILITY_NETWORK = REPO_ROOT / "tests" / "fixtures" / "esri-footprint-utility-network.json"
+SAMPLE = REPO_ROOT / "tests" / "fixtures" / "geoservices-rest-footprint-sample.json"
+UTILITY_NETWORK = REPO_ROOT / "tests" / "fixtures" / "geoservices-rest-footprint-utility-network.json"
 
 
 def test_verdict_writes_output_file(tmp_path: Path, capsys) -> None:

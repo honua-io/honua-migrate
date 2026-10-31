@@ -3,7 +3,7 @@
 Reuses the same deterministic, heuristic detection the migratability verdict
 engine uses (:mod:`honua_esri_assess.verdict.registry`): it matches on portal
 item ``type``, server ``serviceType``, and per-service ``capabilities``
-tokens already present in ``EsriFootprint.json``. No network calls are made;
+tokens already present in ``GeoServicesRestFootprint.json``. No network calls are made;
 this module performs no file, network, or logging I/O.
 
 Honesty invariant (issue #84): every esri-assess-registry key the footprint's
@@ -92,7 +92,7 @@ def _units_estimate(footprint: Mapping[str, Any]) -> int | None:
                     return server_count
 
     source = footprint.get("source")
-    if isinstance(source, Mapping) and source.get("kind") == "arcgis-server":
+    if isinstance(source, Mapping) and source.get("kind") == "geoservices-server":
         return 1
 
     return None

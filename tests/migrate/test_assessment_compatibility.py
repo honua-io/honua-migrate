@@ -34,10 +34,12 @@ FIXED_TIME = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
 WARNING_FRAGMENT = "honua_esri_assess and honua-esri-assess are compatibility surfaces"
 
 SCHEMA_HASHES = {
-    "esri-footprint-v0.1.json": "a1cda2ba069ef17cedf2cdf86717975c3b124b1000596df3551f8b69e47364e2",
-    "esri-footprint-v0.2.json": "6d690e98eed70ddf1b1937d839c2c90a2ca143f0acc21b3f1fd907da7fe917de",
-    "esri-access-footprint-v0.1.json": "4708c22af3f1e71e3ba9c1a054e5af0556f886549bd2bd49e777923f84c056ec",
-    "esri-access-footprint-v0.2.json": "b542d56a7bd663d4de312dce61b3d8215b104888409517e34d815996832bf4bc",
+    "geoservices-rest-footprint-v0.1.json": "a7776eb3019f9898e9057484b774be99f5de48926c4f9f61a97cc54743f0cd02",
+    "geoservices-rest-footprint-v0.2.json": "77cf8d30c0770f204491c471854217760e1c984086d7a8e63b5500bf50adf933",
+    "geoservices-rest-footprint-v0.3.json": "f448d79ba892cbec1bf308f02d63c9dac907a8554fa682060f9bc4b964a4a9dd",
+    "geoservices-rest-access-footprint-v0.1.json": "76ea38ec78e7a43e01297f90bd03ac54e68e0768b880c9a63625c586f34a7722",
+    "geoservices-rest-access-footprint-v0.2.json": "b03c27096704400813b6e9d56d200f29a67e014c4f29f25f7203bf995e1c214b",
+    "geoservices-rest-access-footprint-v0.3.json": "d47a57eb675f531668f9381f48fb769c0b2cbd14fa7d95a0d2406b2d6664a9a1",
 }
 
 
@@ -97,8 +99,8 @@ def test_footprint_artifact_and_redaction_are_byte_identical(
     tmp_path: Path,
 ) -> None:
     source_kind = {
-        "agol": "arcgis-online",
-        "server": "arcgis-server",
+        "agol": "portal",
+        "server": "geoservices-server",
         "filegdb": "filegdb",
     }[backend]
 
@@ -163,7 +165,7 @@ def test_footprint_artifact_and_redaction_are_byte_identical(
 
 def test_access_artifact_is_byte_and_shape_identical(tmp_path: Path) -> None:
     artifact = build_access_footprint(
-        AccessFootprint(source_kind="arcgis-online", locator=SECRET_TARGET),
+        AccessFootprint(source_kind="portal", locator=SECRET_TARGET),
         generated_at=FIXED_TIME,
         captured_at=FIXED_TIME,
     )
@@ -251,7 +253,7 @@ print(SCHEMA_VERSION, bundled_schema_version(), callable(build_footprint))
     )
 
     assert result.returncode == 0
-    assert result.stdout.strip() == "v0.2 v0.2 True"
+    assert result.stdout.strip() == "v0.3 v0.3 True"
     assert result.stderr.count(WARNING_FRAGMENT) == 1
     assert "no earlier than honua-migrate 1.2" in result.stderr
 

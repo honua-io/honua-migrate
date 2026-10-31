@@ -116,7 +116,7 @@ def test_report_write_to_directory_emits_typed_diagnostic(
     footprint["counts"]["items"]["filegdb-feature-class"] = 0
     footprint["counts"]["featureClasses"] = 0
     footprint["filegdb"]["featureClassCount"] = 0
-    input_path = tmp_path / "EsriFootprint.json"
+    input_path = tmp_path / "GeoServicesRestFootprint.json"
     input_path.write_text(json.dumps(footprint), encoding="utf-8")
     output_dir = tmp_path / "report-as-directory"
     output_dir.mkdir()

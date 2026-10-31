@@ -53,7 +53,7 @@ def credential_free_url(url: str) -> str:
 
     This stricter form is for persisted artifacts. Unlike :func:`safe_url`,
     it does not retain non-sensitive query parameters because server identity
-    URLs in ``EsriFootprint.json`` do not need any query string to be useful.
+    URLs in ``GeoServicesRestFootprint.json`` do not need any query string to be useful.
     """
 
     parts = urlsplit(url)

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.honua.io/esri-footprint/v0.2.0/esri-footprint.json",
-  "title": "EsriFootprint",
-  "description": "Read-only inventory of an Esri estate (ArcGIS Online, ArcGIS Server, or FileGDB) produced by honua-esri-assess and consumed by the closed Honua migration product. Schema version esri-footprint/v0.2 (full SemVer in $id). v0.2 is additive over v0.1: it introduces the optional top-level dependencyEdges array (webmap -> service -> layer) for migration ordering and accepts v0.1 artifacts unchanged. v0.x is unstable \u2014 breaking changes are permitted within v0.x; v1.0 is the first stable promise.",
+  "$id": "https://schemas.honua.io/geoservices-rest-footprint/v0.2.0/geoservices-rest-footprint.json",
+  "title": "GeoServicesRestFootprint",
+  "description": "Read-only inventory of a hosted portal, GeoServices REST server, or FileGDB produced by the Honua migration assessor and consumed by the closed Honua migration product. Schema version geoservices-rest-footprint/v0.2 (full SemVer in $id). v0.2 is additive over v0.1: it introduces the optional top-level dependencyEdges array (webmap -> service -> layer) for migration ordering and accepts v0.1 artifacts unchanged. v0.x is unstable — breaking changes are permitted within v0.x; v1.0 is the first stable promise.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -43,9 +43,9 @@
     },
     "inventory": {
       "type": "array",
-      "description": "Normalized records from the scanned source, discriminated by EsriItem.kind. Portal items, Server services, and FileGDB feature classes coexist in a single list.",
+      "description": "Normalized records from the scanned source, discriminated by GeoServicesRestItem.kind. Portal items, Server services, and FileGDB feature classes coexist in a single list.",
       "items": {
-        "$ref": "#/$defs/EsriItem"
+        "$ref": "#/$defs/GeoServicesRestItem"
       }
     },
     "counts": {
@@ -69,7 +69,7 @@
           "source": {
             "properties": {
               "kind": {
-                "const": "arcgis-online"
+                "const": "portal"
               }
             },
             "required": [
@@ -114,7 +114,7 @@
           "source": {
             "properties": {
               "kind": {
-                "const": "arcgis-server"
+                "const": "geoservices-server"
               }
             },
             "required": [
@@ -221,8 +221,8 @@
       ],
       "properties": {
         "name": {
-          "const": "honua-esri-assess",
-          "description": "Always honua-esri-assess at v0.1; other producers are not part of the contract."
+          "type": "string",
+          "description": "Producer identity recorded in the artifact."
         },
         "version": {
           "$ref": "#/$defs/SemVer"
@@ -231,7 +231,7 @@
     },
     "Source": {
       "type": "object",
-      "description": "Identifies the scanned Esri source. Discriminated by kind. locator must be a prospect-safe identifier \u2014 never credentials, never raw on-prem paths; FileGDB paths are surfaced as a salted hash. locator format is constrained by kind via the allOf branches below.",
+      "description": "Identifies the scanned Esri source. Discriminated by kind. locator must be a prospect-safe identifier — never credentials, never raw on-prem paths; FileGDB paths are surfaced as a salted hash. locator format is constrained by kind via the allOf branches below.",
       "additionalProperties": false,
       "required": [
         "kind",
@@ -241,11 +241,7 @@
       "properties": {
         "kind": {
           "type": "string",
-          "enum": [
-            "arcgis-online",
-            "arcgis-server",
-            "filegdb"
-          ]
+          "description": "Origin family of the scanned data."
         },
         "locator": {
           "type": "string",
@@ -281,7 +277,7 @@
           "if": {
             "properties": {
               "kind": {
-                "const": "arcgis-online"
+                "const": "portal"
               }
             },
             "required": [
@@ -300,7 +296,7 @@
           "if": {
             "properties": {
               "kind": {
-                "const": "arcgis-server"
+                "const": "geoservices-server"
               }
             },
             "required": [
@@ -319,7 +315,7 @@
     },
     "SpatialReference": {
       "type": "object",
-      "description": "Spatial reference identification. Esri publishes wkid, latestWkid, or wkt inconsistently \u2014 at least one must be present. Closed object: producers must normalize to the documented keys before emitting.",
+      "description": "Spatial reference identification. Esri publishes wkid, latestWkid, or wkt inconsistently — at least one must be present. Closed object: producers must normalize to the documented keys before emitting.",
       "additionalProperties": false,
       "properties": {
         "wkid": {
@@ -412,7 +408,7 @@
         }
       }
     },
-    "EsriTypeCountMap": {
+    "GeoServicesRestTypeCountMap": {
       "type": "object",
       "description": "Map of Esri item or service type labels to counts. Property names are constrained to display-label characters so URLs, query tokens, credential strings, and raw path fragments cannot be carried as map keys.",
       "propertyNames": {
@@ -465,7 +461,7 @@
     },
     "PortalFacet": {
       "type": "object",
-      "description": "Facet required iff source.kind == arcgis-online. Closed at v0.1: vendor extras, callback URLs, and credential-like fields are schema-rejected so the artifact cannot smuggle telemetry or secrets.",
+      "description": "Facet required iff source.kind == portal. Closed at v0.1: vendor extras, callback URLs, and credential-like fields are schema-rejected so the artifact cannot smuggle telemetry or secrets.",
       "additionalProperties": false,
       "required": [
         "orgId",
@@ -484,12 +480,12 @@
           "description": "ArcGIS Online organization base URL. Schema pattern rejects userinfo, query strings, and fragments so credentials and session tokens cannot ride along."
         },
         "itemCounts": {
-          "$ref": "#/$defs/EsriTypeCountMap",
-          "description": "Map of Esri item type \u2192 count (e.g. \"Feature Service\": 12). Keys are constrained to prospect-safe type labels."
+          "$ref": "#/$defs/GeoServicesRestTypeCountMap",
+          "description": "Map of Esri item type → count (e.g. \"Feature Service\": 12). Keys are constrained to prospect-safe type labels."
         },
         "contentTypeCounts": {
-          "$ref": "#/$defs/EsriTypeCountMap",
-          "description": "Additive at v0.2: map of functional content category \u2192 count (e.g. \"web-map\": 8, \"survey123-form\": 3, \"unknown\": 1). Categories are derived from the item type and typeKeywords (apps, forms, notebooks, hosted vs referenced layers, etc.); unrecognized content is counted as \"unknown\". v0.1 readers ignore this property."
+          "$ref": "#/$defs/GeoServicesRestTypeCountMap",
+          "description": "Additive at v0.2: map of functional content category → count (e.g. \"web-map\": 8, \"survey123-form\": 3, \"unknown\": 1). Categories are derived from the item type and typeKeywords (apps, forms, notebooks, hosted vs referenced layers, etc.); unrecognized content is counted as \"unknown\". v0.1 readers ignore this property."
         },
         "sharingSummary": {
           "type": "object",
@@ -601,7 +597,7 @@
     },
     "ServerFacet": {
       "type": "object",
-      "description": "Facet required iff source.kind == arcgis-server. Closed at v0.1: vendor extras, callback URLs, and credential-like fields are schema-rejected so the artifact cannot smuggle telemetry or secrets.",
+      "description": "Facet required iff source.kind == geoservices-server. Closed at v0.1: vendor extras, callback URLs, and credential-like fields are schema-rejected so the artifact cannot smuggle telemetry or secrets.",
       "additionalProperties": false,
       "required": [
         "folders",
@@ -616,8 +612,8 @@
           }
         },
         "serviceCounts": {
-          "$ref": "#/$defs/EsriTypeCountMap",
-          "description": "Map of Esri service type \u2192 count (e.g. \"MapServer\": 4). Keys are constrained to prospect-safe type labels."
+          "$ref": "#/$defs/GeoServicesRestTypeCountMap",
+          "description": "Map of Esri service type → count (e.g. \"MapServer\": 4). Keys are constrained to prospect-safe type labels."
         },
         "version": {
           "type": "string",
@@ -938,7 +934,7 @@
         }
       }
     },
-    "EsriItem": {
+    "GeoServicesRestItem": {
       "description": "Discriminated union of normalized inventory records. Variants are closed at v0.1: extras require a schema bump so the artifact cannot smuggle credentials or telemetry fields per item.",
       "oneOf": [
         {
@@ -1028,7 +1024,7 @@
         },
         "dependencies": {
           "type": "array",
-          "description": "Portal item ids this item references (e.g. webmap \u2192 services). Edges between layers/services are deferred to v0.2.",
+          "description": "Portal item ids this item references (e.g. webmap → services). Edges between layers/services are deferred to v0.2.",
           "items": {
             "type": "string"
           }
@@ -1346,7 +1342,7 @@
     "LockIn": {
       "type": "object",
       "additionalProperties": false,
-      "description": "An enumerated hard Esri lock-in (Utility Network, Parcel Fabric, LRS) observed on a service, with extent. Additive at v0.2; v0.1 readers ignore it. The tool never migrates these capabilities \u2014 the enumeration exists so the migratability verdict can report extent (e.g. \"UN: N feature classes\") rather than a bare presence flag.",
+      "description": "An enumerated hard Esri lock-in (Utility Network, Parcel Fabric, LRS) observed on a service, with extent. Additive at v0.2; v0.1 readers ignore it. The tool never migrates these capabilities — the enumeration exists so the migratability verdict can report extent (e.g. \"UN: N feature classes\") rather than a bare presence flag.",
       "required": [
         "type"
       ],
@@ -1429,7 +1425,7 @@
       "properties": {
         "items": {
           "type": "object",
-          "description": "Totals by EsriItem.kind: portal-item, server-service, filegdb-feature-class.",
+          "description": "Totals by GeoServicesRestItem.kind: portal-item, server-service, filegdb-feature-class.",
           "additionalProperties": false,
           "properties": {
             "portal-item": {
@@ -1494,7 +1490,7 @@
         },
         "scope": {
           "type": "string",
-          "description": "Identifier of the affected area \u2014 usually source.kind, a folder, or an EsriItem identifier."
+          "description": "Identifier of the affected area — usually source.kind, a folder, or an GeoServicesRestItem identifier."
         },
         "hint": {
           "type": "string",

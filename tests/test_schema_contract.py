@@ -1,4 +1,4 @@
-"""Regression tests for the EsriFootprint handoff contract."""
+"""Regression tests for the GeoServicesRestFootprint handoff contract."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 from honua_esri_assess.diagnostics import DIAGNOSTIC_CODES, SEVERITY_LEVELS, Diagnostic
 from honua_esri_assess.footprint import SCHEMA_VERSION, TOOL_NAME, build_footprint
 
-SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schemas" / "esri-footprint-v0.1.json"
+SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schemas" / "geoservices-rest-footprint-v0.1.json"
 
 
 def _schema() -> dict:
@@ -20,12 +20,12 @@ def test_schema_header_matches_documented_handoff_contract() -> None:
 
     assert "tool" in schema["required"]
     assert "producer" not in schema["required"]
-    assert schema["properties"]["schemaVersion"]["const"] == "v0.1"
+    assert schema["properties"]["schemaVersion"]["enum"] == ["v0.1"]
     assert "tool" in schema["properties"]
     assert "producer" not in schema["properties"]
 
     source_kind = schema["$defs"]["Source"]["properties"]["kind"]
-    assert set(source_kind["enum"]) == {"arcgis-online", "arcgis-server", "filegdb"}
+    assert source_kind["type"] == "string"
 
     diagnostic = schema["$defs"]["Diagnostic"]
     assert set(diagnostic["required"]) == {"code", "severity", "message", "scope"}
@@ -40,7 +40,7 @@ def test_schema_header_matches_documented_handoff_contract() -> None:
 def test_footprint_builder_emits_contract_header_for_each_backend() -> None:
     for source_kind, kwargs in [
         (
-            "arcgis-online",
+            "portal",
             {
                 "portal": {
                     "orgId": "fixture-org",
@@ -49,7 +49,7 @@ def test_footprint_builder_emits_contract_header_for_each_backend() -> None:
                 }
             },
         ),
-        ("arcgis-server", {"server": {"folders": [], "serviceCounts": {}}}),
+        ("geoservices-server", {"server": {"folders": [], "serviceCounts": {}}}),
         (
             "filegdb",
             {"filegdb": {"pathHash": "sha256:" + "0" * 64, "featureClassCount": 0}},
@@ -69,8 +69,8 @@ def test_footprint_builder_emits_contract_header_for_each_backend() -> None:
             **kwargs,
         )
 
-        assert footprint["schemaVersion"] == SCHEMA_VERSION == "v0.2"
-        assert footprint["tool"]["name"] == TOOL_NAME == "honua-esri-assess"
+        assert footprint["schemaVersion"] == SCHEMA_VERSION == "v0.3"
+        assert footprint["tool"]["name"] == TOOL_NAME == "honua-migrate"
         assert "producer" not in footprint
         assert footprint["source"]["kind"] == source_kind
         assert "locator" in footprint["source"]

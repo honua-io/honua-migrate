@@ -28,7 +28,7 @@ treat every field as read-only.
 | Field | Type | Notes |
 | --- | --- | --- |
 | `target` | `str` | URL, portal locator, or local FileGDB path supplied to `--target`. |
-| `output` | `Path` | Destination passed to `--output`; defaults to `./EsriFootprint.json`. The CLI owns persistence. |
+| `output` | `Path` | Destination passed to `--output`; defaults to `./GeoServicesRestFootprint.json`. The CLI owns persistence. |
 | `token_env` | `str \| None` | Environment variable name from `--token-env`. Logged by name only. |
 | `token` | `str \| None` | Resolved token value read from `token_env`. Never log this. |
 | `log_format` | `str` | `"text"` or `"json"`. Logging is configured by the CLI before the handler runs. |
@@ -49,7 +49,7 @@ handler to send telemetry.
 The built-in AGOL and ArcGIS Server handlers pass `token`, `user_agent`,
 `timeout`, and `max_retries` into their read-only HTTP probes. Token values are
 sent only as Esri request parameters and are not copied into
-`EsriFootprint.json`; FileGDB is local-only and ignores network-only options.
+`GeoServicesRestFootprint.json`; FileGDB is local-only and ignores network-only options.
 
 ## `ScanResult`
 
@@ -59,7 +59,7 @@ Handlers return a `ScanResult`:
 ScanResult(footprint={"schemaVersion": "v0.1", ...}, diagnostics=(...,))
 ```
 
-- `footprint` — a dictionary that conforms to `EsriFootprint.json` v0.1.
+- `footprint` — a dictionary that conforms to `GeoServicesRestFootprint.json` v0.1.
 - `diagnostics` — an immutable tuple of `Diagnostic` records the CLI mirrors
   to stderr as typed, prospect-safe lines after the artifact is written.
   Diagnostics in this tuple are in addition to those the handler may have
@@ -75,7 +75,7 @@ The CLI owns:
 - **Persistence.** The CLI writes the footprint to `options.output`,
   sort-keyed and indented. Handlers should not write files; doing so risks
   emitting a second artifact, which violates the
-  `EsriFootprint.json`-only handoff contract.
+  `GeoServicesRestFootprint.json`-only handoff contract.
 - **Diagnostic mirroring.** Each entry in `result.diagnostics` is rendered
   on stderr with `print_diagnostic`. Handlers must produce
   `Diagnostic` instances with codes from the locked v0.1 enum
@@ -95,7 +95,7 @@ can return a typed prospect-safe stderr line with a stable exit code:
 | Unexpected internal failure | unhandled exception → `internal-error` | `1` |
 
 These CLI process-diagnostic codes are deliberately separate from the locked
-`diagnostics[].code` enum inside `EsriFootprint.json`.
+`diagnostics[].code` enum inside `GeoServicesRestFootprint.json`.
 
 Raw tracebacks must never be printed in default mode. Token values, raw
 URLs with credentials, and on-prem paths must not appear in diagnostic

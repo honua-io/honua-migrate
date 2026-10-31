@@ -5,17 +5,17 @@ description: "How the migration schemas are versioned while the line is pre-1.0,
 resource: "https://github.com/honua-io/honua-migrate/tree/trunk/schemas"
 tags: [versioning, schemas, policy]
 ---
-# `EsriFootprint.json` Versioning Policy
+# `GeoServicesRestFootprint.json` Versioning Policy
 
-Status: pre-1.0 (current line: `0.1.x`).
+Status: pre-1.0 (current line: `0.3.x`).
 Companion: [Handoff contract](./handoff-contract.md).
-Schema body: [`docs/schemas/esri-footprint.v0.1.md`](./esri-footprint.v0.1.md)
-(JSON Schema at [`schemas/esri-footprint-v0.1.json`](../../schemas/esri-footprint-v0.1.json)).
+Schema body: [`geoservices-rest-footprint.v0.3.md`](./geoservices-rest-footprint.v0.3.md)
+(JSON Schema at [`geoservices-rest-footprint-v0.3.json`](../../schemas/geoservices-rest-footprint-v0.3.json)).
 
 ## Scope
 
-This policy governs the `EsriFootprint.json` artifact emitted by
-`honua-esri-assess`. It is the sole supported handoff out of an
+This policy governs the `GeoServicesRestFootprint.json` artifact emitted by
+`honua-migrate`. It is the sole supported handoff out of an
 assessment.
 
 The policy does **not** govern:
@@ -28,7 +28,7 @@ The policy does **not** govern:
   `diagnostics[].code` enum.
 - The internal Python API (anything importable from `honua_esri_assess.*`).
 - The layout, headings, or wording of the human-readable Markdown readiness
-  report. The report is a derivative view of `EsriFootprint.json`, not a
+  report. The report is a derivative view of `GeoServicesRestFootprint.json`, not a
   second handoff contract.
 - Local log line formats.
 
@@ -149,28 +149,31 @@ schemas across tags is a follow-on for the 1.0 milestone (see
 
 ## Producer guarantees
 
-Every `EsriFootprint.json` emitted by this tool:
+Every `GeoServicesRestFootprint.json` emitted by this tool:
 
 - **Validates** against the JSON Schema published in this repo for its
   declared `schemaVersion`.
 - **Identifies itself.** Top-level metadata, present on every footprint:
   - `schemaVersion` — major.minor of the contract, carried in-band as a
-    literal (at v0.1, `"v0.1"`). Full SemVer is in the schema's `$id`.
-  - `tool` — object with `name` (always `"honua-esri-assess"`) and
+    literal (at v0.3, `"v0.3"`). Full SemVer is in the schema's `$id`.
+  - `tool` — object with `name` (always `"honua-migrate"` in v0.3) and
     `version` (the installed CLI build, as a SemVer string).
   - `generatedAt` — RFC3339 UTC timestamp of emission.
-  - `source` — object identifying the Esri system kind: `kind` is one of
-    `"arcgis-online"`, `"arcgis-server"`, `"filegdb"`, plus a
+  - `source` — object identifying the source family: `kind` is one of
+    `"portal"`, `"geoservices-server"`, `"filegdb"`, plus a
     prospect-safe `locator`. The block never contains credentials,
     tokens, cookies, session IDs, or raw on-prem paths; FileGDB locators
     are surfaced as a salted `sha256:<64 hex>` hash.
-    ArcGIS Server v0.1 scans additionally record visited top-level service
-    folder names and service counts by raw Esri service type in the
-    `server` facet, and credential-free canonical service URLs in
-    `inventory[].serviceUrl`. For filtered server scans, the folder list
-    reflects the visited subset.
+    Server scans additionally record visited top-level service folder names
+    and service counts by raw service type in the `server` facet, and
+    credential-free canonical service URLs in `inventory[].serviceUrl`.
+    For filtered server scans, the folder list reflects the visited subset.
+    v0.3 changes the producer name, source-kind values, artifact filenames,
+    schema IDs, and inventory type IDs to neutral GeoServices REST names.
+    Consumers pinned to v0.1 or v0.2 must opt into v0.3 and update strict
+    field/type/source checks before accepting its artifacts.
 - **Comes from read-only access.** The producer never writes to the
-  customer's Esri systems. No field in the artifact implies, records, or
+  customer's source systems. No field in the artifact implies, records, or
   enables a write.
 - **Carries no telemetry callback.** The artifact never embeds a callback
   URL, beacon, or remote logging endpoint. Network telemetry from the
@@ -179,7 +182,7 @@ Every `EsriFootprint.json` emitted by this tool:
 
 ## Consumer expectations
 
-A consumer of `EsriFootprint.json` (Honua's migration commands, or any
+A consumer of `GeoServicesRestFootprint.json` (Honua's migration commands, or any
 third-party reader) MUST:
 
 - **Reject on incompatible major.** Refuse documents whose
@@ -197,7 +200,7 @@ third-party reader) MUST:
   exactly one facet (`portal` | `server` | `filegdb`) and constrains the
   `inventory[]` variant. Sibling facets and mismatched inventory variants
   are schema-rejected. See
-  [Discriminator rules](./esri-footprint.v0.1.md#discriminator-rules).
+  [Discriminator rules](./geoservices-rest-footprint.v0.1.md#discriminator-rules).
 - **Not depend on object key ordering.** JSON object key order is not
   part of the contract.
 - **Honor `diagnostics[]`.** Surface `warn`- and `error`-severity
@@ -216,7 +219,7 @@ top-level array of typed entries:
       "code": "missing-permission",
       "severity": "warn",
       "message": "Skipped 2 items the scanner credential cannot read.",
-      "scope": "arcgis-online",
+      "scope": "portal",
       "hint": "Re-run with a credential that has read access to the GIS Admin group."
     }
   ]
@@ -227,7 +230,7 @@ Each diagnostic carries:
 
 - `code` — stable identifier drawn from a vocabulary fixed per release
   line. At v0.1 the vocabulary is **closed** (six codes; see the
-  [v0.1 diagnostic code catalog](./esri-footprint.v0.1.md#diagnostic-code-catalog)).
+  [v0.1 diagnostic code catalog](./geoservices-rest-footprint.v0.1.md#diagnostic-code-catalog)).
   Adding a code requires a minor bump (a v0.2 vocabulary expansion);
   clarifying an existing code is a v0.1.x doc bump. This policy fixes the
   **shape** of a diagnostic; the **vocabulary** is owned by each release
@@ -235,11 +238,11 @@ Each diagnostic carries:
 - `severity` — one of `"info"`, `"warn"`, `"error"`.
 - `message` — prospect-safe sentence. No tracebacks, no internal paths.
 - `scope` — required identifier of the affected area (usually
-  `source.kind`, a folder, or an `EsriItem` id).
+  `source.kind`, a folder, or an `GeoServicesRestItem` id).
 - `hint` (optional) — remediation hint surfaced to the prospect.
 
 The CLI never prints raw Python tracebacks to a customer. If a scanner returns
-a result, the CLI exits `0`, writes `EsriFootprint.json`, and mirrors each
+a result, the CLI exits `0`, writes `GeoServicesRestFootprint.json`, and mirrors each
 diagnostic to stderr as a typed line, even when the resulting inventory is
 empty or partial. If a scanner fails before returning a result, or if the CLI
 cannot read or save the requested artifact, it exits nonzero with a
@@ -250,7 +253,7 @@ artifact `diagnostics[].code` vocabulary. Process codes such as
 `scanner-error`, `report.input.*`, `report.schema.invalid`,
 `report.render.internal`, `output-write-failed`, `schema-validation-failed`,
 and `internal-error` describe command execution, not source inventory
-observations, and are not valid values inside `EsriFootprint.json`.
+observations, and are not valid values inside `GeoServicesRestFootprint.json`.
 ## Network telemetry
 
 - **Off by default.** The scanner does not phone home, beacon, or post
@@ -261,13 +264,13 @@ observations, and are not valid values inside `EsriFootprint.json`.
 - **Local logs are allowed.** Structured local logs on stderr and explicitly
   requested local output files are part of the normal operating surface and are
   not considered telemetry.
-- **No telemetry inside the artifact.** `EsriFootprint.json` never
+- **No telemetry inside the artifact.** `GeoServicesRestFootprint.json` never
   carries a callback URL or remote endpoint.
 
 ## Follow-ons
 
 The schema body for the current `0.1.x` line is published — see
-[`docs/schemas/esri-footprint.v0.1.md`](./esri-footprint.v0.1.md) for the
+[`docs/schemas/geoservices-rest-footprint.v0.1.md`](./geoservices-rest-footprint.v0.1.md) for the
 field-by-field reference, the discriminator rules, and the locked v0.1
 diagnostic code catalog. Remaining follow-ons:
 

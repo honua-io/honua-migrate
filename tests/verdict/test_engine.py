@@ -11,11 +11,11 @@ from honua_esri_assess.verdict.registry import HARD_LOCK_IN_KEYS, SHOP_PROFILES
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = REPO_ROOT / "tests" / "fixtures"
-SAMPLE = FIXTURES / "esri-footprint-sample.json"
-UTILITY_NETWORK = FIXTURES / "esri-footprint-utility-network.json"
-LOCK_IN_EXTENT = FIXTURES / "esri-footprint-lock-in-extent.json"
-SERVER_USAGE_BREADTH = FIXTURES / "esri-footprint-server-usage-breadth.json"
-PORTAL_FEDERATION = FIXTURES / "esri-footprint-portal-federation.json"
+SAMPLE = FIXTURES / "geoservices-rest-footprint-sample.json"
+UTILITY_NETWORK = FIXTURES / "geoservices-rest-footprint-utility-network.json"
+LOCK_IN_EXTENT = FIXTURES / "geoservices-rest-footprint-lock-in-extent.json"
+SERVER_USAGE_BREADTH = FIXTURES / "geoservices-rest-footprint-server-usage-breadth.json"
+PORTAL_FEDERATION = FIXTURES / "geoservices-rest-footprint-portal-federation.json"
 
 
 def _load(path: Path) -> dict:

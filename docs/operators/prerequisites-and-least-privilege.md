@@ -135,7 +135,7 @@ org settings) and the portal-facing reads will work under it.
 
 - **Egress:** only to the ArcGIS host you target. No Honua/telemetry/analytics
   endpoints exist in the source (enforced by `tests/test_no_telemetry.py`).
-- **Artifacts:** the emitted `EsriFootprint.json` (and the access/usage
+- **Artifacts:** the emitted `GeoServicesRestFootprint.json` (and the access/usage
   artifacts) carry inventory and coarse classifications only. Connection
   strings, hosts, and credentials are **not** retained — URLs are sanitized and
   a redaction test guards this.
