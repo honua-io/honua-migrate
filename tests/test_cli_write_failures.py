@@ -9,9 +9,9 @@ from pathlib import Path
 
 import pytest
 
-from honua_esri_assess.cli import main as cli_main
-from honua_esri_assess.commands.common import ScanOptions, ScanResult
-from honua_esri_assess.commands.scan_handlers import HANDLERS, ScanHandler, register
+from honua_migrate.assessment.cli import main as cli_main
+from honua_migrate.assessment.commands.common import ScanOptions, ScanResult
+from honua_migrate.assessment.commands.scan_handlers import HANDLERS, ScanHandler, register
 
 TRACEBACK_RE = re.compile(r"Traceback \(most recent call")
 ABSOLUTE_PATH_RE = re.compile(r"(?<![A-Za-z0-9_/])(/home/|/Users/|C:\\)")

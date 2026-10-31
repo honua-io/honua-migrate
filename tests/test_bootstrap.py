@@ -1,7 +1,7 @@
 import tomllib
 from pathlib import Path
 
-from honua_esri_assess import __version__
+from honua_migrate.assessment import __version__
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 

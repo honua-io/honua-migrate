@@ -7,9 +7,9 @@ from pathlib import Path
 import pytest
 import responses
 
-from honua_esri_assess.server.auth import AnonymousCredential, TokenCredential
-from honua_esri_assess.server.client import RetryPolicy, ServerClient
-from honua_esri_assess.server.scanner import ServerScanner
+from honua_migrate.assessment.server.auth import AnonymousCredential, TokenCredential
+from honua_migrate.assessment.server.client import RetryPolicy, ServerClient
+from honua_migrate.assessment.server.scanner import ServerScanner
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

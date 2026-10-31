@@ -1,9 +1,8 @@
 # honua-migrate: agent instructions
 
 Apache-2.0 migration CLI. `src/honua_migrate/` is the `honua-migrate` command (assessment,
-planning, code migration, service import); `src/honua_esri_assess/` is the read-only Esri
-assessment it mounts as `honua-migrate assess`, also shipped as the `honua-esri-assess`
-compatibility command. `packages/javascript` and `packages/maui` are separately gated
+planning, code migration, service import); `src/honua_migrate/assessment/` is the read-only Esri
+assessment mounted under `honua-migrate assess`. `packages/javascript` and `packages/maui` are separately gated
 runtime packages. Default branch is `trunk`.
 
 ## Commands (mirror `.github/workflows/ci.yml`)
@@ -20,7 +19,7 @@ JavaScript package: `cd packages/javascript && npm ci && npm test && npm run lin
 tool's .NET gate is the `dotnet` job in `ci.yml`.
 
 ## Hard constraints
-- Assessment (`honua_esri_assess`, `honua-migrate assess`) is strictly read-only against Esri
+- Assessment (`honua_migrate.assessment`, `honua-migrate assess`) is strictly read-only against Esri
   systems: HTTP `GET` only, no write helpers in its HTTP wrappers. Write-capable target
   operations live only under `honua_migrate`, behind a reviewable plan and an explicit apply gate.
 - No network telemetry, usage pings, crash uploads or update checks, and no opt-in sink.
@@ -37,7 +36,7 @@ tool's .NET gate is the `dotnet` job in `ci.yml`.
 ## Conventions
 - `diagnostics[].code` is a locked enum across the v0.x schemas. Adding a code needs a schema
   bump plus matching changes to `diagnostics.py`, `entitlements/diagnostics.py` and the
-  scanner emitter mappings. `schemas/` is canonical; `src/honua_esri_assess/schemas/` is the
+  scanner emitter mappings. `schemas/` is canonical; `src/honua_migrate/assessment/schemas/` is the
   packaged copy, kept in sync by `tests/test_schema_packaging.py`.
 - The CLI never prints tracebacks; exit codes are a contract. Read README "Exit codes and
   failure surface" before changing one.

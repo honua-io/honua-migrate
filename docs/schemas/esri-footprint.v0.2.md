@@ -17,7 +17,7 @@ Everything documented for v0.1 still applies; this page covers only the delta.
 The canonical schema lives at
 [`schemas/esri-footprint-v0.2.json`](../../schemas/esri-footprint-v0.2.json),
 mirrored as a package resource at
-`src/honua_esri_assess/schemas/esri-footprint-v0.2.json`.
+`src/honua_migrate/assessment/schemas/esri-footprint-v0.2.json`.
 
 ## What changed from v0.1
 
@@ -129,7 +129,7 @@ resolvable edges omit `dependencyEdges` entirely.
 
 ## Consuming edges for ordering
 
-`honua_esri_assess.report.heuristics` exposes:
+`honua_migrate.assessment.report.heuristics` exposes:
 
 - `dependency_edges(footprint)` — validated edge mappings.
 - `dependency_order(footprint)` — a deterministic Kahn topological sort of the

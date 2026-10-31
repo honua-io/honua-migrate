@@ -6,7 +6,7 @@
 
 ## Guides
 
-* [Assess before you migrate](assessment-transition.md)
+* [Assessment command](assessment-transition.md)
 * [When honua-migrate and honua-sdk collide](console-script-collision.md)
 * [Verify a migrated app against imported services](imported-app-browser-verification.md)
 * [What access the assessment needs](operators/prerequisites-and-least-privilege.md)

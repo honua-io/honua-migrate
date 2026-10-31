@@ -16,7 +16,8 @@ SCHEMA_PATH = REPO_ROOT / "schemas" / "esri-footprint-v0.1.json"
 PACKAGED_SCHEMA_PATH = (
     REPO_ROOT
     / "src"
-    / "honua_esri_assess"
+    / "honua_migrate"
+    / "assessment"
     / "schemas"
     / "esri-footprint-v0.1.json"
 )

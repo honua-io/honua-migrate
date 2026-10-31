@@ -23,7 +23,7 @@ from urllib.parse import urlsplit, urlunsplit
 import requests
 import typer
 
-from honua_esri_assess.redaction import sanitize_handoff_url
+from honua_migrate.assessment.redaction import sanitize_handoff_url
 from honua_migrate.contract_validation import assert_artifact_safe, validate_contract
 from honua_migrate.contracts import EXIT_PARTIAL, MigrationError, MigrationPlan
 from honua_migrate.services.target_readiness import TargetReadinessError, preflight_target

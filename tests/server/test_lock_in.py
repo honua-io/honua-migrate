@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from honua_esri_assess.server.lock_in import enumerate_lock_ins
+from honua_migrate.assessment.server.lock_in import enumerate_lock_ins
 
 
 def test_no_lock_in_for_plain_feature_service() -> None:

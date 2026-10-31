@@ -10,12 +10,12 @@ from urllib.parse import urlsplit
 
 import pytest
 
-from honua_esri_assess.cli import main as cli_main
-from honua_esri_assess.commands.common import ScanOptions, ScanResult
-from honua_esri_assess.commands.scan_handlers import HANDLERS, ScanHandler, register
-from honua_esri_assess.footprint import build_footprint
-from honua_esri_assess.scanners import agol as agol_scanner
-from honua_esri_assess.scanners import server as server_scanner
+from honua_migrate.assessment.cli import main as cli_main
+from honua_migrate.assessment.commands.common import ScanOptions, ScanResult
+from honua_migrate.assessment.commands.scan_handlers import HANDLERS, ScanHandler, register
+from honua_migrate.assessment.footprint import build_footprint
+from honua_migrate.assessment.scanners import agol as agol_scanner
+from honua_migrate.assessment.scanners import server as server_scanner
 
 SECRET_TARGET = (
     "https://alice:superpass@fixture.local/sharing/rest;jsessionid=session-secret"

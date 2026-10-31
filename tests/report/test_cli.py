@@ -10,7 +10,7 @@ import subprocess
 import sys
 import zipfile
 
-from honua_esri_assess import cli
+from honua_migrate.assessment import cli
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_FOOTPRINT = REPO_ROOT / "docs" / "samples" / "esri-footprint.sample.json"
@@ -173,7 +173,7 @@ def test_packaged_report_strict_schema_failure_is_typed(tmp_path: Path) -> None:
     )
     wheel = next(wheel_dir.glob("honua_migrate-*.whl"))
     with zipfile.ZipFile(wheel) as archive:
-        assert "honua_esri_assess/schemas/esri-footprint-v0.1.json" in archive.namelist()
+        assert "honua_migrate/assessment/schemas/esri-footprint-v0.1.json" in archive.namelist()
 
     subprocess.run(
         [sys.executable, "-m", "pip", "install", "--no-deps", "--target", str(target_dir), str(wheel)],
@@ -185,10 +185,10 @@ def test_packaged_report_strict_schema_failure_is_typed(tmp_path: Path) -> None:
     code = """
 import sys
 from pathlib import Path
-import honua_esri_assess
-from honua_esri_assess import cli
+import honua_migrate.assessment
+from honua_migrate.assessment import cli
 
-package_file = Path(honua_esri_assess.__file__).resolve()
+package_file = Path(honua_migrate.assessment.__file__).resolve()
 target_dir = Path(sys.argv[1]).resolve()
 assert package_file.is_relative_to(target_dir), package_file
 raise SystemExit(cli.main(["report", "--input", sys.argv[2], "--strict"]))

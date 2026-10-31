@@ -16,8 +16,7 @@ single ``try`` block resolved ``Exit`` and ``ClickException`` together and the
 letting ``BadParameter`` escape ``main()`` as an unhandled traceback.
 
 Both entry points share this module, and it lives here rather than in
-``honua_esri_assess`` because importing that package emits the legacy-surface
-deprecation warning - which the successor CLI must not print.
+``honua_migrate.assessment`` because the package is mounted by the unified CLI.
 """
 
 from __future__ import annotations

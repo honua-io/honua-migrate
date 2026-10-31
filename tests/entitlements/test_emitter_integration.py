@@ -8,7 +8,7 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from honua_esri_assess.entitlements.models import (
+from honua_migrate.assessment.entitlements.models import (
     ExtensionEntitlement,
     LicensingFacet,
     PortalLicensing,
@@ -16,7 +16,7 @@ from honua_esri_assess.entitlements.models import (
     ServiceExtensionRecord,
     UserTypeCount,
 )
-from honua_esri_assess.footprint.v0_1 import licensing_facet_to_dict
+from honua_migrate.assessment.footprint.v0_1 import licensing_facet_to_dict
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]

@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from honua_esri_assess.caps.crosswalk import load_bundled_crosswalk
-from honua_esri_assess.caps.mapper import evaluate
+from honua_migrate.assessment.caps.crosswalk import load_bundled_crosswalk
+from honua_migrate.assessment.caps.mapper import evaluate
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE = REPO_ROOT / "docs" / "samples" / "esri-footprint.sample.json"

@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from honua_esri_assess.output_io import (
+from honua_migrate.assessment.output_io import (
     OutputExistsError,
     atomic_write_text,
     ensure_overwrite_allowed,

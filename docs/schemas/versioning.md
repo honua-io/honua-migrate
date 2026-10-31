@@ -15,18 +15,18 @@ Schema body: [`docs/schemas/esri-footprint.v0.1.md`](./esri-footprint.v0.1.md)
 ## Scope
 
 This policy governs the `EsriFootprint.json` artifact emitted by
-`honua-esri-assess`. It is the sole supported handoff out of an
+`honua-migrate assess`. It is the sole supported handoff out of an
 assessment.
 
 The policy does **not** govern:
 
-- CLI flags, argument names, or shell-level UX of `honua-esri-assess`.
+- CLI flags, argument names, or shell-level UX of `honua-migrate assess`.
 - The CLI process-level stderr diagnostic codes (e.g. `scanner-error`,
   `output-write-failed`, `schema-validation-failed`, `report.input.*`,
   `report.schema.invalid`, `report.render.internal`, `internal-error`). These
   describe local CLI process state and are separate from the locked artifact
   `diagnostics[].code` enum.
-- The internal Python API (anything importable from `honua_esri_assess.*`).
+- The internal Python API (anything importable from `honua_migrate.assessment.*`).
 - The layout, headings, or wording of the human-readable Markdown readiness
   report. The report is a derivative view of `EsriFootprint.json`, not a
   second handoff contract.
@@ -156,7 +156,7 @@ Every `EsriFootprint.json` emitted by this tool:
 - **Identifies itself.** Top-level metadata, present on every footprint:
   - `schemaVersion` — major.minor of the contract, carried in-band as a
     literal (at v0.1, `"v0.1"`). Full SemVer is in the schema's `$id`.
-  - `tool` — object with `name` (always `"honua-esri-assess"`) and
+  - `tool` — object with `name` (always `"honua-migrate assess"`) and
     `version` (the installed CLI build, as a SemVer string).
   - `generatedAt` — RFC3339 UTC timestamp of emission.
   - `source` — object identifying the Esri system kind: `kind` is one of
