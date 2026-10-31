@@ -101,8 +101,7 @@ function modeDetail(report: JsMigrationReport, mode: JsConversionMode): string |
   return report.conversion.modes.find((assessment) => assessment.mode === mode)?.detail;
 }
 
-const MAP_ONLY_SOURCE =
-  'import Map from "@arcgis/core/Map";\n\nexport const map = new Map({ basemap: "streets-vector" });\n';
+const MAP_ONLY_SOURCE = 'import Map from "@arcgis/core/Map";\n\nexport const map = new Map({ basemap: "osm" });\n';
 
 // Hand-counted from fixtures/esri-widget-cliff-app (18 module sites in 4 files):
 // - src/main.ts: Map, MapView, Legend, LayerList and Expand are rewritten;
