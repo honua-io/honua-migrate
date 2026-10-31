@@ -1,10 +1,7 @@
 namespace Honua.Migrate.Maui;
 
 /// <summary>
-/// The category of an ArcGIS Maps SDK for .NET (MAUI) construct that the codemod
-/// recognizes. Mirrors the <c>CodemodConstructorKind</c> union used by the
-/// JavaScript and Python honua-migrate codemods so the scan/translate/report
-/// playbook stays consistent across SDKs.
+/// The category of a .NET mapping construct that this migration tool recognizes.
 /// </summary>
 public enum MauiConstructKind
 {

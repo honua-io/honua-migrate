@@ -36,13 +36,6 @@ def project_version() -> str:
     return version
 
 
-def javascript_version() -> str:
-    manifest = Path("packages/javascript/package.json")
-    if not manifest.is_file():
-        raise ValueError("JavaScript package is absent; refusing a JavaScript release.")
-    return str(json.loads(manifest.read_text(encoding="utf-8"))["version"])
-
-
 def maui_version() -> str:
     tool_projects: list[tuple[Path, ET.Element]] = []
     for project in sorted(Path("packages/maui").rglob("*.csproj")):
@@ -77,7 +70,6 @@ def maui_version() -> str:
 
 PACKAGE_SPECS: dict[str, tuple[str, Callable[[], str], str]] = {
     "python": (PYTHON_TAG_PREFIX, project_version, PYTHON_PROJECT),
-    "javascript": ("javascript-v", javascript_version, "JavaScript package"),
     "maui": ("maui-v", maui_version, "MAUI dotnet tool"),
 }
 

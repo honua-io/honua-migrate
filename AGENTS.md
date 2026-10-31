@@ -1,10 +1,9 @@
 # honua-migrate: agent instructions
 
 Apache-2.0 migration CLI. `src/honua_migrate/` is the `honua-migrate` command (assessment,
-planning, code migration, service import); `src/honua_esri_assess/` is the read-only Esri
-assessment it mounts as `honua-migrate assess`, also shipped as the `honua-esri-assess`
-compatibility command. `packages/javascript` and `packages/maui` are separately gated
-runtime packages. Default branch is `trunk`.
+planning, code migration, service import); `src/honua_esri_assess/` is the read-only source-system
+assessment it mounts as `honua-migrate assess`, also shipped as a compatibility command. The
+MAUI tool under `packages/maui` has a separate runtime gate. Default branch is `trunk`.
 
 ## Commands (mirror `.github/workflows/ci.yml`)
 ```bash
@@ -16,8 +15,7 @@ python scripts/check_dep_licenses.py    # dependency license guard
 python3 scripts/check-okf-bundle.py && python3 scripts/generate-summary.py --check   # docs/ gate
 honua-migrate --help                    # or python -m honua_migrate; assess: honua-migrate assess --help
 ```
-JavaScript package: `cd packages/javascript && npm ci && npm test && npm run lint`. The MAUI
-tool's .NET gate is the `dotnet` job in `ci.yml`.
+The MAUI tool's .NET gate is the `dotnet` job in `ci.yml`.
 
 ## Hard constraints
 - Assessment (`honua_esri_assess`, `honua-migrate assess`) is strictly read-only against Esri

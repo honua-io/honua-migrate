@@ -76,12 +76,7 @@ def test_release_please_manifest_matches_project_version() -> None:
         (REPO_ROOT / ".release-please-manifest.json").read_text(encoding="utf-8")
     )
     assert manifest["."] == _pyproject()["project"]["version"]
-    javascript_package = json.loads(
-        (REPO_ROOT / "packages" / "javascript" / "package.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    assert manifest["packages/javascript"] == javascript_package["version"]
+    assert set(manifest) == {".", "packages/maui"}
     assert manifest["packages/maui"] == "0.0.0"
 
 
@@ -103,17 +98,8 @@ def test_release_please_config_uses_component_tags() -> None:
     ]
     # Component packages release on their own; keep their commits out of the
     # Python changelog and version bump.
-    assert package["exclude-paths"] == ["packages/javascript", "packages/maui"]
-    javascript_release_type = (
-        "node"
-        if (REPO_ROOT / "packages/javascript/package.json").is_file()
-        else "simple"
-    )
-    assert (
-        config["packages"]["packages/javascript"]["release-type"]
-        == javascript_release_type
-    )
-    assert config["packages"]["packages/javascript"]["component"] == "javascript"
+    assert package["exclude-paths"] == ["packages/maui"]
+    assert set(config["packages"]) == {".", "packages/maui"}
     assert config["packages"]["packages/maui"]["release-type"] == "simple"
     assert config["packages"]["packages/maui"]["component"] == "maui"
 
@@ -283,25 +269,14 @@ def test_runtime_release_tags_follow_checked_out_package_state(monkeypatch) -> N
     spec.loader.exec_module(module)
 
     monkeypatch.chdir(REPO_ROOT)
-    javascript_present = (REPO_ROOT / "packages/javascript/package.json").is_file()
-    javascript_version = module.javascript_version() if javascript_present else "0.1.0"
-    assert module.main(
-        [f"javascript-v{javascript_version}", "--package", "javascript"]
-    ) == (0 if javascript_present else 1)
-    if javascript_present:
-        assert (
-            module.main(
-                ["javascript-v0.1.2-beta.0", "--package", "javascript"]
-            )
-            == 1
-        )
+    assert set(module.PACKAGE_SPECS) == {"python", "maui"}
 
     maui_present = any((REPO_ROOT / "packages/maui").rglob("*.csproj"))
     maui_version = module.maui_version() if maui_present else "0.1.0"
     assert module.main([f"maui-v{maui_version}", "--package", "maui"]) == (
         0 if maui_present else 1
     )
-    assert module.main(["--allow-untagged", "--package", "javascript"]) == 0
+    assert module.main(["--allow-untagged", "--package", "maui"]) == 0
 
 
 def test_publish_tag_validator_requires_one_tag_commit(

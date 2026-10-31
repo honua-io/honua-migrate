@@ -99,74 +99,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.13"
-      - name: Detect JavaScript package
-        id: package
-        run: python scripts/runtime_package.py detect javascript >> "$GITHUB_OUTPUT"
-      - name: Report absent package
-        if: steps.package.outputs.present == 'false'
-        run: echo "packages/javascript contains markers only; JavaScript gate is dormant."
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        if: steps.package.outputs.present == 'true'
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: packages/javascript/package-lock.json
-      - name: Install locked dependencies
-        if: steps.package.outputs.present == 'true'
-        working-directory: packages/javascript
-        run: npm ci
-      - name: Build
-        if: steps.package.outputs.present == 'true'
-        working-directory: packages/javascript
-        run: npm run build
-      - name: Install Chromium for the migration pipeline browser stage
-        if: steps.package.outputs.present == 'true'
-        working-directory: packages/javascript
-        run: npx playwright-core install --with-deps --only-shell chromium
-      - name: Test
-        if: steps.package.outputs.present == 'true'
-        working-directory: packages/javascript
-        run: npm test
-      - name: Lint
-        if: steps.package.outputs.present == 'true'
-        working-directory: packages/javascript
-        run: npm run lint
-      - name: Audit dependencies
-        if: steps.package.outputs.present == 'true'
-        working-directory: packages/javascript
-        run: npm audit --audit-level=high
-      - name: Check dependency licenses
-        if: steps.package.outputs.present == 'true'
-        run: python scripts/check_runtime_licenses.py javascript
-      - name: Pack reproducible npm artifact
-        if: steps.package.outputs.present == 'true'
-        working-directory: packages/javascript
-        run: |
-          export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
-          mkdir -p "$RUNNER_TEMP/javascript-dist"
-          npm pack --pack-destination "$RUNNER_TEMP/javascript-dist"
-      - name: Smoke-install npm artifact
-        if: steps.package.outputs.present == 'true'
-        run: |
-          mkdir -p "$RUNNER_TEMP/javascript-smoke"
-          cd "$RUNNER_TEMP/javascript-smoke"
-          npm init --yes
-          npm install --ignore-scripts "$RUNNER_TEMP/javascript-dist"/*.tgz
-          PACKAGE_NAME=$(node -p "require('$GITHUB_WORKSPACE/packages/javascript/package.json').name")
-          BIN_NAME=$(node -p "Object.keys(require('./node_modules/' + '$PACKAGE_NAME' + '/package.json').bin)[0]")
-          "$RUNNER_TEMP/javascript-smoke/node_modules/.bin/$BIN_NAME" matrix \
-            --report "$RUNNER_TEMP/javascript-smoke/matrix.json"
-          test -s "$RUNNER_TEMP/javascript-smoke/matrix.json"
-      - uses: actions/upload-artifact@v7
-        if: steps.package.outputs.present == 'true'
-        with:
-          name: javascript-dist-${{ github.sha }}
-          path: ${{ runner.temp }}/javascript-dist/*.tgz
-          if-no-files-found: error
-          retention-days: 14
+      - name: Report retired tooling
+        run: echo "JavaScript migration tooling retired: the standalone application-source package has been removed."
 
   dotnet:
     name: MAUI tool package gate (.NET 10)

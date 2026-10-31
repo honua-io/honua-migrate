@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reject incompatible or unverifiable JavaScript and NuGet licenses."""
+"""Reject incompatible or unverifiable NuGet licenses."""
 
 from __future__ import annotations
 
@@ -25,23 +25,6 @@ def _compatible(expression: str) -> bool:
     return bool(normalized.strip()) and not any(
         token in normalized for token in INCOMPATIBLE
     )
-
-
-def check_javascript() -> list[str]:
-    lock_path = REPO_ROOT / "packages" / "javascript" / "package-lock.json"
-    if not lock_path.is_file():
-        return ["packages/javascript/package-lock.json is required"]
-    lock = json.loads(lock_path.read_text(encoding="utf-8"))
-    failures: list[str] = []
-    for path, package in sorted(lock.get("packages", {}).items()):
-        if not path or package.get("link"):
-            continue
-        license_expression = str(package.get("license", "")).strip()
-        if not license_expression:
-            failures.append(f"{path}: missing license metadata")
-        elif not _compatible(license_expression):
-            failures.append(f"{path}: incompatible license {license_expression!r}")
-    return failures
 
 
 def _local_name(tag: str) -> str:
@@ -99,10 +82,10 @@ def check_maui() -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("runtime", choices=("javascript", "maui"))
+    parser.add_argument("runtime", choices=("maui",))
     args = parser.parse_args(argv)
     try:
-        failures = check_javascript() if args.runtime == "javascript" else check_maui()
+        failures = check_maui()
     except (ET.ParseError, OSError, ValueError, json.JSONDecodeError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
