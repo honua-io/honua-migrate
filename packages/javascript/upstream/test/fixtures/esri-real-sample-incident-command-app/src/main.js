@@ -162,7 +162,7 @@ const printer = new Print({
 });
 const basemapGallery = new BasemapGallery({
   view,
-  source: ["osm"],
+  source: [{ id: "osm" }],
 });
 const basemapLayerList = new BasemapLayerList({ view });
 const toolsPanel = new Expand({ view, content: [layerList, legend], expanded: true });

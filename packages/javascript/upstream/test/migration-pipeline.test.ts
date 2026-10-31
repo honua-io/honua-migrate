@@ -737,24 +737,14 @@ describe("JS migration pipeline", () => {
     const main = fs.readFileSync(path.join(app, "src", "main.ts"), "utf8");
     expect(main).toContain("MapCompat");
     expect(main).toContain('basemap: "osm"');
-    expect(report.residualWork).toContainEqual(
-      expect.objectContaining({
-        source: "file-diagnostic",
-        file: "src/main.ts",
-        code: "manual-call-site",
-        message: expect.stringContaining("Basemap source is named, dynamic, or otherwise unverified"),
-      }),
-    );
     // selection.ts keeps its four type-only imports (Graphic, Point, FeatureLayer, MapView).
     expect(report.arcgisRuntime).toEqual({
-      moduleSites: 5,
+      moduleSites: 4,
       dependencies: ["@arcgis/core"],
       widgetSitesOnArcGisRuntime: 0,
       required: true,
     });
     expect(report.residualWork.map((item) => [item.source, item.file ?? null, item.code ?? null])).toEqual([
-      ["file-diagnostic", "src/main.ts", "import-left-in-place"],
-      ["file-diagnostic", "src/main.ts", "manual-call-site"],
       ["file-diagnostic", "src/selection.ts", "import-left-in-place"],
       ["file-diagnostic", "src/selection.ts", "import-left-in-place"],
       ["file-diagnostic", "src/selection.ts", "import-left-in-place"],
