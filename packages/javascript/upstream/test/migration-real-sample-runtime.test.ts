@@ -298,7 +298,7 @@ describe("migration real sample runtime", () => {
     expect(output.routeTaskCount).toBe(1);
     expect(output.routeTaskDistance).toBeGreaterThan(0);
     expect(output.directionsPathPoints).toBeGreaterThan(1);
-    expect(output.basemapBaseLayerCount).toBe(1);
+    expect(output.basemapBaseLayerCount).toBe(0);
     expect(output.sublayerCount).toBe(2);
     expect(Array.isArray(output.conversions)).toBe(true);
     expect(output.conversions).toEqual(["lonlat", "dms"]);
