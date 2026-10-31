@@ -405,38 +405,26 @@ describe("arcgis migration integration", () => {
     expect(migratedMain).not.toContain("@arcgis/core/Map");
   });
 
-  it("migrates basemap constructor fixture with ready gating", () => {
-    const { workingCopy, scanReport, report, codemodResult } = runFixtureMigration("esri-basemap-app");
+  it("holds unverified basemap constructors for assisted migration", () => {
+    const { workingCopy, report, codemodResult } = runFixtureMigration("esri-basemap-app");
 
-    expect(scanReport.flags).toEqual([]);
-    expect(codemodResult.filesChanged).toBe(1);
     expect(codemodResult.metrics.totalCodemodScopedCallSites).toBe(3);
-    expect(codemodResult.metrics.autoMigratedCallSites).toBe(3);
-    expect(codemodResult.metrics.manualCallSites).toBe(0);
-    expect(codemodResult.metrics.byKind.basemap).toEqual({
-      total: 1,
-      autoMigrated: 1,
-      manual: 0,
-    });
-    expect(codemodResult.metrics.byKind.map).toEqual({
-      total: 1,
-      autoMigrated: 1,
-      manual: 0,
-    });
-    expect(codemodResult.metrics.byKind["map-view"]).toEqual({
-      total: 1,
-      autoMigrated: 1,
-      manual: 0,
-    });
-    expect(report.readiness).toBe("ready");
-    expect(report.unhandledArcGisModules).toEqual([]);
+    expect(codemodResult.metrics.autoMigratedCallSites).toBe(1);
+    expect(codemodResult.metrics.manualCallSites).toBe(2);
+    expect(codemodResult.metrics.byKind.basemap).toEqual({ total: 1, autoMigrated: 0, manual: 1 });
+    expect(codemodResult.metrics.byKind.map).toEqual({ total: 1, autoMigrated: 0, manual: 1 });
+    expect(codemodResult.manualTodos.map((todo) => todo.kind)).toEqual(["basemap", "map"]);
+    expect(report.readiness).toBe("assisted");
+    expect(report.gates.find((gate) => gate.gate === "no-manual-todos")?.passed).toBe(false);
+    expect(report.unhandledArcGisModules.map((module) => module.modulePath)).toEqual([
+      "@arcgis/core/Basemap",
+      "@arcgis/core/Map",
+    ]);
 
     const migratedMain = fs.readFileSync(path.join(workingCopy, "src", "main.ts"), "utf8");
-    expect(migratedMain).toContain('import { BasemapCompat, MapCompat, MapViewCompat } from "@honua/sdk-esri-compat";');
-    expect(migratedMain).toContain("const basemap = new BasemapCompat({");
-    expect(migratedMain).toContain("const map = new MapCompat({");
+    expect(migratedMain).toContain("const basemap = new Basemap({");
+    expect(migratedMain).toContain("const map = new Map({");
     expect(migratedMain).toContain("const view = new MapViewCompat({");
-    expect(migratedMain).not.toContain("@arcgis/core/Basemap");
   });
 
   it("migrates route task fixture with ready gating", () => {
@@ -1329,18 +1317,18 @@ describe("arcgis migration integration", () => {
     expect(migratedMain).not.toContain("@arcgis/core/PopupTemplate");
   });
 
-  it("migrates map widgets and controls with ready gating", () => {
+  it("holds unverified map widgets while migrating supported controls", () => {
     const { workingCopy, scanReport, report, codemodResult } = runFixtureMigration("esri-widget-controls-app");
 
     expect(scanReport.flags).toEqual([]);
     expect(codemodResult.filesChanged).toBe(1);
     expect(codemodResult.metrics.totalCodemodScopedCallSites).toBe(25);
-    expect(codemodResult.metrics.autoMigratedCallSites).toBe(25);
-    expect(codemodResult.metrics.manualCallSites).toBe(0);
+    expect(codemodResult.metrics.autoMigratedCallSites).toBe(22);
+    expect(codemodResult.metrics.manualCallSites).toBe(3);
     expect(codemodResult.metrics.byKind.map).toEqual({
       total: 1,
-      autoMigrated: 1,
-      manual: 0,
+      autoMigrated: 0,
+      manual: 1,
     });
     expect(codemodResult.metrics.byKind["map-view"]).toEqual({
       total: 1,
@@ -1374,8 +1362,8 @@ describe("arcgis migration integration", () => {
     });
     expect(codemodResult.metrics.byKind["basemap-toggle-widget"]).toEqual({
       total: 1,
-      autoMigrated: 1,
-      manual: 0,
+      autoMigrated: 0,
+      manual: 1,
     });
     expect(codemodResult.metrics.byKind["locate-widget"]).toEqual({
       total: 1,
@@ -1394,8 +1382,8 @@ describe("arcgis migration integration", () => {
     });
     expect(codemodResult.metrics.byKind["basemap-gallery-widget"]).toEqual({
       total: 1,
-      autoMigrated: 1,
-      manual: 0,
+      autoMigrated: 0,
+      manual: 1,
     });
     expect(codemodResult.metrics.byKind["expand-widget"]).toEqual({
       total: 1,
@@ -1462,29 +1450,35 @@ describe("arcgis migration integration", () => {
       autoMigrated: 1,
       manual: 0,
     });
-    expect(report.readiness).toBe("ready");
-    expect(report.unhandledArcGisModules).toEqual([]);
+    expect(report.readiness).toBe("assisted");
+    expect(report.gates.find((gate) => gate.gate === "no-manual-todos")?.passed).toBe(false);
+    expect(codemodResult.manualTodos.map((todo) => todo.kind)).toEqual([
+      "map",
+      "basemap-toggle-widget",
+      "basemap-gallery-widget",
+    ]);
+    expect(report.unhandledArcGisModules.map((module) => module.modulePath)).toEqual([
+      "@arcgis/core/Map",
+      "@arcgis/core/widgets/BasemapGallery",
+      "@arcgis/core/widgets/BasemapToggle",
+    ]);
 
     const migratedMain = fs.readFileSync(path.join(workingCopy, "src", "main.ts"), "utf8");
     expect(migratedMain).toContain(
-      'import { AttributionCompat, BasemapGalleryCompat, BasemapToggleCompat, BookmarksCompat, CompassCompat, CoordinateConversionCompat, DirectionsCompat, EditorCompat, ExpandCompat, FullscreenCompat, HomeCompat, LayerListCompat, LegendCompat, LocateCompat, MapCompat, MapViewCompat, MeasurementCompat, PopupCompat, RouteLayerCompat, ScaleBarCompat, SearchCompat, SketchCompat, TimeSliderCompat, TrackCompat, ZoomCompat, registerHonuaWidgetKit } from "@honua/sdk-esri-compat";',
+      'import { AttributionCompat, BookmarksCompat, CompassCompat, CoordinateConversionCompat, DirectionsCompat, EditorCompat, ExpandCompat, FullscreenCompat, HomeCompat, LayerListCompat, LegendCompat, LocateCompat, MapViewCompat, MeasurementCompat, PopupCompat, RouteLayerCompat, ScaleBarCompat, SearchCompat, SketchCompat, TimeSliderCompat, TrackCompat, ZoomCompat, registerHonuaWidgetKit } from "@honua/sdk-esri-compat";',
     );
     expect(migratedMain).toContain("const layerList = new LayerListCompat({ view });");
     expect(migratedMain).toContain("const legend = new LegendCompat({ view });");
     expect(migratedMain).toContain("const popup = new PopupCompat({ view, dockEnabled: true });");
     expect(migratedMain).toContain("const home = new HomeCompat({");
     expect(migratedMain).toContain("viewpoint: { center: [0, 0], zoom: 3 },");
-    expect(migratedMain).toContain(
-      'const basemapToggle = new BasemapToggleCompat({ view, nextBasemap: "satellite" });',
-    );
+    expect(migratedMain).toContain('const basemapToggle = new BasemapToggle({ view, nextBasemap: "satellite" });');
     expect(migratedMain).toContain("const locate = new LocateCompat({ view, zoom: 12 });");
     expect(migratedMain).toContain('const scaleBar = new ScaleBarCompat({ view, unit: "dual" });');
     expect(migratedMain).toContain(
       'const search = new SearchCompat({ view, container: "search-div", includeDefaultSources: false });',
     );
-    expect(migratedMain).toContain(
-      'const basemapGallery = new BasemapGalleryCompat({ view, container: "gallery-div" });',
-    );
+    expect(migratedMain).toContain('const basemapGallery = new BasemapGallery({ view, container: "gallery-div" });');
     expect(migratedMain).toContain("const compass = new CompassCompat({ view });");
     expect(migratedMain).toContain("const expand = new ExpandCompat({ view, content: legend, expanded: false });");
     expect(migratedMain).toContain("const bookmarks = new BookmarksCompat({");
@@ -1539,11 +1533,11 @@ describe("arcgis migration integration", () => {
     expect(migratedMain).not.toContain("@arcgis/core/widgets/Legend");
     expect(migratedMain).not.toContain("@arcgis/core/widgets/Popup");
     expect(migratedMain).not.toContain("@arcgis/core/widgets/Home");
-    expect(migratedMain).not.toContain("@arcgis/core/widgets/BasemapToggle");
+    expect(migratedMain).toContain("@arcgis/core/widgets/BasemapToggle");
     expect(migratedMain).not.toContain("@arcgis/core/widgets/Locate");
     expect(migratedMain).not.toContain("@arcgis/core/widgets/ScaleBar");
     expect(migratedMain).not.toContain("@arcgis/core/widgets/Search");
-    expect(migratedMain).not.toContain("@arcgis/core/widgets/BasemapGallery");
+    expect(migratedMain).toContain("@arcgis/core/widgets/BasemapGallery");
     expect(migratedMain).not.toContain("@arcgis/core/widgets/Compass");
     expect(migratedMain).not.toContain("@arcgis/core/widgets/Expand");
     expect(migratedMain).not.toContain("@arcgis/core/widgets/Bookmarks");
@@ -1645,51 +1639,33 @@ describe("arcgis migration integration", () => {
     expect(migratedMain).not.toContain("@arcgis/core/Map");
   });
 
-  it("migrates webmap constructor flow with ready gating", () => {
+  it("holds portal webmap contents for assisted migration", () => {
     const { workingCopy, scanReport, report, codemodResult } = runFixtureMigration("esri-webmap-app");
 
     expect(scanReport.flags).toContain("webmap-detected");
-    expect(codemodResult.filesChanged).toBe(1);
     expect(codemodResult.metrics.totalCodemodScopedCallSites).toBe(2);
-    expect(codemodResult.metrics.autoMigratedCallSites).toBe(2);
-    expect(codemodResult.metrics.manualCallSites).toBe(0);
-    expect(report.manualRewriteMetric).toMatchObject({
-      numerator: 0,
-      denominator: 2,
-      ratio: 0,
-    });
+    expect(codemodResult.metrics.autoMigratedCallSites).toBe(1);
+    expect(codemodResult.metrics.manualCallSites).toBe(1);
+    expect(codemodResult.manualTodos).toEqual([
+      expect.objectContaining({ kind: "web-map", reason: expect.stringContaining("Portal basemap") }),
+    ]);
+    expect(report.manualRewriteMetric).toMatchObject({ numerator: 1, denominator: 2, ratio: 0.5 });
     expect(report.manualInterventionMetric).toMatchObject({
-      numerator: 0,
-      denominator: 2,
-      ratio: 0,
-      manualCodemodCallSites: 0,
-      unhandledUsageHits: 0,
+      numerator: 2,
+      denominator: 3,
+      manualCodemodCallSites: 1,
+      unhandledUsageHits: 1,
     });
-    expect(report.unhandledArcGisModules).toEqual([]);
-    expect(report.readiness).toBe("ready");
-    expect(report.gates).toEqual([
-      {
-        gate: "no-manual-todos",
-        passed: true,
-        detail: "all codemod-scoped call sites auto-migrated",
-      },
-      {
-        gate: "no-unhandled-modules",
-        passed: true,
-        detail: "all discovered ArcGIS modules are in codemod scope",
-      },
-      {
-        gate: "no-blocking-flags",
-        passed: true,
-        detail: "no blocking migration flags detected",
-      },
+    expect(report.readiness).toBe("assisted");
+    expect(report.gates.find((gate) => gate.gate === "no-manual-todos")?.passed).toBe(false);
+    expect(report.unhandledArcGisModules).toEqual([
+      { modulePath: "@arcgis/core/WebMap", usageStyle: "static-import", count: 1 },
     ]);
 
     const migratedMain = fs.readFileSync(path.join(workingCopy, "src", "main.ts"), "utf8");
-    expect(migratedMain).toContain('import { MapViewCompat, WebMapCompat } from "@honua/sdk-esri-compat";');
-    expect(migratedMain).toContain("const map = new WebMapCompat({");
+    expect(migratedMain).toContain("const map = new WebMap({");
     expect(migratedMain).toContain("const view = new MapViewCompat({");
-    expect(migratedMain).not.toContain("@arcgis/core/WebMap");
+    expect(migratedMain).toContain("@arcgis/core/WebMap");
     expect(migratedMain).not.toContain("@arcgis/core/views/MapView");
   });
 
@@ -1803,7 +1779,7 @@ describe("arcgis migration integration", () => {
     const source = fs.readFileSync(path.join(workingCopy, "src", "main.cjs"), "utf8");
     expect(source).toContain('const { MapCompat } = require("@honua/sdk-esri-compat");');
     expect(source).toContain("new MapCompat({");
-    expect(source).toContain('basemap: "streets"');
+    expect(source).toContain('basemap: "osm"');
     expect(source).toContain("module.exports = { map };");
   });
 
@@ -1820,7 +1796,7 @@ describe("arcgis migration integration", () => {
     const source = fs.readFileSync(path.join(workingCopy, "src", "main.js"), "utf8");
     expect(source).toContain('const { MapCompat } = require("@honua/sdk-esri-compat");');
     expect(source).toContain("new MapCompat({");
-    expect(source).toContain('basemap: "streets"');
+    expect(source).toContain('basemap: "osm"');
     expect(source).toContain("module.exports = { map };");
   });
 
