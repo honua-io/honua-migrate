@@ -1,7 +1,7 @@
 const Map = require("@arcgis/core/Map");
 
 const map = new Map({
-  basemap: "streets",
+  basemap: "osm",
 });
 
 module.exports = { map };

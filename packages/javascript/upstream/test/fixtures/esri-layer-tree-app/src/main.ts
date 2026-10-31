@@ -15,7 +15,7 @@ const group = new GroupLayer({
 });
 
 const map = new Map({
-  basemap: "streets",
+  basemap: "osm",
   layers: [group],
 });
 

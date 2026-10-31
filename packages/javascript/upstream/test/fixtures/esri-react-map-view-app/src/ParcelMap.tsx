@@ -28,7 +28,7 @@ export function ParcelMap(): JSX.Element {
     });
 
     const map = new Map({
-      basemap: "streets",
+      basemap: "osm",
       layers: [parcels],
     });
 
