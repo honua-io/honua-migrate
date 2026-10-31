@@ -59,7 +59,12 @@ const routeLayer = new RouteLayer({
 });
 
 const map = new Map({
-  basemap: "osm",
+  basemap: {
+    id: "osm",
+    baseLayers: [
+      { id: "osm-base", url: "https://example.test/rest/services/basemap/MapServer" },
+    ],
+  },
   layers: [tileLayer, operationsLayer, incidentsLayer, zoningLayer, routeLayer],
   tables: [{ id: "incidents-table" }, { id: "operations-table" }],
 });
