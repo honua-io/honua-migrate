@@ -34,7 +34,7 @@ def test_policy_covers_required_surfaces_and_boundaries() -> None:
 
     for requirement in (
         "Apache-2.0",
-        "ELv2",
+        "FCL-1.0-ALv2",
         "experimental `honua-mobile` SDK/control library",
         "experimental `honua-collect` end-user application",
         "Collect is not a migration source or runtime dependency",
