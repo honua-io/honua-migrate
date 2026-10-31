@@ -75,7 +75,8 @@ is installable from the intended registry, carries provenance for this
 repository, passes the applicable parity and safety gates, and has supported
 operator documentation. Preview builds do not start the clock.
 
-Unless a longer ecosystem policy applies, a legacy entry point remains
+Except for the Python migration and assessment version-output changes noted below,
+and unless a longer ecosystem policy applies, a legacy entry point remains
 supported for **two consecutive `honua-migrate` minor releases and at least 90
 days** after the replacement reaches general availability, whichever is
 longer. Removal is no earlier than `honua-migrate` 1.2 for replacements first
@@ -83,7 +84,7 @@ released in 1.0. A stable public SDK import or package subpath is removed only
 in that SDK's next major release after the common window has elapsed. A
 replacement that becomes unavailable pauses the clock.
 
-During the window, shims must:
+During the window, shims covered by that policy must:
 
 - preserve stdout artifacts, schemas, exit semantics, and non-interactive
   behavior;
@@ -100,11 +101,11 @@ the implementation move is complete.
 
 | Surface | Legacy entry point | Supported replacement | Earliest removal rule |
 | --- | --- | --- | --- |
-| Assessment | `honua-esri-assess`, `python -m honua_esri_assess`, and public `honua_esri_assess` imports. | `honua-migrate assess`; compatibility command and module shims are delivered by [#89](https://github.com/honua-io/honua-migrate/issues/89). | Command/module shims: common window, no earlier than 1.2. Artifact fields and schemas follow the separate schema policy and are not removed merely because a command shim expires. |
+| Assessment | `honua-esri-assess`, `python -m honua_esri_assess`, and public `honua_esri_assess` imports. | `honua-migrate assess`; compatibility command and module shims are delivered by [#89](https://github.com/honua-io/honua-migrate/issues/89). | Command/module shims: common window, no earlier than 1.2. The version command output changes to a neutral package/schema label; scripts parsing the old text must update. Artifact fields and schemas follow the separate schema policy and are not removed merely because a command shim expires. |
 | JavaScript | Migration implementation and invocation from `honua-sdk-js`, plus `@honua/sdk-js/migration`. | The independent `@honua/honua-migrate` package published from this repository and its collision-free `honua-js-migrate` binary. | The SDK subpath remains a forwarding shim to the independent package through the common window and until the next `honua-sdk-js` major. |
-| Python / ArcPy | `honua_sdk.migration`, `python -m honua_sdk.migration`, and the `honua-migrate` console entry installed by `honua-sdk`. | `honua-migrate code python` from this repository; the SDK entry delegates without changing artifacts. | Common window and the next `honua-sdk` major. The SDK-owned `honua-gp` runtime is retained, not deprecated by this move. |
+| Python script migration | `honua_sdk.migration`, `python -m honua_sdk.migration`, and the SDK-installed `honua-migrate` entry point. | `honua-migrate code python` and the updated SDK migration entry points. | Breaking cutover: renamed imports have no legacy aliases and report schemas change to v2. Coordinate releases and update consumers before upgrading. The SDK-owned `honua-gp` runtime remains supported. |
 | MAUI | Source invocation through `honua-mobile/tools/Honua.Migrate.Maui.Cli`. | Installed `honua-migrate-maui` tool published from this repository. | Duplicate implementation may be removed after the common window and former-repository validation passes. Transition documentation and its validation lane remain. |
-| ArcGIS services | Hand-written operator sequences that directly drive Honua Server import and job endpoints. | `honua-migrate services arcgis` discover/plan/apply/job commands. | Operator sequences are retired by the documentation cutover once the CLI is usable. The versioned server APIs are retained and have no removal date under this policy. |
+| GeoServices REST services | Hand-written operator sequences that directly drive Honua Server import and job endpoints. | `honua-migrate services arcgis` discover/plan/apply/job commands. | Operator sequences are retired by the documentation cutover once the CLI is usable. The versioned server APIs are retained and have no removal date under this policy. |
 | GeoServer | Hand-written operator sequences that directly drive Honua Server GeoServer scan/import/job endpoints. | `honua-migrate services geoserver` scan/plan/apply/job commands. | Operator sequences are retired by the documentation cutover once the CLI is usable. The versioned server APIs are retained and have no removal date under this policy. |
 | Portal content | Content and web-map commands sourced and released from `honua-sdk-js`. | The JavaScript package released here and currently exposed through `honua-js-migrate content`; the unified Python content group remains reserved. | Existing package commands keep compatible artifacts through the common window; former-repository implementation is then replaced by the tested shim. |
 | Reconciliation | JavaScript SDK migration `reconcile` commands and direct operator use of server evidence endpoints. | `honua-js-migrate reconcile` for JavaScript comparison plus the unified `honua-migrate reconcile` run/evidence surface. | CLI aliases follow the common window. Versioned SDK/server query and evidence APIs remain owned and versioned by their repositories. |
