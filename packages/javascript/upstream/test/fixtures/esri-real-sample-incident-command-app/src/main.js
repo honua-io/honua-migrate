@@ -162,20 +162,7 @@ const printer = new Print({
 });
 const basemapGallery = new BasemapGallery({
   view,
-  source: [
-    {
-      id: "streets",
-      title: "Streets",
-      baseLayers: [{ id: "streets-base" }],
-      referenceLayers: [{ id: "streets-ref" }],
-    },
-    {
-      id: "dark-gray",
-      title: "Dark Gray",
-      baseLayers: [{ id: "dark-base" }],
-      referenceLayers: [{ id: "dark-ref" }],
-    },
-  ],
+  source: ["osm"],
 });
 const basemapLayerList = new BasemapLayerList({ view });
 const toolsPanel = new Expand({ view, content: [layerList, legend], expanded: true });

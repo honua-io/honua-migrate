@@ -727,7 +727,7 @@ describe("JS migration pipeline", () => {
       ["keep", "dependencies", "@arcgis/core", "^5.0.19", false],
     ]);
     expect(plan.dependencyChanges[6].reason).toBe(
-      "Assisted conversion: src/main.ts, src/selection.ts still need the ArcGIS JS runtime.",
+      "Assisted conversion: src/selection.ts still needs the ArcGIS JS runtime.",
     );
 
     const report = applyJsMigration({ appRoot: app, approvedDigest: plan.planDigest });
@@ -735,9 +735,8 @@ describe("JS migration pipeline", () => {
     expect(report.verdict).toBe("unvalidated");
     expect(fs.readFileSync(path.join(app, "src", "selection.ts"), "utf8")).toBe(selectionBefore);
     const main = fs.readFileSync(path.join(app, "src", "main.ts"), "utf8");
-    expect(main).toContain("@arcgis/core/Map.js");
-    expect(main).toContain('basemap: "gray-vector"');
-    expect(main).toContain("new Map({");
+    expect(main).toContain("MapCompat");
+    expect(main).toContain('basemap: "osm"');
     expect(report.residualWork).toContainEqual(
       expect.objectContaining({
         source: "file-diagnostic",

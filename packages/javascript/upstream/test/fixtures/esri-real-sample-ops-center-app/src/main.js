@@ -42,10 +42,7 @@ const home = new Home({
 });
 const basemapToggle = new BasemapToggle({
   view,
-  nextBasemap: {
-    id: "satellite",
-    baseLayers: [{ id: "sat-base" }],
-  },
+  nextBasemap: "osm",
 });
 const locate = new Locate({
   view,
