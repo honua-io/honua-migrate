@@ -119,8 +119,7 @@ const COMPAT_ADDITIONS: Array<[string, string, string, string, boolean]> = [
   ["add", "dependencies", "maplibre-gl", "^6.4.1", false],
 ];
 
-const MAP_ONLY_SOURCE =
-  'import Map from "@arcgis/core/Map";\n\nexport const map = new Map({ basemap: "osm" });\n';
+const MAP_ONLY_SOURCE = 'import Map from "@arcgis/core/Map";\n\nexport const map = new Map({ basemap: "osm" });\n';
 
 describe("JS migration pipeline", () => {
   it("pins generated runtimes to the tested stable dependency floor", () => {
@@ -728,21 +727,35 @@ describe("JS migration pipeline", () => {
       ["keep", "dependencies", "@arcgis/core", "^5.0.19", false],
     ]);
     expect(plan.dependencyChanges[6].reason).toBe(
-      "Assisted conversion: src/selection.ts still needs the ArcGIS JS runtime.",
+      "Assisted conversion: src/main.ts, src/selection.ts still need the ArcGIS JS runtime.",
     );
 
     const report = applyJsMigration({ appRoot: app, approvedDigest: plan.planDigest });
 
     expect(report.verdict).toBe("unvalidated");
     expect(fs.readFileSync(path.join(app, "src", "selection.ts"), "utf8")).toBe(selectionBefore);
+    const main = fs.readFileSync(path.join(app, "src", "main.ts"), "utf8");
+    expect(main).toContain("@arcgis/core/Map.js");
+    expect(main).toContain('basemap: "gray-vector"');
+    expect(main).toContain("new Map({");
+    expect(report.residualWork).toContainEqual(
+      expect.objectContaining({
+        source: "file-diagnostic",
+        file: "src/main.ts",
+        code: "manual-call-site",
+        message: expect.stringContaining("Basemap source is named, dynamic, or otherwise unverified"),
+      }),
+    );
     // selection.ts keeps its four type-only imports (Graphic, Point, FeatureLayer, MapView).
     expect(report.arcgisRuntime).toEqual({
-      moduleSites: 4,
+      moduleSites: 5,
       dependencies: ["@arcgis/core"],
       widgetSitesOnArcGisRuntime: 0,
       required: true,
     });
     expect(report.residualWork.map((item) => [item.source, item.file ?? null, item.code ?? null])).toEqual([
+      ["file-diagnostic", "src/main.ts", "import-left-in-place"],
+      ["file-diagnostic", "src/main.ts", "manual-call-site"],
       ["file-diagnostic", "src/selection.ts", "import-left-in-place"],
       ["file-diagnostic", "src/selection.ts", "import-left-in-place"],
       ["file-diagnostic", "src/selection.ts", "import-left-in-place"],
