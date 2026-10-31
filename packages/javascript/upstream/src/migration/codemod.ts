@@ -1762,6 +1762,31 @@ function codemodFile(
       importsByLocalName.set(importBinding.localName, importBinding);
     }
   }
+  // The loader rewrite substitutes imports without registering their local bindings as
+  // ordinary imports. Track direct awaited loader bindings so their constructors are
+  // checked before a compatibility source is reported as ready.
+  const dollarBasemapBindings = new Map<string, CodemodConstructorKind>();
+  walk(sourceFile, (node) => {
+    if (!ts.isVariableDeclaration(node) || !node.initializer || !ts.isAwaitExpression(node.initializer)) return;
+    const call = node.initializer.expression;
+    if (!ts.isCallExpression(call) || !isArcGisDollarImportCall(call)) return;
+    const specifiers = dollarImportSpecifiers(call);
+    if (!specifiers) return;
+    const names = ts.isArrayBindingPattern(node.name)
+      ? node.name.elements.map((element) =>
+          ts.isBindingElement(element) && ts.isIdentifier(element.name) ? element.name.text : undefined,
+        )
+      : ts.isIdentifier(node.name)
+        ? [node.name.text]
+        : [];
+    for (let index = 0; index < specifiers.length; index++) {
+      const canonical = canonicalArcGisModulePath(specifiers[index]);
+      const spec = MODULE_TO_SPEC.get(canonical) ?? MODULE_TO_SPEC.get(`${canonical}.js`);
+      if (names[index] && spec && ["map", "web-map", "basemap"].includes(spec.kind)) {
+        dollarBasemapBindings.set(names[index] as string, spec.kind);
+      }
+    }
+  });
   const shadowedImportLocalNames = collectShadowedImportLocalNames(sourceFile, new Set(importsByLocalName.keys()));
   const identifierMemberUsage = buildIdentifierMemberUsageIndex(sourceFile);
   const trackedReceiverKeys = collectTrackedCompatReceiverKeys(sourceFile, importsByLocalName);
@@ -1929,6 +1954,23 @@ function codemodFile(
 
   walk(sourceFile, (node) => {
     if (target === "honua-compat") {
+      if (ts.isNewExpression(node) && ts.isIdentifier(node.expression)) {
+        const kind = dollarBasemapBindings.get(node.expression.text);
+        if (kind) {
+          const outcome = isSafeConstructorCall(kind, node, target);
+          if (!outcome.ok) {
+            const location = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+            manualTodos.push({
+              kind,
+              file,
+              line: location.line + 1,
+              column: location.character + 1,
+              reason: outcome.reason,
+              difficulty: "moderate",
+            });
+          }
+        }
+      }
       let value: ts.Expression | undefined;
       let needsCheck = false;
       if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
