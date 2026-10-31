@@ -1,7 +1,7 @@
 # honua-migrate: agent instructions
 
 Apache-2.0 migration CLI. `src/honua_migrate/` is the `honua-migrate` command (assessment,
-planning, code migration, service import); `src/honua_esri_assess/` is the read-only Esri
+planning, code migration, service import); `src/honua_esri_assess/` is the read-only
 assessment it mounts as `honua-migrate assess`, also shipped as the `honua-esri-assess`
 compatibility command. `packages/javascript` and `packages/maui` are separately gated
 runtime packages. Default branch is `trunk`.
@@ -20,7 +20,7 @@ JavaScript package: `cd packages/javascript && npm ci && npm test && npm run lin
 tool's .NET gate is the `dotnet` job in `ci.yml`.
 
 ## Hard constraints
-- Assessment (`honua_esri_assess`, `honua-migrate assess`) is strictly read-only against Esri
+- Assessment (`honua_esri_assess`, `honua-migrate assess`) is strictly read-only against source
   systems: HTTP `GET` only, no write helpers in its HTTP wrappers. Write-capable target
   operations live only under `honua_migrate`, behind a reviewable plan and an explicit apply gate.
 - No network telemetry, usage pings, crash uploads or update checks, and no opt-in sink.
@@ -28,8 +28,8 @@ tool's .NET gate is the `dotnet` job in `ci.yml`.
 - `EsriFootprint.json` is the sole supported handoff into the closed Honua product. Never write
   credentials, tokens, query strings or URL userinfo into the artifact, diagnostics, cache keys
   or logs. Tokens come only from `--token-env VAR`; there is deliberately no `--token` flag.
-- Esri IP: proprietary formats are clean-room only (published specs, GDAL `OpenFileGDB`; never
-  decompile or run licensed Esri software to learn internals), never rehost Esri-licensed data,
+- Third-party IP: proprietary formats are clean-room only (published specs, GDAL `OpenFileGDB`; never
+  decompile or run licensed third-party software to learn internals), never rehost licensed third-party data,
   never embed proprietary symbols or fonts, and get counsel sign-off before publishing any
   benchmark. Read `docs/compliance/esri-ip-and-licensing-guardrails.md` before touching a format
   reader or a comparison.

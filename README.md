@@ -11,8 +11,8 @@
 > [assessment transition policy](docs/assessment-transition.md).
 
 An Apache-2.0 migration command-line suite whose **read-only assessment
-surface** inventories an organization's Esri
-footprint — ArcGIS Online, ArcGIS Server / Enterprise, and FileGDB workspaces —
+surface** inventories an organization's portal, GeoServices REST server,
+and FileGDB workspaces
 and produces a versioned `EsriFootprint.json` artifact plus human-readable
 Markdown reports: a readiness report, a per-shop-profile migratability
 verdict, and a crosswalk from that footprint to Honua capability keys. It
@@ -26,7 +26,7 @@ every line before pointing it at production.
 The assessment surface is built for skeptical review. The guarantees below
 are enforced in code and by tests in this repository — not just promised:
 
-- **Strictly read-only assessment.** Every request against an Esri system is an HTTP
+- **Strictly read-only assessment.** Every request against a source system is an HTTP
   `GET`. The HTTP wrappers expose no write helpers; no `POST`/`PUT`/`DELETE`/
   `PATCH` is ever issued.
 - **No network telemetry.** No usage pings, crash uploads, or update checks —
@@ -44,7 +44,7 @@ are enforced in code and by tests in this repository — not just promised:
 - **Secrets never leak into outputs.** Tokens, query strings, and URL userinfo
   are redacted from logs and are never written into artifacts or diagnostics.
 - **It never opens your databases.** Storage information comes from documented
-  ArcGIS REST metadata only — no ArcSDE/DBMS connections, no GDB internals.
+  source REST metadata only — no database connections, no GDB internals.
 - **Everything stays on your machine.** Artifacts are written to local files
   (or stdout). Nothing is uploaded anywhere.
 
@@ -81,12 +81,12 @@ cd honua-migrate
 python3 -m pip install .
 ```
 
-Scan an ArcGIS Online org (anonymous scans work too — just omit the token):
+Scan a portal organization (anonymous scans work too — just omit the token):
 
 ```bash
 export AGOL_TOKEN="..."   # optional, pre-existing token
 honua-migrate assess scan agol \
-  --target https://yourorg.maps.arcgis.com/sharing/rest \
+  --target https://portal.example.com/sharing/rest \
   --token-env AGOL_TOKEN \
   --output EsriFootprint.json \
   --validate
@@ -116,8 +116,8 @@ available. Every assessment `scan` subcommand is read-only against the target.
 
 | Command | What it does |
 |---------|--------------|
-| `scan agol` | Inventory an ArcGIS Online / Portal org via the Portal Sharing REST API. |
-| `scan server` | Walk an ArcGIS Server REST catalog (folders, services, layer detail). |
+| `scan agol` | Inventory a portal organization via the Portal Sharing REST API. |
+| `scan server` | Walk a GeoServices REST server catalog (folders, services, layer detail). |
 | `scan filegdb` | Read a local FileGDB inventory descriptor (`_inventory.json`); no network. |
 | `scan filegdb-workspace` | Read-only `pyogrio`/GDAL metadata scan of a local `.gdb` directory (requires the `filegdb` extra). |
 | `scan rbac` | Export identity/RBAC posture (users, roles, groups, per-service permissions) to the sibling `EsriAccessFootprint.json`. |
@@ -173,7 +173,7 @@ It emits:
 assess-registry capability the footprint triggers ends up in `honua-caps.json`
 one of two ways: mapped into `capabilities`, or listed in `unmapped` with a
 `reason` of `"unmapped"` (known capability, no capability-key mapping yet) or
-`"not-supported"` (a hard Esri lock-in such as Utility Network, Parcel
+`"not-supported"` (a source-specific dependency such as Utility Network, Parcel
 Fabric, or LRS — there is no Honua equivalent, by design).
 
 ### Draft crosswalk (temporary)
@@ -217,11 +217,11 @@ mapping nothing.
 
 | Source | Target (`--target`) | Notes |
 |--------|---------------------|-------|
-| ArcGIS Online / Portal | Sharing REST base, e.g. `https://yourorg.maps.arcgis.com/sharing/rest` | The scanner appends `portals/self`, `search`, `community/groups`, `content/items/<id>` to this base; a higher-level portal URL yields `partial-coverage` diagnostics instead of an inventory. |
-| ArcGIS Server | `https://host`, `https://host/arcgis`, `…/arcgis/rest`, or `…/arcgis/rest/services` — canonicalized internally | Deep layer probes run for `MapServer`/`FeatureServer`/`ImageServer`/`SceneServer`/`StreamServer`; other service types are recorded from the catalog walk. Add `--admin-usage` (admin token required) to also read `/admin/usagereports` and `/admin/data/items` for usage-ranked ordering and datastore binding modes — it degrades to a diagnostic if denied. |
+| Portal | Sharing REST base, e.g. `https://portal.example.com/sharing/rest` | The scanner appends `portals/self`, `search`, `community/groups`, `content/items/<id>` to this base; a higher-level portal URL yields `partial-coverage` diagnostics instead of an inventory. |
+| GeoServices REST server | `https://host` — canonicalized internally | Deep layer probes run for `MapServer`/`FeatureServer`/`ImageServer`/`SceneServer`/`StreamServer`; other service types are recorded from the catalog walk. Add `--admin-usage` (admin token required) to also read `/admin/usagereports` and `/admin/data/items` for usage-ranked ordering and datastore binding modes — it degrades to a diagnostic if denied. |
 | FileGDB (descriptor) | Directory containing `_inventory.json`, or the descriptor file itself | Local filesystem only. |
 | FileGDB (workspace) | A local `.gdb` directory | Uses optional `pyogrio`/GDAL read-only metadata calls (`pip install ".[filegdb]"`). Without the extra, the command still exits 0 and records a `partial-coverage` diagnostic. Also available as the `honua_esri_assess.filegdb.scan_filegdb_workspace` library function. |
-| RBAC / access | Portal Sharing REST base (`--kind portal`, default) or ArcGIS Server admin URL (`--kind server`) | Writes `EsriAccessFootprint.json` (defaults to stdout). |
+| RBAC / access | Portal Sharing REST base (`--kind portal`, default) or source server admin URL (`--kind server`) | Writes `EsriAccessFootprint.json` (defaults to stdout). |
 
 Transient upstream failures (`429`, `502`, `503`, `504`) are retried with
 capped exponential backoff honoring `Retry-After`; per-endpoint failures
@@ -331,15 +331,7 @@ The server input is a GeoJSON geometry or base64 WKB, an integer `srid`, and a
 positive numeric distance. Pass the API key by environment variable name. The
 value is not a command argument and is omitted from the artifact:
 
-```python
-import arcpy
-arcpy.analysis.Buffer(
-    {"type": "Point", "coordinates": [0.0, 0.0]},
-    "buffered",
-    10,
-    srid=4326,
-)
-```
+Given a supported source script `buffer.py` that supplies those literal inputs:
 
 ```bash
 python -m honua_migrate code python run buffer.py \
@@ -420,7 +412,7 @@ is not an opt-in and changes no behavior.
 ```bash
 python3 -m pip install -e ".[dev]"
 pytest                    # full suite
-pytest tests/smoke -v     # fixture-backed end-to-end pipeline, no live Esri system
+pytest tests/smoke -v     # fixture-backed end-to-end pipeline, no live source system
 ruff check && mypy
 ```
 
@@ -433,7 +425,7 @@ fixture layout and refresh protocol. Additional developer docs:
 [entitlement enumeration library](docs/entitlements.md)
 (`honua_esri_assess.entitlements`).
 
-Esri IP & licensing posture (clean-room formats via GDAL/community readers, no
+IP and licensing posture (clean-room formats via GDAL/community readers, no
 rehosting of licensed data, no embedded proprietary assets) is documented in
 [`docs/compliance/esri-ip-and-licensing-guardrails.md`](docs/compliance/esri-ip-and-licensing-guardrails.md).
 
@@ -446,7 +438,7 @@ invocation path are documented in the
 
 ## Related Honua projects
 
-- [honua-server](https://github.com/honua-io/honua-server) — the flagship multi-protocol geospatial server (GeoServices REST, OGC API, WMS/WFS/WMTS/WCS, STAC, vector tiles, and more) with protocol-level compatibility for selected, operation-scoped Esri client workflows, bounded by its published [compatibility matrix](https://github.com/honua-io/honua-server/blob/trunk/docs/reference/compatibility/geoservices-parity.md) and [certified client envelope](https://github.com/honua-io/honua-server/blob/trunk/docs/gis/CLIENT_CERTIFICATION_ROSTER.md); the migration target this tool sizes.
+- [honua-server](https://github.com/honua-io/honua-server) — the flagship multi-protocol geospatial server (GeoServices REST, OGC API, WMS/WFS/WMTS/WCS, STAC, vector tiles, and more) with protocol-level compatibility for selected, operation-scoped client workflows, bounded by its published [compatibility matrix](https://github.com/honua-io/honua-server/blob/trunk/docs/reference/compatibility/geoservices-parity.md) and [certified client envelope](https://github.com/honua-io/honua-server/blob/trunk/docs/gis/CLIENT_CERTIFICATION_ROSTER.md); the migration target this tool sizes.
 - [honua-console](https://github.com/honua-io/honua-console) — unified web console (Studio, Catalog, Operate, Share).
 - [honua-helm](https://github.com/honua-io/honua-helm) — Helm chart, the Kubernetes deploy path.
 - [geobench](https://github.com/honua-io/geobench) — open, vendor-neutral benchmark suite for geospatial servers.
