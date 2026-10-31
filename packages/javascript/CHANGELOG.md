@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1-beta.0](https://github.com/honua-io/honua-migrate/compare/javascript-v0.3.0-beta.0...javascript-v0.3.1-beta.0) (2026-10-31)
+
+
+### Bug Fixes
+
+* **js-migration:** restore non-ASCII characters lost in the engine import ([#208](https://github.com/honua-io/honua-migrate/issues/208)) ([beba9a8](https://github.com/honua-io/honua-migrate/commit/beba9a845c5461e70fe98ed4553be99629293643))
+
 ## [0.3.0-beta.0](https://github.com/honua-io/honua-migrate/compare/javascript-v0.2.0-beta.0...javascript-v0.3.0-beta.0) (2026-10-18)
 
 
