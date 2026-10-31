@@ -4,7 +4,7 @@ import DistanceMeasurement2D from "@arcgis/core/widgets/DistanceMeasurement2D";
 import AreaMeasurement2D from "@arcgis/core/widgets/AreaMeasurement2D";
 
 const map = new Map({
-  basemap: "streets-vector",
+  basemap: "osm",
 });
 
 const view = new MapView({

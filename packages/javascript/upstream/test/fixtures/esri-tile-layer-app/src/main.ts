@@ -7,7 +7,7 @@ const tiled = new TileLayer({
 });
 
 const map = new Map({
-  basemap: "gray-vector",
+  basemap: "osm",
   layers: [tiled],
 });
 

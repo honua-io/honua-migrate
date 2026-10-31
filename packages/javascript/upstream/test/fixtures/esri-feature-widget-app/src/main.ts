@@ -3,7 +3,7 @@ import MapView from "@arcgis/core/views/MapView";
 import Feature from "@arcgis/core/widgets/Feature";
 
 const map = new Map({
-  basemap: "streets-vector",
+  basemap: "osm",
 });
 
 const view = new MapView({

@@ -3,7 +3,7 @@ import MapView from "@arcgis/core/views/MapView";
 import Swipe from "@arcgis/core/widgets/Swipe";
 
 const map = new Map({
-  basemap: "streets-vector",
+  basemap: "osm",
 });
 
 const view = new MapView({

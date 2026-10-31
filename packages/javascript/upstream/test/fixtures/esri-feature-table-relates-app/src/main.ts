@@ -9,7 +9,7 @@ const layer = new FeatureLayer({
 });
 
 const map = new Map({
-  basemap: "streets-vector",
+  basemap: "osm",
   layers: [layer],
 });
 
