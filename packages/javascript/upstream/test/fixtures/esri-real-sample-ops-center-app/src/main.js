@@ -21,11 +21,7 @@ const parcelsLayer = new FeatureLayer({
 });
 
 const map = new Map({
-  basemap: {
-    id: "streets",
-    baseLayers: [{ id: "base-1" }],
-    referenceLayers: [{ id: "ref-1" }],
-  },
+  basemap: "osm",
   layers: [parcelsLayer],
   tables: [{ id: "parcels-table" }],
 });

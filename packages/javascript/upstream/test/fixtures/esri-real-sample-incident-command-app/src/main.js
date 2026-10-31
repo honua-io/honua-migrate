@@ -59,12 +59,7 @@ const routeLayer = new RouteLayer({
 });
 
 const map = new Map({
-  basemap: {
-    id: "streets",
-    title: "Streets",
-    baseLayers: [{ id: "streets-base" }],
-    referenceLayers: [{ id: "streets-ref" }],
-  },
+  basemap: "osm",
   layers: [tileLayer, operationsLayer, incidentsLayer, zoningLayer, routeLayer],
   tables: [{ id: "incidents-table" }, { id: "operations-table" }],
 });

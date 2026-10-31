@@ -25,7 +25,7 @@ const routeLayer = new RouteLayer({
 });
 
 const map = new Map({
-  basemap: "gray-vector",
+  basemap: "osm",
   layers: [tileLayer, mapImage, routeLayer],
 });
 const view = new MapView({
