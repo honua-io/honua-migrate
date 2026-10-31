@@ -1,8 +1,8 @@
-"""Enumerate hard Esri lock-ins (Utility Network, Parcel Fabric, LRS) with extent.
+"""Enumerate source-specific dependencies (Utility Network, Parcel Fabric, LRS) with extent.
 
-The migratability verdict flags these three Esri capabilities as hard lock-ins
+The migratability verdict flags these three source capabilities as hard dependencies
 that never migrate. This module turns a *bare flag* into an *enumeration*: given
-an already-fetched, read-only ArcGIS Server service body, it detects which (if
+an already-fetched, read-only source server service body, it detects which (if
 any) hard lock-ins the service carries and records their extent — counts of
 Utility Network feature classes / domain networks / rules, Parcel Fabric feature
 classes, and LRS networks — so the verdict can report ``UN: N feature classes``
@@ -52,7 +52,7 @@ def enumerate_lock_ins(
         The already-fetched service metadata JSON (a deep-probe body). Only
         documented read-only fields are read.
     service_type:
-        Raw Esri ``serviceType`` string; used as a fallback signal for the
+        Raw source ``serviceType`` string; used as a fallback signal for the
         dedicated lock-in server types (``UtilityNetworkServer``, ...).
     layer_count:
         Number of layers observed for the service. Used as the feature-class

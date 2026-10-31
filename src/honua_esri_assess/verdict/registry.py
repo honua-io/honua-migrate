@@ -1,9 +1,9 @@
-"""Capability registry mapping Esri footprint signals to migratability tiers.
+"""Capability registry mapping assessment footprint signals to migratability tiers.
 
 The registry is the static source of truth that the verdict engine consults.
 Each :class:`CapabilityEntry` describes a capability Honua either supports
 (``go``), supports with caveats / partial fidelity (``conditional``), or cannot
-take today (``no-go``). The ``no-go`` tier covers the hard Esri lock-ins
+take today (``no-go``). The ``no-go`` tier covers the source-specific dependencies
 (Utility Network, Parcel Fabric, Linear Referencing / LRS) that must always be
 surfaced as explicit boundaries and never silently dropped.
 
@@ -47,7 +47,7 @@ class CapabilityEntry:
         server_types: Server ``serviceType`` strings that imply this capability.
         capability_tokens: Per-service ``capabilities`` tokens (case-insensitive)
             that imply this capability.
-        hard_lock_in: When true, this capability is an Esri hard lock-in that
+        hard_lock_in: When true, this capability is a source-specific dependency that
             must be surfaced as an explicit boundary even on a "go"/"conditional"
             shop verdict (never silently dropped).
         boundary: Plain-language description of the migration boundary, used when
@@ -185,7 +185,7 @@ CAPABILITY_REGISTRY: tuple[CapabilityEntry, ...] = (
             "transfer as-is."
         ),
     ),
-    # --- no-go: hard Esri lock-ins (NEVER silently dropped) --------------
+    # --- no-go: source-specific dependencies (NEVER silently dropped) --------------
     CapabilityEntry(
         key="utility-network",
         label="Utility Network",
@@ -195,7 +195,7 @@ CAPABILITY_REGISTRY: tuple[CapabilityEntry, ...] = (
         capability_tokens=_ci({"UtilityNetwork", "UtilityNetworkVersionManagement"}),
         hard_lock_in=True,
         boundary=(
-            "Utility Network is a hard Esri lock-in: the network topology, rules, "
+            "Utility Network is a source-specific dependency: the network topology, rules, "
             "and trace engine do not migrate. Federate-only or no-go."
         ),
         profiles=frozenset({"utility"}),
@@ -209,7 +209,7 @@ CAPABILITY_REGISTRY: tuple[CapabilityEntry, ...] = (
         capability_tokens=_ci({"ParcelFabric"}),
         hard_lock_in=True,
         boundary=(
-            "Parcel Fabric is a hard Esri lock-in: the fabric topology and record "
+            "Parcel Fabric is a source-specific dependency: the fabric topology and record "
             "lineage do not migrate. Parcels move as features only. Federate-only "
             "or no-go."
         ),
@@ -224,7 +224,7 @@ CAPABILITY_REGISTRY: tuple[CapabilityEntry, ...] = (
         capability_tokens=_ci({"LRS", "LinearReferencing", "LocationReferencing"}),
         hard_lock_in=True,
         boundary=(
-            "Linear Referencing System (LRS) is a hard Esri lock-in: route/measure "
+            "Linear Referencing System (LRS) is a source-specific dependency: route/measure "
             "calibration and event behaviors do not migrate. Federate-only or no-go."
         ),
         profiles=frozenset({"utility", "gov"}),

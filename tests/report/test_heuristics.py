@@ -106,9 +106,9 @@ def test_migration_order_places_data_before_maps_and_apps() -> None:
 
     assert group_titles == [
         "FileGDB feature classes",
-        "ArcGIS Server feature services",
-        "AGOL web maps",
-        "AGOL web apps, dashboards, and experiences",
+        "GeoServices REST server feature services",
+        "Portal web maps",
+        "Portal web apps, dashboards, and experiences",
         "Other or unknown item types",
     ]
 

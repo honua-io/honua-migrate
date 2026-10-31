@@ -1,4 +1,4 @@
-"""Read-only HTTP wrapper around the ArcGIS Server REST API.
+"""Read-only HTTP wrapper around a GeoServices REST server API.
 
 The client deliberately exposes no write helpers: every call is a ``GET``
 of the documented REST surface. This makes the read-only constraint a
@@ -133,7 +133,7 @@ def _rest_root_to_info_url(rest_root: str) -> str:
 
 
 class ServerClient:
-    """Thin ``GET``-only wrapper around the ArcGIS Server REST API.
+    """Thin ``GET``-only wrapper around a GeoServices REST server API.
 
     The client owns base-URL normalization, credential application, retry
     policy, and HTTP-to-typed-diagnostic mapping. It does not own catalog
@@ -217,7 +217,7 @@ class ServerClient:
         """``GET`` *url* with ``f=json`` and credential params merged in.
 
         Returns the parsed JSON body on success; raises a typed
-        :class:`AssessmentError` subclass otherwise. The Esri error
+        :class:`AssessmentError` subclass otherwise. The source error
         envelope (``{"error": {...}}``) is also surfaced as a typed
         error even when HTTP status is 200.
         """
@@ -245,7 +245,7 @@ class ServerClient:
                 )
             except requests.exceptions.RequestException as exc:
                 raise ServerConnectionError(
-                    f"could not reach ArcGIS Server: {type(exc).__name__}",
+                    f"could not reach the source server: {type(exc).__name__}",
                     context={"url": safe},
                 ) from None
 
@@ -270,32 +270,32 @@ class ServerClient:
         # Map terminal HTTP status to typed errors.
         if status == 401:
             raise ServerAuthError(
-                "ArcGIS Server rejected the supplied credential (HTTP 401)",
+                "The source server rejected the supplied credential (HTTP 401)",
                 context={"url": safe, "status": 401},
             )
         if status == 403:
             raise ServerForbiddenError(
-                "ArcGIS Server refused access to the requested resource (HTTP 403)",
+                "The source server refused access to the requested resource (HTTP 403)",
                 context={"url": safe, "status": 403},
             )
         if status == 404:
             raise ServerNotFoundError(
-                "ArcGIS Server returned 404 for the requested resource",
+                "The source server returned 404 for the requested resource",
                 context={"url": safe, "status": 404},
             )
         if status == 429:
             raise ServerRateLimitedError(
-                "ArcGIS Server rate-limited the scanner after retries (HTTP 429)",
+                "The source server rate-limited the scanner after retries (HTTP 429)",
                 context={"url": safe, "status": 429},
             )
         if status >= 500:
             raise ServerConnectionError(
-                f"ArcGIS Server returned a server-side error (HTTP {status})",
+                f"The source server returned a server-side error (HTTP {status})",
                 context={"url": safe, "status": status},
             )
         if status >= 400:
             raise ServerApiError(
-                f"ArcGIS Server returned HTTP {status}",
+                f"The source server returned HTTP {status}",
                 context={"url": safe, "status": status},
             )
 
@@ -303,16 +303,16 @@ class ServerClient:
             body = response.json()
         except ValueError as exc:
             raise ServerApiError(
-                "ArcGIS Server response did not parse as JSON",
+                "The source server response did not parse as JSON",
                 context={"url": safe, "status": status, "reason": type(exc).__name__},
             ) from None
 
-        # ArcGIS commonly returns HTTP 200 with an embedded error envelope.
+        # The source may return HTTP 200 with an embedded error envelope.
         if isinstance(body, dict) and isinstance(body.get("error"), dict):
             err = body["error"]
             esri_code = err.get("code") if isinstance(err.get("code"), int) else None
             raw_message = err.get("message") if isinstance(err.get("message"), str) else None
-            message = sanitize_message(raw_message, fallback="ArcGIS Server returned an error")
+            message = sanitize_message(raw_message, fallback="The source server returned an error")
             ctx = {"url": safe, "esriCode": esri_code}
             if esri_code in _AUTH_ERROR_CODES or esri_code == 401:
                 raise ServerAuthError(message, context=ctx)
@@ -326,7 +326,7 @@ class ServerClient:
 
         if not isinstance(body, dict):
             raise ServerApiError(
-                "ArcGIS Server response was not a JSON object",
+                "The source server response was not a JSON object",
                 context={"url": safe, "status": status},
             )
         return body

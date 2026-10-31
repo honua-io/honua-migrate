@@ -1,4 +1,4 @@
-"""Read-only ArcGIS Server REST scanner."""
+"""Read-only GeoServices REST server scanner."""
 
 from .auth import AnonymousCredential, Credential, TokenCredential
 from .client import RetryPolicy, ServerClient

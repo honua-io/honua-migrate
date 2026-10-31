@@ -38,7 +38,7 @@ _REDACTED_QUERY_KEYS = frozenset(
 def safe_url(url: str) -> str:
     """Return ``url`` with credential-bearing pieces redacted.
 
-    Esri admin endpoints typically take a ``?token=`` query parameter, and
+    Source admin endpoints typically take a ``?token=`` query parameter, and
     re-running the scanner with logging enabled would otherwise leak the
     token into log files. This helper strips those values, userinfo, and
     admin path tails before any log line, cache key, or error message uses
@@ -180,5 +180,5 @@ class RequestsHttpClient:
             try:
                 body = json.loads(raw.decode("utf-8"))
             except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-                raise ValueError(f"non-JSON response from Esri endpoint: {exc}") from exc
+                raise ValueError(f"non-JSON response from source endpoint: {exc}") from exc
         return HttpResponse(status_code=status, body=body)

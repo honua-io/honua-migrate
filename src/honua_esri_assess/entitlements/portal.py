@@ -249,7 +249,7 @@ def _interpret_response(
                     Diagnostic(
                         code="missing-permission",
                         severity="warn",
-                        message="Esri endpoint returned forbidden; continuing without it.",
+                        message="Source endpoint returned forbidden; continuing without it.",
                         scope=scope,
                     )
                 )

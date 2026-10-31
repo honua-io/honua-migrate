@@ -1,11 +1,11 @@
 """Functional content-type classification for Portal Sharing items.
 
-Portal items expose a coarse Esri ``type`` (e.g. ``Web Mapping Application``)
+Portal items expose a coarse source ``type`` (e.g. ``Web Mapping Application``)
 plus a ``typeKeywords`` list that disambiguates the functional product behind a
 given type (Web AppBuilder vs. Experience Builder vs. an Instant App all share
 the ``Web Mapping Application`` type, for example). This module maps that pair
 onto a small, stable vocabulary of *functional categories* so the footprint can
-report what a shop actually runs rather than the raw Esri type label.
+report what a shop actually runs rather than the raw source type label.
 
 The mapping is intentionally shallow: it only consumes ``type`` and
 ``typeKeywords`` already returned by ``search`` / ``content/items/<id>`` and
@@ -59,7 +59,7 @@ def classify_item(
 ) -> str:
     """Return the functional category for a Portal item.
 
-    Classification consumes only the Esri ``type`` and ``typeKeywords`` already
+    Classification consumes only the source ``type`` and ``typeKeywords`` already
     present on a scanned item. Unrecognized combinations return
     :data:`CATEGORY_UNKNOWN` so unknown content is recorded explicitly.
     """

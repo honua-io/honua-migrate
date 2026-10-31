@@ -1,4 +1,4 @@
-"""Catalog-walk orchestrator for the ArcGIS Server scanner.
+"""Catalog-walk orchestrator for the source server scanner.
 
 The scanner is intentionally pure on top of :class:`ServerClient`: it does
 no HTTP itself, it composes ``get_*`` calls and aggregates results into a
@@ -48,7 +48,7 @@ LAYER_DETAIL_TYPES: frozenset[str] = frozenset({"MapServer", "FeatureServer"})
 
 
 class ServerScanner:
-    """Walk an ArcGIS Server catalog and return a typed scan result.
+    """Walk a source server catalog and return a typed scan result.
 
     Parameters
     ----------
@@ -215,7 +215,7 @@ class ServerScanner:
                     code="server.folder.nested",
                     severity="warning",
                     message=(
-                        f"folder {folder_name!r} reported nested folders; ArcGIS Server REST "
+                        f"folder {folder_name!r} reported nested folders; the source REST API "
                         "does not nest — ignored to prevent recursion."
                     ),
                     field=f"folders/{folder_name}",
@@ -324,7 +324,7 @@ class ServerScanner:
                 service_data_type = _stringify(body.get("serviceDataType"))
                 if "singleFusedMapCache" in body:
                     single_fused_map_cache = bool(body.get("singleFusedMapCache"))
-                # Enumerate hard Esri lock-ins (Utility Network / Parcel Fabric /
+                # Enumerate source-specific dependencies (Utility Network / Parcel Fabric /
                 # LRS) with extent from the deep-probe body so the verdict can
                 # report counts, not just presence. Read-only metadata only.
                 lock_ins = enumerate_lock_ins(
@@ -481,7 +481,7 @@ def _parse_layers(value: Any) -> Iterable[LayerRecord]:
 def _parse_gp_tasks(value: Any) -> tuple[str, ...]:
     """Extract GPServer task names from a service body's ``tasks`` array.
 
-    ArcGIS publishes a GPServer's geoprocessing tasks as a flat array of
+    The source publishes a GPServer's geoprocessing tasks as a flat array of
     task-name strings. Entries are de-duplicated and ordered for determinism;
     non-string and empty entries are ignored. No task resource is fetched —
     only the names already present on the service body are read.

@@ -34,7 +34,7 @@ treat every field as read-only.
 | `log_format` | `str` | `"text"` or `"json"`. Logging is configured by the CLI before the handler runs. |
 | `log_level` | `str` | Standard log level name. |
 | `no_network_telemetry_confirm` | `bool` | Audit acknowledgement; not a telemetry opt-in. |
-| `user_agent` | `str` | User-Agent header to use on Esri GET requests. |
+| `user_agent` | `str` | User-Agent header to use on source GET requests. |
 | `max_retries` | `int` | Maximum retries for read-only network calls. |
 | `timeout` | `float` | HTTP timeout in seconds. |
 | `validate` | `bool` | Whether `--validate` was set; the CLI handles validation. |
@@ -46,9 +46,9 @@ environment variable into `ScanOptions.token` and never exposes a plaintext
 invocation did not enable network telemetry; it does not grant permission for a
 handler to send telemetry.
 
-The built-in AGOL and ArcGIS Server handlers pass `token`, `user_agent`,
+The built-in portal and server handlers pass `token`, `user_agent`,
 `timeout`, and `max_retries` into their read-only HTTP probes. Token values are
-sent only as Esri request parameters and are not copied into
+sent only as source request parameters and are not copied into
 `EsriFootprint.json`; FileGDB is local-only and ignores network-only options.
 
 ## `ScanResult`
@@ -104,7 +104,7 @@ strips common secret patterns from strings before they reach a crash dump.
 
 ## Telemetry and read-only stance
 
-- Handlers must remain read-only against the customer's Esri system. No
+- Handlers must remain read-only against the customer's source system. No
   write or admin APIs should be reachable from a handler entry point.
 - No network telemetry. Handlers must not POST to Honua-operated services
   or any third-party telemetry sink. Local stderr logs (text or JSON) are

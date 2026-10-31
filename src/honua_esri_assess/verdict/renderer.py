@@ -65,10 +65,10 @@ def _render_summary(result: FootprintVerdict) -> str:
 def _render_hard_lock_ins(result: FootprintVerdict) -> str:
     lines = ["## Hard Lock-ins (explicit non-goals)"]
     if not result.hard_lock_ins:
-        lines.append("No hard Esri lock-ins (Utility Network, Parcel Fabric, LRS) detected.")
+        lines.append("No source-specific dependencies (Utility Network, Parcel Fabric, LRS) detected.")
         return "\n\n".join(lines)
     lines.append(
-        "These Esri capabilities are explicit non-goals and force a no-go / "
+        "These source capabilities are explicit non-goals and force a no-go / "
         "federate-only verdict wherever they appear:"
     )
     lines.append(

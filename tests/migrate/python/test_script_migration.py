@@ -8,14 +8,24 @@ import httpx
 import pytest
 
 from honua_migrate.code.python import (
-    ArcPyJobError,
-    ArcPyJobTimeoutError,
-    ArcPyProcessRunner,
-    UnsupportedArcPyCallError,
-    scan_arcpy_source,
-    translate_arcpy_source,
+    ScriptJobError,
+    ScriptJobTimeoutError,
+    ScriptProcessRunner,
+    UnsupportedScriptCallError,
+    scan_script_source,
+    translate_script_source,
 )
-from honua_migrate.code.python.arcpy import ArcPyProcessExecution, ArcPyProcessTranslation
+from honua_migrate.code.python.script import ScriptProcessExecution, ScriptProcessTranslation
+
+
+def test_scan_desktop_mapping_family_uses_neutral_label() -> None:
+    report = scan_script_source('import arcpy\narcpy.mp.Open("map")')
+
+    assert report.calls[0].family == "desktop-gis"
+    assert report.unsupported_families == ("desktop-gis",)
+    serialized = report.to_dict()
+    assert serialized["calls"][0]["family"] == "desktop-gis"
+    assert serialized["unsupportedFamilies"] == ["desktop-gis"]
 
 
 class _OgcProcessesClient:
@@ -74,7 +84,7 @@ ap.sa.Kriging("stations", "PredZ")
 
 
 def test_scan_arcpy_source_classifies_aliases_legacy_tools_and_unsupported_calls() -> None:
-    report = scan_arcpy_source(ARCPY_SOURCE, filename="workflow.py")
+    report = scan_script_source(ARCPY_SOURCE, filename="workflow.py")
 
     assert [(call.qualified_name, call.family, call.tool, call.supported) for call in report.calls] == [
         ("arcpy.Buffer_analysis", "analysis", "Buffer", True),
@@ -91,7 +101,7 @@ def test_scan_arcpy_source_classifies_aliases_legacy_tools_and_unsupported_calls
 
 
 def test_translate_arcpy_source_builds_ogc_process_payloads_for_supported_vector_tools() -> None:
-    plan = translate_arcpy_source(ARCPY_SOURCE, filename="workflow.py")
+    plan = translate_script_source(ARCPY_SOURCE, filename="workflow.py")
 
     assert [translation.process_id for translation in plan.translations] == [
         "buffer",
@@ -106,6 +116,7 @@ def test_translate_arcpy_source_builds_ogc_process_payloads_for_supported_vector
         "dissolve_option": "ALL",
     }
     assert buffer_payload["outputs"] == {"result": "roads_buffer"}
+    assert buffer_payload["metadata"]["honuaMigration"]["source"] == "python-script"
     assert buffer_payload["metadata"]["honuaMigration"]["qualifiedName"] == "arcpy.Buffer_analysis"
     assert buffer_payload["metadata"]["honuaMigration"]["assignmentTargets"] == ["buffered"]
 
@@ -119,7 +130,7 @@ def test_translate_arcpy_source_builds_ogc_process_payloads_for_supported_vector
 
 
 def test_process_runner_executes_translated_steps_through_ogc_processes_client() -> None:
-    plan = translate_arcpy_source(
+    plan = translate_script_source(
         """
 import arcpy
 arcpy.analysis.Buffer("parcels", "parcels_buffer", "10 Meters")
@@ -140,7 +151,7 @@ arcpy.analysis.Clip("parcels_buffer", "district", "parcels_clip")
         return httpx.Response(200, json={"processID": process_id, "status": "accepted"})
 
     with HonuaClient("http://example.test", transport=httpx.MockTransport(handler)) as client:
-        results = ArcPyProcessRunner(client).execute_plan(plan)
+        results = ScriptProcessRunner(client).execute_plan(plan)
 
     assert [result.result["processID"] for result in results] == ["buffer", "clip"]
     assert [(entry["method"], entry["path"]) for entry in seen] == [
@@ -157,19 +168,19 @@ arcpy.analysis.Clip("parcels_buffer", "district", "parcels_clip")
 
 
 def test_scan_arcpy_source_reports_syntax_error_without_importing_arcpy() -> None:
-    report = scan_arcpy_source("import arcpy\narcpy.analysis.Buffer(")
+    report = scan_script_source("import arcpy\narcpy.analysis.Buffer(")
 
     assert report.calls == ()
     assert report.syntax_error is not None
     assert "line 2" in report.syntax_error
 
 
-def _make_translation(process_id: str = "buffer") -> ArcPyProcessTranslation:
-    plan = translate_arcpy_source(
+def _make_translation(process_id: str = "buffer") -> ScriptProcessTranslation:
+    plan = translate_script_source(
         'import arcpy\narcpy.analysis.Buffer("parcels", "parcels_buffer", "10 Meters")'
     )
     translation = plan.translations[0]
-    return ArcPyProcessTranslation(
+    return ScriptProcessTranslation(
         call=translation.call,
         process_id=process_id,
         payload=translation.payload,
@@ -207,7 +218,7 @@ def test_runner_execute_async_polls_job_until_success_and_downloads_results() ->
     translation = _make_translation("buffer")
 
     with HonuaClient("http://example.test", transport=httpx.MockTransport(handler)) as client:
-        runner = ArcPyProcessRunner(client, poll_interval=0.5, sleep=slept.append)
+        runner = ScriptProcessRunner(client, poll_interval=0.5, sleep=slept.append)
         execution = runner.execute_async(translation)
 
     assert execution.job_id == "job-1"
@@ -237,7 +248,7 @@ def test_runner_execute_async_returns_synchronous_response_without_polling() -> 
 
     translation = _make_translation("buffer")
     with HonuaClient("http://example.test", transport=httpx.MockTransport(handler)) as client:
-        execution = ArcPyProcessRunner(client).execute_async(translation)
+        execution = ScriptProcessRunner(client).execute_async(translation)
 
     assert execution.job_id is None
     assert execution.status is None
@@ -251,8 +262,8 @@ def test_runner_execute_async_raises_on_failed_job() -> None:
     translation = _make_translation("buffer")
 
     with HonuaClient("http://example.test", transport=httpx.MockTransport(handler)) as client:
-        runner = ArcPyProcessRunner(client, sleep=lambda _seconds: None)
-        with pytest.raises(ArcPyJobError) as excinfo:
+        runner = ScriptProcessRunner(client, sleep=lambda _seconds: None)
+        with pytest.raises(ScriptJobError) as excinfo:
             runner.execute_async(translation)
 
     assert excinfo.value.job_id == "job-1"
@@ -266,8 +277,8 @@ def test_runner_execute_async_times_out_when_job_never_finishes() -> None:
     translation = _make_translation("buffer")
 
     with HonuaClient("http://example.test", transport=httpx.MockTransport(handler)) as client:
-        runner = ArcPyProcessRunner(client, max_polls=3, sleep=lambda _seconds: None)
-        with pytest.raises(ArcPyJobTimeoutError) as excinfo:
+        runner = ScriptProcessRunner(client, max_polls=3, sleep=lambda _seconds: None)
+        with pytest.raises(ScriptJobTimeoutError) as excinfo:
             runner.execute_async(translation)
 
     assert excinfo.value.polls == 3
@@ -279,7 +290,7 @@ def test_runner_normalizes_vendor_job_status_aliases() -> None:
     translation = _make_translation("buffer")
 
     with HonuaClient("http://example.test", transport=httpx.MockTransport(handler)) as client:
-        runner = ArcPyProcessRunner(client, sleep=lambda _seconds: None)
+        runner = ScriptProcessRunner(client, sleep=lambda _seconds: None)
         execution = runner.execute_async(translation)
 
     assert execution.status == "successful"
@@ -287,7 +298,7 @@ def test_runner_normalizes_vendor_job_status_aliases() -> None:
 
 
 def test_runner_execute_plan_async_runs_all_translations_in_order() -> None:
-    plan = translate_arcpy_source(
+    plan = translate_script_source(
         'import arcpy\n'
         'arcpy.analysis.Buffer("parcels", "parcels_buffer", "10 Meters")\n'
         'arcpy.analysis.Clip("parcels_buffer", "district", "parcels_clip")\n'
@@ -306,7 +317,7 @@ def test_runner_execute_plan_async_runs_all_translations_in_order() -> None:
         return httpx.Response(200, json={"jobID": job_id, "status": "successful"})
 
     with HonuaClient("http://example.test", transport=httpx.MockTransport(handler)) as client:
-        runner = ArcPyProcessRunner(client, sleep=lambda _seconds: None)
+        runner = ScriptProcessRunner(client, sleep=lambda _seconds: None)
         executions = runner.execute_plan_async(plan)
 
     assert submitted == ["buffer", "clip"]
@@ -316,14 +327,14 @@ def test_runner_execute_plan_async_runs_all_translations_in_order() -> None:
 
 def test_runner_execute_async_rejects_unmapped_translation() -> None:
     translation = _make_translation(process_id="")
-    runner = ArcPyProcessRunner(object())
-    with pytest.raises(UnsupportedArcPyCallError):
+    runner = ScriptProcessRunner(object())
+    with pytest.raises(UnsupportedScriptCallError):
         runner.execute_async(translation)
 
 
 def test_process_execution_to_dict_for_synchronous_result() -> None:
     translation = _make_translation("buffer")
-    execution = ArcPyProcessExecution(translation=translation, result={"status": "successful"})
+    execution = ScriptProcessExecution(translation=translation, result={"status": "successful"})
 
     record = execution.to_dict()
     assert "jobId" not in record

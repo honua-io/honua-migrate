@@ -18,13 +18,13 @@ from pathlib import Path
 import pytest
 
 from honua_migrate.code.python import (
-    ArcPyCall,
+    ScriptCall,
     build_parity_evidence,
-    scan_arcpy_source,
-    translate_arcpy_source,
+    scan_script_source,
+    translate_script_source,
 )
 from honua_migrate.code.python._cli import main
-from honua_migrate.code.python.arcpy import (
+from honua_migrate.code.python.script import (
     _call_argument,
     _kind_for_process_name,
     _lookup_spec,
@@ -43,7 +43,7 @@ from honua_migrate.code.python.pyt import (
 
 def test_unmapped_call_has_no_manual_review_reason() -> None:
     # arcpy.py:106 -- manual_review_reason returns None when there is no spec.
-    call = ArcPyCall(qualified_name="arcpy.sa.Kriging", family="spatial-analyst", tool="Kriging", line=1, column=0)
+    call = ScriptCall(qualified_name="arcpy.sa.Kriging", family="spatial-analyst", tool="Kriging", line=1, column=0)
     assert call.status == "unsupported"
     assert call.manual_review_reason is None
     assert call.process_id is None
@@ -64,7 +64,7 @@ def test_tool_spec_status_property_ignores_gate() -> None:
 
 def test_call_argument_positional_fallback() -> None:
     # arcpy.py:393 -- positional resolution when no keyword is present.
-    report = scan_arcpy_source(
+    report = scan_script_source(
         'import arcpy\narcpy.analysis.SpatialJoin("t", "j", "o", "JOIN_ONE_TO_MANY")\n'
     )
     (call,) = report.calls
@@ -75,7 +75,7 @@ def test_call_argument_positional_fallback() -> None:
 
 
 def test_call_argument_resolves_supported_keyword_alias() -> None:
-    report = scan_arcpy_source(
+    report = scan_script_source(
         "import arcpy\n"
         "arcpy.analysis.Buffer('a', distance='5 Meters', output='result-fc')\n"
     )
@@ -85,7 +85,7 @@ def test_call_argument_resolves_supported_keyword_alias() -> None:
 
 
 def test_spatial_join_gate_passes_for_plain_call() -> None:
-    call = ArcPyCall(qualified_name="arcpy.analysis.SpatialJoin", family="analysis", tool="SpatialJoin", line=1, column=0)
+    call = ScriptCall(qualified_name="arcpy.analysis.SpatialJoin", family="analysis", tool="SpatialJoin", line=1, column=0)
     assert _spatial_join_gate(call) == ("translatable", None)
 
 
@@ -98,7 +98,7 @@ def test_kind_for_process_name_defaults_to_parameter() -> None:
 
 def test_expanded_kwargs_captured_and_serialized() -> None:
     # arcpy.py:150-151 (to_dict) + 1094 (translation metadata).
-    report = scan_arcpy_source(
+    report = scan_script_source(
         'import arcpy\nopts = {"method": "PLANAR"}\narcpy.analysis.Buffer("a", "b", "1 Meter", **opts)\n'
     )
     buffer_call = next(c for c in report.calls if c.tool == "Buffer")
@@ -107,7 +107,7 @@ def test_expanded_kwargs_captured_and_serialized() -> None:
     assert "expandedKwargs" in as_dict
     assert "rawExpandedKwargs" in as_dict
 
-    plan = translate_arcpy_source(
+    plan = translate_script_source(
         'import arcpy\nopts = {"method": "PLANAR"}\narcpy.analysis.Buffer("a", "b", "1 Meter", **opts)\n'
     )
     translation = next(t for t in plan.translations if t.call.tool == "Buffer")
@@ -118,7 +118,7 @@ def test_expanded_kwargs_captured_and_serialized() -> None:
 def test_parity_evidence_translatable_call_with_notes() -> None:
     # Dissolve carries spec notes and is translatable -> notes attached to entry.
     evidence = build_parity_evidence(
-        translate_arcpy_source('import arcpy\narcpy.management.Dissolve("a", "b", "CLASS")\n')
+        translate_script_source('import arcpy\narcpy.management.Dissolve("a", "b", "CLASS")\n')
     )
     entry = next(c for c in evidence["calls"] if c["tool"] == "Dissolve")
     assert entry["status"] == "translatable"

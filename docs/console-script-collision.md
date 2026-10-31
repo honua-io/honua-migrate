@@ -9,7 +9,7 @@ tags: [install, troubleshooting, cli]
 
 The `honua-migrate` distribution is the canonical owner of the
 `honua-migrate` console script. The published `honua-sdk` 0.x distribution
-also declares a script with that name for its legacy ArcPy migration CLI.
+also declares a script with that name for its legacy Python migration CLI.
 Python installers do not arbitrate duplicate console-script names: whichever
 wheel writes the launcher last can silently win.
 

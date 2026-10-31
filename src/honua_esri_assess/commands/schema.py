@@ -14,21 +14,21 @@ from honua_esri_assess.diagnostics import (
 from honua_esri_assess.schema import schema_text, validate_footprint_file
 
 schema_app = typer.Typer(
-    help="Inspect and validate the bundled EsriFootprint.json schema.",
+    help="Inspect and validate the bundled assessment footprint schema.",
     no_args_is_help=True,
 )
 
 
-@schema_app.command("show", help="Print the bundled EsriFootprint.json schema.")
+@schema_app.command("show", help="Print the bundled assessment footprint schema.")
 def show_schema() -> None:
     typer.echo(schema_text())
 
 
-@schema_app.command("validate", help="Validate an EsriFootprint.json artifact.")
+@schema_app.command("validate", help="Validate an assessment footprint artifact.")
 def validate_schema(
     path: Annotated[
         Path,
-        typer.Argument(help="Path to EsriFootprint.json."),
+        typer.Argument(help="Path to an assessment footprint."),
     ],
 ) -> None:
     try:

@@ -78,7 +78,7 @@ def _render_header(footprint: Mapping[str, Any]) -> str:
         ("Source captured at", text(source.get("capturedAt"))),
         ("Scanner", f"{text(tool.get('name'))} {text(tool.get('version'))}"),
     ]
-    return "# Honua Esri Readiness Report\n\n" + markdown_table(("Field", "Value"), rows)
+    return "# Honua Readiness Report\n\n" + markdown_table(("Field", "Value"), rows)
 
 
 def _render_schema_warnings(warnings: Sequence[str]) -> str:
@@ -190,7 +190,7 @@ def _layer_breakdown_rows(footprint: Mapping[str, Any]) -> list[tuple[Any, Any, 
         item_counts = portal.get("itemCounts")
         if isinstance(item_counts, Mapping):
             for item_type, value in sorted(item_counts.items(), key=lambda entry: str(entry[0])):
-                rows.append(("ArcGIS Online", item_type, count(value), "-"))
+                rows.append(("Portal", item_type, count(value), "-"))
 
     server = footprint.get("server")
     if isinstance(server, Mapping):
@@ -205,7 +205,7 @@ def _layer_breakdown_rows(footprint: Mapping[str, Any]) -> list[tuple[Any, Any, 
             for service_type, value in sorted(service_counts.items(), key=lambda entry: str(entry[0])):
                 rows.append(
                     (
-                        "ArcGIS Server",
+                        "GeoServices REST server",
                         service_type,
                         count(value),
                         layer_counts[str(service_type)],
@@ -220,7 +220,7 @@ def _layer_breakdown_rows(footprint: Mapping[str, Any]) -> list[tuple[Any, Any, 
             for service_type in sorted(service_totals):
                 rows.append(
                     (
-                        "ArcGIS Server",
+                        "GeoServices REST server",
                         service_type,
                         service_totals[service_type],
                         layer_counts[service_type],

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.honua.io/esri-access-footprint/v0.1.0/esri-access-footprint.json",
   "title": "EsriAccessFootprint",
-  "description": "Read-only export of an Esri estate's identity / RBAC posture (users, roles+privileges, groups, per-service permissions, item sharing, org security config) produced by honua-esri-assess from documented ArcGIS /arcgis/admin/security and Portal admin/community endpoints. It is a documented SIBLING of EsriFootprint.json and drives Honua RBAC + the Portal facade. Schema version esri-access-footprint/v0.1 (full SemVer in $id). v0.x is unstable; v1.0 is the first stable promise. Credentials, tokens, query strings, and URL userinfo are never present in any field.",
+  "description": "Read-only export of a source deployment's identity / RBAC posture (users, roles+privileges, groups, per-service permissions, item sharing, org security config) produced by the assessment tool from documented source /admin/security and Portal admin/community endpoints. It is a documented SIBLING of the assessment footprint and drives Honua RBAC + the Portal facade. Schema version v0.1 (full SemVer in $id). v0.x is unstable; v1.0 is the first stable promise. Credentials, tokens, query strings, and URL userinfo are never present in any field.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -79,7 +79,7 @@
       "properties": {
         "name": {
           "const": "honua-esri-assess",
-          "description": "Only honua-esri-assess is part of the contract at v0.1."
+          "description": "Only the assessment tool is part of the contract at v0.1."
         },
         "version": { "$ref": "#/$defs/SemVer" }
       }
@@ -92,7 +92,7 @@
         "kind": {
           "type": "string",
           "enum": ["arcgis-online", "arcgis-server"],
-          "description": "RBAC export targets ArcGIS Online/Enterprise Portal and ArcGIS Server only. FileGDB has no identity surface."
+          "description": "RBAC export targets the source portal and source server only. FileGDB has no identity surface."
         },
         "locator": {
           "type": "string",
@@ -115,7 +115,7 @@
           "items": { "type": "string" },
           "description": "Group ids this user belongs to."
         },
-        "userType": { "type": "string", "description": "Esri user-type license id when exposed." },
+        "userType": { "type": "string", "description": "Source user-type license id when exposed." },
         "provider": {
           "type": "string",
           "enum": ["arcgis", "enterprise", "saml", "oidc", "unknown"],
@@ -140,7 +140,7 @@
         "privileges": {
           "type": "array",
           "items": { "type": "string" },
-          "description": "Documented Esri privilege identifiers granted to the role (e.g. portal:user:createItem)."
+          "description": "Documented source privilege identifiers granted to the role (e.g. portal:user:createItem)."
         }
       }
     },

@@ -26,7 +26,7 @@ def verdict_command(
         Path,
         typer.Option(
             "--input",
-            help="Path to EsriFootprint.json, or '-' for stdin.",
+            help="Path to an assessment footprint, or '-' for stdin.",
         ),
     ],
     output: Annotated[
@@ -40,7 +40,7 @@ def verdict_command(
         bool,
         typer.Option(
             "--strict",
-            help="Fail if the input does not validate against EsriFootprint v0.1.",
+            help="Fail if the input does not validate against the assessment footprint schema v0.1.",
         ),
     ] = False,
 ) -> None:
@@ -79,7 +79,7 @@ def _read_footprint(input_path: Path) -> Mapping[str, object]:
         ) from exc
     if not isinstance(payload, Mapping):
         raise ReportInputError(
-            "EsriFootprint.json must be a JSON object.",
+            "Assessment footprint must be a JSON object.",
             code="report.input.parse",
             exit_code=2,
         )

@@ -17,13 +17,13 @@ from __future__ import annotations
 
 from honua_migrate.code.python import (
     EXECUTABLE_PROCESS_IDS,
-    scan_arcpy_source,
-    translate_arcpy_source,
+    scan_script_source,
+    translate_script_source,
 )
 
 
 def _only_call(source: str):
-    report = scan_arcpy_source("import arcpy\n" + source)
+    report = scan_script_source("import arcpy\n" + source)
     (call,) = report.calls
     return call
 
@@ -38,7 +38,7 @@ def test_graphic_buffer_is_translatable_to_geometry_buffer() -> None:
 
 
 def test_graphic_buffer_payload_carries_inputs_and_output() -> None:
-    plan = translate_arcpy_source(
+    plan = translate_script_source(
         'import arcpy\narcpy.analysis.GraphicBuffer("roads", "rb", "25 Meters", line_caps="SQUARE")'
     )
     (translation,) = plan.translations
@@ -113,7 +113,7 @@ def test_unmapped_tool_still_unsupported() -> None:
 def test_new_specs_do_not_inflate_executable_catalog() -> None:
     # The executable catalog is locked to the reconciled-server job processes;
     # new supported-but-not-executable tools must not leak into it.
-    from honua_migrate.code.python.arcpy import _SUPPORTED_TOOL_SPECS
+    from honua_migrate.code.python.script import _SUPPORTED_TOOL_SPECS
 
     for spec in _SUPPORTED_TOOL_SPECS.values():
         if spec.job_process_id is not None:

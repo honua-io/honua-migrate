@@ -74,6 +74,7 @@ class EraseRivers(object):
 def test_parse_pyt_source_extracts_toolbox_and_tools() -> None:
     toolbox = parse_pyt_source(PYT_SOURCE, filename="roads.pyt")
 
+    assert toolbox.to_dict()["schema"] == "honua.migration.script.pyt-toolbox/v2"
     assert toolbox.label == "Roads Toolbox"
     assert toolbox.alias == "roads"
     assert toolbox.declared_tool_names == ("BufferRoads", "EraseRivers")
@@ -113,7 +114,7 @@ def test_pyt_aggregated_parity_evidence() -> None:
     toolbox = parse_pyt_source(PYT_SOURCE, filename="roads.pyt")
     evidence = build_pyt_parity_evidence(toolbox)
 
-    assert evidence["schema"] == "honua.migration.arcpy.pyt-parity-evidence/v1"
+    assert evidence["schema"] == "honua.migration.script.pyt-parity-evidence/v2"
     assert evidence["label"] == "Roads Toolbox"
     summary = evidence["summary"]
     assert summary["toolCount"] == 2

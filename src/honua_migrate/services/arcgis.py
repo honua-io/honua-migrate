@@ -1,6 +1,6 @@
-"""Safe CLI client for Honua's ArcGIS GeoServices import API.
+"""Safe CLI client for Honua's GeoServices REST import API.
 
-The source ArcGIS service is only ever discovered by the server.  This module
+The source service is only ever discovered by the server.  This module
 does not issue requests to it directly, which keeps planning read-only and
 centralises SSRF protection in the Honua server endpoint.
 """
@@ -55,7 +55,7 @@ def normalize_job_status(value: object) -> str:
 
 
 arcgis_app = typer.Typer(
-    help="Discover, plan, and import ArcGIS FeatureServer or MapServer services.",
+    help="Discover, plan, and import GeoServices REST FeatureServer or MapServer services.",
     no_args_is_help=True,
 )
 
@@ -254,7 +254,7 @@ def _read_artifact(path: Path) -> tuple[str, dict[str, Any], dict[str, Any]]:
     except (OSError, json.JSONDecodeError) as exc:
         raise ArcGisMigrationError("Could not read the requested plan artifact.") from exc
     if not isinstance(artifact, dict):
-        raise ArcGisMigrationError("Plan artifact is not a supported ArcGIS migration plan.")
+        raise ArcGisMigrationError("Plan artifact is not a supported GeoServices REST migration plan.")
     stored_id = artifact.get("id")
     if not isinstance(stored_id, str) or not stored_id.startswith("arcgis-plan-"):
         raise ArcGisMigrationError("Plan artifact has no supported immutable plan ID.")
@@ -623,14 +623,14 @@ def _emit(data: Mapping[str, Any], output: Path | None, *, force: bool = False) 
 
 @arcgis_app.command("discover")
 def discover_command(
-    service_url: str = typer.Argument(..., help="ArcGIS FeatureServer or MapServer root URL."),
+    service_url: str = typer.Argument(..., help="GeoServices REST FeatureServer or MapServer root URL."),
     output: Path | None = typer.Option(None, "--output", help="Write a versioned discovery artifact."),
     force: bool = typer.Option(False, "--force", help="Replace an existing output artifact."),
     honua_url: str | None = typer.Option(None, envvar="HONUA_URL"),
     api_key: str | None = typer.Option(None, envvar="HONUA_API_KEY", hide_input=True),
     timeout_seconds: int = typer.Option(30, min=1, max=600),
     retries: int = typer.Option(2, min=0, max=5),
-    token_secret_ref: str | None = typer.Option(None, help="Server-side ArcGIS token secret reference."),
+    token_secret_ref: str | None = typer.Option(None, help="Server-side source token secret reference."),
     allow_insecure_http: bool = _allow_insecure_http_option(),
 ) -> None:
     """Read-only discovery; source credentials are never placed in the artifact."""
@@ -841,7 +841,7 @@ def apply_command(
     api_key: str | None = typer.Option(None, envvar="HONUA_API_KEY", hide_input=True),
     timeout_seconds: float = typer.Option(30, min=1), retries: int = typer.Option(2, min=0, max=5),
     token_secret_ref: str | None = typer.Option(
-        None, help="Server-side ArcGIS token secret reference; never stored in the plan."
+        None, help="Server-side source token secret reference; never stored in the plan."
     ),
     allow_insecure_http: bool = _allow_insecure_http_option(),
 ) -> None:
@@ -983,7 +983,7 @@ def list_command(
 
 @arcgis_app.command("resume")
 def resume_command(
-    job_id: str = typer.Argument(..., help="Existing ArcGIS import job ID."),
+    job_id: str = typer.Argument(..., help="Existing GeoServices REST import job ID."),
     output: Path | None = typer.Option(None, "--output"),
     force: bool = typer.Option(False, "--force", help="Replace an existing output artifact."),
     honua_url: str | None = typer.Option(None, envvar="HONUA_URL"),
@@ -1057,7 +1057,7 @@ def cancel_command(
 # --- Existing-app handoff ---------------------------------------------------
 #
 # A bounded incremental import (discover -> plan -> apply -> verify) hands off
-# to a retained Esri JS application that keeps running against the imported
+# to a retained JavaScript application that keeps running against the imported
 # layers. This artifact is the reviewable, credential-free record of that
 # handoff: it exports the target endpoint and the source-to-target
 # service/layer ID mapping, and it separates import completion, reconciliation,
@@ -1390,7 +1390,7 @@ def handoff_command(
         ..., "--mode", help="read-only-coexistence or writable-cutover."
     ),
     client_version: str = typer.Option(
-        ..., "--client-version", help="Pinned Esri JS client version of the retained app."
+        ..., "--client-version", help="Pinned client version of the retained app."
     ),
     exercised_rendering: bool = typer.Option(
         ..., "--exercised-rendering/--not-exercised-rendering"

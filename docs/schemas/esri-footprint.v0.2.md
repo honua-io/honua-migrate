@@ -1,6 +1,6 @@
 ---
 type: reference
-title: "esri-footprint v0.2 schema"
+title: "Assessment footprint v0.2 schema"
 description: "An additive, back-compatible revision of the footprint schema. What v0.2 adds over v0.1 and why a v0.1 consumer keeps working."
 resource: "https://github.com/honua-io/honua-migrate/tree/trunk/schemas"
 tags: [schema, footprint, v0.2]
@@ -36,7 +36,7 @@ back-compatible in both directions.
 
 ## ServerLayerDetail
 
-For ArcGIS Server `FeatureServer` / `MapServer` services, a deep scan can
+For source server `FeatureServer` / `MapServer` services, a deep scan can
 follow each layer/table to its read-only metadata resource
 (`.../<service>/<id>`) and record a schema & behavior detail block under
 `ServerService.layers`. The probe is strictly read-only — it reads the
@@ -66,7 +66,7 @@ diagnostic. v0.1 readers ignore the property.
 
 ## Portal content-type classification
 
-Portal items carry a coarse Esri `type` plus a `typeKeywords` list. Several
+Portal items carry a coarse source `type` plus a `typeKeywords` list. Several
 distinct products share one `type` (Web AppBuilder, Experience Builder, Instant
 Apps, and StoryMaps all surface as `Web Mapping Application`), so the raw
 `itemCounts` under-reports what a shop runs. v0.2 derives a stable functional
@@ -117,11 +117,11 @@ Edges never carry credentials, query strings, or raw on-prem paths.
 
 ## Producer behaviour
 
-- **ArcGIS Online** — for each `Web Map` item, one `webmap-references-service`
+- **Portal** — for each `Web Map` item, one `webmap-references-service`
   edge is emitted per dependency that resolves to another scanned portal item
   id. Edges to unscanned ids are dropped so every node stays present in the
   artifact.
-- **ArcGIS Server** — for each retained service, one `service-contains-layer`
+- **Server** — for each retained service, one `service-contains-layer`
   edge per observed layer (`serviceUrl#<layerId>`).
 
 Edges are de-duplicated and sorted deterministically. Sources with no

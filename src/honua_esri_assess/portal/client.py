@@ -1,4 +1,4 @@
-"""Read-only HTTP client for the ArcGIS Portal Sharing REST API."""
+"""Read-only HTTP client for the portal Sharing REST API."""
 
 from __future__ import annotations
 
@@ -161,7 +161,7 @@ class PortalClient:
                 # ValueError covers malformed URL components (e.g. non-numeric
                 # port) that some urllib3 / requests versions surface before
                 # wrapping them as RequestException.
-                message = f"Could not connect to ArcGIS Portal at {redact_url(url)}."
+                message = f"Could not connect to the source portal at {redact_url(url)}."
                 raise PortalConnectionError(message, context={"url": redact_url(url)}) from exc
 
             if response.status_code not in RETRYABLE_STATUSES or attempt >= self.retry_policy.attempts:
@@ -176,7 +176,7 @@ class PortalClient:
 
         if response is None:
             raise PortalConnectionError(
-                f"Could not connect to ArcGIS Portal at {redact_url(url)}.",
+                f"Could not connect to the source portal at {redact_url(url)}.",
                 context={"url": redact_url(url)},
             )
 
@@ -200,12 +200,12 @@ class PortalClient:
             payload = response.json()
         except ValueError as exc:
             raise PortalApiError(
-                "ArcGIS Portal returned a non-JSON response.",
+                "The source portal returned a non-JSON response.",
                 context={"url": safe_url, "status": response.status_code},
             ) from exc
         if not isinstance(payload, dict):
             raise PortalApiError(
-                "ArcGIS Portal returned an unexpected JSON response.",
+                "The source portal returned an unexpected JSON response.",
                 context={"url": safe_url, "status": response.status_code},
             )
         return payload
@@ -217,15 +217,15 @@ class PortalClient:
         if api_error:
             return api_error
         if status_code == 401:
-            return PortalAuthError("ArcGIS Portal rejected the provided credential.", context={"url": safe_url})
+            return PortalAuthError("The source portal rejected the provided credential.", context={"url": safe_url})
         if status_code == 403:
-            return PortalForbiddenError("ArcGIS Portal denied access to the requested resource.", context={"url": safe_url})
+            return PortalForbiddenError("The source portal denied access to the requested resource.", context={"url": safe_url})
         if status_code == 404:
-            return PortalNotFoundError("ArcGIS Portal resource was not found.", context={"url": safe_url})
+            return PortalNotFoundError("The source portal resource was not found.", context={"url": safe_url})
         if status_code == 429:
-            return PortalRateLimitedError("ArcGIS Portal rate limited the scan.", context={"url": safe_url})
+            return PortalRateLimitedError("The source portal rate limited the scan.", context={"url": safe_url})
         return PortalApiError(
-            "ArcGIS Portal returned an unsuccessful response.",
+            "The source portal returned an unsuccessful response.",
             context={"url": safe_url, "status": status_code},
         )
 
@@ -237,7 +237,7 @@ class PortalClient:
             return None
 
         esri_code = _coerce_int(error.get("code"))
-        raw_message = str(error.get("message") or "ArcGIS Portal returned an error.")
+        raw_message = str(error.get("message") or "The source portal returned an error.")
         message = _sanitize_message(self.credential.redact(raw_message))
         context: dict[str, Any] = {"url": safe_url}
         if status_code is not None:
@@ -246,13 +246,13 @@ class PortalClient:
             context["esriCode"] = esri_code
 
         if status_code == 401 or esri_code in {498, 499}:
-            return PortalAuthError("ArcGIS Portal rejected the provided credential.", context=context)
+            return PortalAuthError("The source portal rejected the provided credential.", context=context)
         if status_code == 403:
-            return PortalForbiddenError(message or "ArcGIS Portal denied access.", context=context)
+            return PortalForbiddenError(message or "The source portal denied access.", context=context)
         if status_code == 404:
-            return PortalNotFoundError(message or "ArcGIS Portal resource was not found.", context=context)
+            return PortalNotFoundError(message or "The source portal resource was not found.", context=context)
         if status_code == 429 or esri_code == 429:
-            return PortalRateLimitedError("ArcGIS Portal rate limited the scan.", context=context)
+            return PortalRateLimitedError("The source portal rate limited the scan.", context=context)
         return PortalApiError(message, context=context)
 
     def _retry_delay(self, response: requests.Response, attempt: int) -> float:

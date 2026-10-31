@@ -1,4 +1,4 @@
-"""ArcGIS Online Portal scanner built on the read-only Sharing REST API."""
+"""Portal scanner built on the read-only Sharing REST API."""
 
 from __future__ import annotations
 
@@ -80,7 +80,7 @@ class PortalScanner:
         self.diagnostics = []
         org = self._scan_org()
         if not org.id:
-            raise PortalApiError("ArcGIS Portal did not expose an organization id.")
+            raise PortalApiError("The portal did not expose an organization id.")
         groups = self._scan_groups(org.id) if org.id else []
         org = replace(org, group_count=len(groups))
         user_count = self._scan_user_count(org.id)
@@ -149,7 +149,7 @@ class PortalScanner:
                 Diagnostic(
                     code="portal.federation.rate-limited",
                     severity="info",
-                    message="ArcGIS Portal rate limited the federation surface; federation topology was skipped.",
+                    message="The portal rate limited the federation surface; federation topology was skipped.",
                     context=exc.context,
                 )
             )
@@ -207,7 +207,7 @@ class PortalScanner:
                 Diagnostic(
                     code="portal.users.rate-limited",
                     severity="info",
-                    message="ArcGIS Portal rate limited organization user enumeration; user count was skipped.",
+                    message="The portal rate limited organization user enumeration; user count was skipped.",
                     context=exc.context,
                 )
             )
@@ -257,7 +257,7 @@ class PortalScanner:
                 Diagnostic(
                     code="portal.groups.rate-limited",
                     severity="info",
-                    message="ArcGIS Portal rate limited group enumeration; group records were skipped.",
+                    message="The portal rate limited group enumeration; group records were skipped.",
                     context=exc.context,
                 )
             )
@@ -298,7 +298,7 @@ class PortalScanner:
                 Diagnostic(
                     code="portal.items.rate-limited",
                     severity="info",
-                    message="ArcGIS Portal rate limited item search; partial inventory returned.",
+                    message="The portal rate limited item search; partial inventory returned.",
                     context=exc.context,
                 )
             )
@@ -329,7 +329,7 @@ class PortalScanner:
                         severity="warning",
                         message=(
                             f"Layer metadata for item {item.id} was skipped because "
-                            "its URL is outside ArcGIS Online hosted domains or malformed."
+                            "its URL is outside the supported hosted domains or malformed."
                         ),
                         context={"itemId": item.id},
                     )

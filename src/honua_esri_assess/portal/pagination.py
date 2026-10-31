@@ -16,7 +16,7 @@ def iter_paginated(
     params: dict[str, Any] | None = None,
     page_size: int = 100,
 ) -> Iterator[dict[str, Any]]:
-    """Yield result records from an ArcGIS search-style paginated resource."""
+    """Yield result records from a portal search-style paginated resource."""
 
     start = 1
     while start != -1:

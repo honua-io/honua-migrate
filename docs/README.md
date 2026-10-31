@@ -3,11 +3,11 @@ type: index
 title: "Honua migration documentation"
 description: "Where to start depending on what you are doing: evaluating whether to migrate, getting approval to run an assessment, or consuming the artifacts one produces."
 resource: "https://pypi.org/project/honua-migrate/"
-tags: [migration, esri, navigation]
+tags: [migration, assessment, navigation]
 ---
 # Honua migration documentation
 
-`honua-migrate` assesses an existing Esri estate and plans a migration off it.
+`honua-migrate` assesses an existing GIS deployment and plans a migration from it.
 The assessment is **read-only**: it inspects, records and reports, and never
 writes to the system it is pointed at.
 
@@ -18,7 +18,7 @@ Pick the path that matches where you are.
 Start with [what this repository owns](ownership-and-deprecation.md) for the
 scope. [The assess command transition](assessment-transition.md) covers the move
 from `honua-esri-assess` if you used the older tooling. If licensing is the question, the
-[Esri IP and licensing guardrails](compliance/esri-ip-and-licensing-guardrails.md)
+[IP and licensing guardrails](compliance/esri-ip-and-licensing-guardrails.md)
 set out the rules the tooling is built to observe.
 
 ## Getting approval to run it
@@ -26,7 +26,7 @@ set out the rules the tooling is built to observe.
 [What access the assessment needs](operators/prerequisites-and-least-privilege.md)
 lists every permission and why each is required — written so a security reviewer
 can approve it without having to infer intent. Pair it with
-[Esri license entitlement enumeration](entitlements.md), which says exactly what
+[License entitlement enumeration](entitlements.md), which says exactly what
 is read and what is deliberately left alone.
 
 ## Running it

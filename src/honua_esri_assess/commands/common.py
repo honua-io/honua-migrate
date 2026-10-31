@@ -96,7 +96,7 @@ OutputOption = Annotated[
     Path,
     typer.Option(
         "--output",
-        help="Destination path for EsriFootprint.json.",
+        help="Destination path for the assessment footprint.",
         dir_okay=True,
         file_okay=True,
         metavar="PATH",
@@ -106,7 +106,7 @@ TokenEnvOption = Annotated[
     str | None,
     typer.Option(
         "--token-env",
-        help="Environment variable that contains an Esri access token.",
+        help="Environment variable that contains a source access token.",
         metavar="VAR",
     ),
 ]
@@ -127,7 +127,7 @@ NoNetworkTelemetryConfirmOption = Annotated[
 ]
 UserAgentOption = Annotated[
     str,
-    typer.Option("--user-agent", help="User-Agent header for read-only Esri calls."),
+    typer.Option("--user-agent", help="User-Agent header for read-only source calls."),
 ]
 MaxRetriesOption = Annotated[
     int,
@@ -157,7 +157,7 @@ ValidateOption = Annotated[
     bool,
     typer.Option(
         "--validate/--no-validate",
-        help="Validate the generated EsriFootprint.json against the bundled schema.",
+        help="Validate the generated assessment footprint against the bundled schema.",
     ),
 ]
 ForceOption = Annotated[
@@ -172,7 +172,7 @@ AdminUsageOption = Annotated[
     typer.Option(
         "--admin-usage/--no-admin-usage",
         help=(
-            "Read-only ArcGIS Server: also pull /admin/usagereports and "
+            "Read-only source server: also pull /admin/usagereports and "
             "/admin/data/items (requires an admin token) to emit usage-ranked "
             "migration ordering and per-dataset binding-mode recommendations. "
             "Degrades to a diagnostic and omits the facet when the admin "
@@ -184,7 +184,7 @@ AccessOutputOption = Annotated[
     Path,
     typer.Option(
         "--output",
-        help="Destination path for EsriAccessFootprint.json ('-' writes to stdout).",
+        help="Destination path for the access footprint ('-' writes to stdout).",
         dir_okay=True,
         file_okay=True,
         metavar="PATH",
@@ -194,14 +194,14 @@ RbacKindOption = Annotated[
     RbacKind,
     typer.Option(
         "--kind",
-        help="Whether the target is an ArcGIS Online/Enterprise Portal or an ArcGIS Server admin endpoint.",
+        help="Whether the target is a portal or server admin endpoint.",
     ),
 ]
 AccessValidateOption = Annotated[
     bool,
     typer.Option(
         "--validate/--no-validate",
-        help="Validate the generated EsriAccessFootprint.json against the bundled schema.",
+        help="Validate the generated access footprint against the bundled schema.",
     ),
 ]
 

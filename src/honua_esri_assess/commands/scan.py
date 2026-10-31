@@ -31,12 +31,12 @@ from honua_esri_assess.commands.common import (
 )
 
 scan_app = typer.Typer(
-    help="Read-only scanners that produce EsriFootprint.json.",
+    help="Read-only scanners that produce an assessment footprint.",
     no_args_is_help=True,
 )
 
 
-@scan_app.command("agol", help="Run the ArcGIS Online Portal scanner.")
+@scan_app.command("agol", help="Run the portal scanner.")
 def scan_agol(
     target: TargetOption,
     output: OutputOption = DEFAULT_OUTPUT,
@@ -66,7 +66,7 @@ def scan_agol(
     )
 
 
-@scan_app.command("server", help="Run the ArcGIS Server REST scanner.")
+@scan_app.command("server", help="Run the GeoServices REST server scanner.")
 def scan_server(
     target: TargetOption,
     output: OutputOption = DEFAULT_OUTPUT,
@@ -167,8 +167,8 @@ def scan_filegdb_workspace(
 @scan_app.command(
     "rbac",
     help=(
-        "Run the read-only RBAC scanner against a Portal or ArcGIS Server admin "
-        "target and write EsriAccessFootprint.json (defaults to stdout)."
+        "Run the read-only RBAC scanner against a portal or server admin "
+        "target and write an access footprint (defaults to stdout)."
     ),
 )
 def scan_rbac(

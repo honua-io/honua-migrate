@@ -65,7 +65,7 @@ def validate_footprint_file(path: Path) -> None:
         ) from exc
 
     if not isinstance(payload, dict):
-        raise SchemaValidationError("EsriFootprint.json must be a JSON object.")
+        raise SchemaValidationError("Assessment footprint must be a JSON object.")
     validate_footprint(payload)
 
 

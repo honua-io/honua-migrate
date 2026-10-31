@@ -1,6 +1,6 @@
-"""Coverage uplift tests for ``honua_migrate.code.python.arcpy``.
+"""Coverage uplift tests for ``honua_migrate.code.python.script``.
 
-Targets the ``to_dict`` serializers, ``scan_arcpy_file``, runner error
+Targets the ``to_dict`` serializers, ``scan_script_file``, runner error
 paths, translator branches (aliased ``pairwise*`` tools, extra positional
 args, alias keywords, passthrough camelCase keywords, ``process_id_map``
 overrides), assignment-target detection for annotated assignments and
@@ -19,17 +19,17 @@ from unittest.mock import MagicMock
 import pytest
 
 from honua_migrate.code.python import (
-    ArcPyCall,
-    ArcPyProcessRunner,
-    ArcPyProcessTranslation,
-    ArcPyScanReport,
-    UnsupportedArcPyCallError,
-    scan_arcpy_file,
-    scan_arcpy_source,
-    translate_arcpy_report,
-    translate_arcpy_source,
+    ScriptCall,
+    ScriptProcessRunner,
+    ScriptProcessTranslation,
+    ScriptScanReport,
+    UnsupportedScriptCallError,
+    scan_script_file,
+    scan_script_source,
+    translate_script_report,
+    translate_script_source,
 )
-from honua_migrate.code.python.arcpy import (
+from honua_migrate.code.python.script import (
     _attribute_parts,
     _camel_to_snake,
     _classify_qualified_name,
@@ -46,8 +46,8 @@ from honua_migrate.code.python.arcpy import (
 # ---------------------------------------------------------------------------
 
 
-def _sample_call(filename: str | None = "workflow.py") -> ArcPyCall:
-    return ArcPyCall(
+def _sample_call(filename: str | None = "workflow.py") -> ScriptCall:
+    return ScriptCall(
         qualified_name="arcpy.analysis.Buffer",
         family="analysis",
         tool="Buffer",
@@ -73,7 +73,7 @@ class TestSerializers:
         assert "filename" not in without_file
 
     def test_scan_report_to_dict_includes_syntax_error_and_counts(self) -> None:
-        report = scan_arcpy_source("import arcpy\narcpy.analysis.Buffer(", filename="bad.py")
+        report = scan_script_source("import arcpy\narcpy.analysis.Buffer(", filename="bad.py")
         as_dict = report.to_dict()
         assert as_dict["filename"] == "bad.py"
         assert as_dict["supportedCount"] == 0
@@ -83,13 +83,13 @@ class TestSerializers:
         assert "line 2" in as_dict["syntaxError"]
 
     def test_scan_report_to_dict_omits_syntax_error_when_clean(self) -> None:
-        report = scan_arcpy_source("import arcpy\narcpy.analysis.Buffer('a', 'b', '1 Meter')\n")
+        report = scan_script_source("import arcpy\narcpy.analysis.Buffer('a', 'b', '1 Meter')\n")
         as_dict = report.to_dict()
         assert "syntaxError" not in as_dict
         assert as_dict["supportedCount"] == 1
 
     def test_translation_to_dict_round_trip(self) -> None:
-        plan = translate_arcpy_source(
+        plan = translate_script_source(
             "import arcpy\narcpy.analysis.Buffer('a', 'b', '1 Meter')\n",
             filename="x.py",
         )
@@ -101,7 +101,7 @@ class TestSerializers:
         json.dumps(translation_dict)
 
     def test_migration_plan_to_dict(self) -> None:
-        plan = translate_arcpy_source(
+        plan = translate_script_source(
             "import arcpy\narcpy.analysis.Buffer('a', 'b', '1 Meter')\narcpy.sa.Kriging('pts', 'z')\n",
         )
         as_dict = plan.to_dict()
@@ -112,20 +112,20 @@ class TestSerializers:
 
 
 # ---------------------------------------------------------------------------
-# scan_arcpy_file
+# scan_script_file
 # ---------------------------------------------------------------------------
 
 
 def test_scan_arcpy_file_reads_from_disk(tmp_path: Path) -> None:
     path = tmp_path / "snippet.py"
     path.write_text("import arcpy\narcpy.analysis.Buffer('a', 'b', '1 Meter')\n")
-    report = scan_arcpy_file(path)
+    report = scan_script_file(path)
     assert report.filename == str(path)
     assert report.calls[0].qualified_name == "arcpy.analysis.Buffer"
 
 
 # ---------------------------------------------------------------------------
-# ArcPyProcessRunner
+# ScriptProcessRunner
 # ---------------------------------------------------------------------------
 
 
@@ -149,43 +149,43 @@ class _FakeClient:
 
 
 def test_runner_accepts_client_factory_or_processes_object_directly() -> None:
-    plan = translate_arcpy_source(
+    plan = translate_script_source(
         "import arcpy\narcpy.analysis.Buffer('a', 'b', '1 Meter')\n"
     )
 
     client = _FakeClient()
-    via_client = ArcPyProcessRunner(client).execute_plan(plan)
+    via_client = ScriptProcessRunner(client).execute_plan(plan)
     assert via_client[0].result == {"processID": "buffer", "status": "ok"}
 
     direct = _FakeProcesses()
-    via_direct = ArcPyProcessRunner(direct).execute_plan(plan)
+    via_direct = ScriptProcessRunner(direct).execute_plan(plan)
     assert via_direct[0].result == {"processID": "buffer", "status": "ok"}
 
 
 def test_runner_raises_when_translation_has_empty_process_id() -> None:
-    plan = translate_arcpy_source(
+    plan = translate_script_source(
         "import arcpy\narcpy.analysis.Buffer('a', 'b', '1 Meter')\n"
     )
     # Replace process_id with empty string to simulate a missing mapping
-    blank = ArcPyProcessTranslation(
+    blank = ScriptProcessTranslation(
         call=plan.translations[0].call,
         process_id="",
         payload=plan.translations[0].payload,
         notes=(),
     )
-    with pytest.raises(UnsupportedArcPyCallError, match="does not have a process mapping"):
-        ArcPyProcessRunner(_FakeProcesses()).execute(blank)
+    with pytest.raises(UnsupportedScriptCallError, match="does not have a process mapping"):
+        ScriptProcessRunner(_FakeProcesses()).execute(blank)
 
 
 # ---------------------------------------------------------------------------
-# translate_arcpy_source / _translate_call branches
+# translate_script_source / _translate_call branches
 # ---------------------------------------------------------------------------
 
 
 class TestTranslator:
     def test_pairwise_aliases_route_to_canonical_specs(self) -> None:
         # PairwiseBuffer maps to analysis.Buffer via _PAIRWISE_TOOL_ALIASES
-        plan = translate_arcpy_source(
+        plan = translate_script_source(
             "import arcpy\narcpy.analysis.PairwiseBuffer('a', 'b', '1 Meter')\n"
         )
         assert plan.translations
@@ -193,7 +193,7 @@ class TestTranslator:
 
     def test_extra_positional_args_overflow_into_arg_n(self) -> None:
         # arcpy.management.CopyFeatures spec has only 2 positional args.
-        plan = translate_arcpy_source(
+        plan = translate_script_source(
             "import arcpy\n"
             "arcpy.management.CopyFeatures('a', 'b', 'extra-3', 'extra-4')\n"
         )
@@ -204,7 +204,7 @@ class TestTranslator:
 
     def test_alias_keyword_resolves_via_spec_aliases(self) -> None:
         # 'output' is an alias for the buffer result
-        plan = translate_arcpy_source(
+        plan = translate_script_source(
             "import arcpy\n"
             "arcpy.analysis.Buffer('a', distance='5 Meters', output='result-fc')\n"
         )
@@ -213,7 +213,7 @@ class TestTranslator:
         assert payload["outputs"] == {"result": "result-fc"}
 
     def test_passthrough_keyword_camel_to_snake_records_passthrough(self) -> None:
-        plan = translate_arcpy_source(
+        plan = translate_script_source(
             "import arcpy\n"
             "arcpy.analysis.Buffer('a', 'b', '5 Meters', customParam='value')\n"
         )
@@ -225,61 +225,61 @@ class TestTranslator:
         )
 
     def test_process_id_map_overrides_spec_default(self) -> None:
-        plan = translate_arcpy_source(
+        plan = translate_script_source(
             "import arcpy\narcpy.analysis.Buffer('a', 'b', '1 Meter')\n",
             process_id_map={"buffer": "vendor:buffer-v2"},
         )
         assert plan.translations[0].process_id == "vendor:buffer-v2"
 
     def test_process_id_map_override_via_family_dot_tool_key(self) -> None:
-        plan = translate_arcpy_source(
+        plan = translate_script_source(
             "import arcpy\narcpy.analysis.Buffer('a', 'b', '1 Meter')\n",
             process_id_map={"analysis.Buffer": "vendor:family-buffer"},
         )
         assert plan.translations[0].process_id == "vendor:family-buffer"
 
     def test_translate_arcpy_report_with_explicit_report(self) -> None:
-        report = scan_arcpy_source(
+        report = scan_script_source(
             "import arcpy\narcpy.analysis.Buffer('a', 'b', '1 Meter')\n"
         )
-        plan = translate_arcpy_report(report)
+        plan = translate_script_report(report)
         assert plan.translations[0].process_id == "buffer"
 
     def test_translate_unsupported_call_raises(self) -> None:
         # Manually build a call that is NOT supported and not aliased.
-        unsupported = ArcPyCall(
+        unsupported = ScriptCall(
             qualified_name="arcpy.sa.Kriging",
             family="spatial-analyst",
             tool="Kriging",
             line=1,
             column=0,
         )
-        report = ArcPyScanReport(filename=None, calls=(unsupported,))
-        # _translate_call is invoked indirectly via translate_arcpy_report; but
+        report = ScriptScanReport(filename=None, calls=(unsupported,))
+        # _translate_call is invoked indirectly via translate_script_report; but
         # since supported_calls filters out unsupported, we hit the unsupported
-        # path by going through ArcPyProcessRunner with a hand-built translation.
-        plan = translate_arcpy_report(report)
+        # path by going through ScriptProcessRunner with a hand-built translation.
+        plan = translate_script_report(report)
         # No translations were produced because the call is unsupported.
         assert plan.translations == ()
         # Now exercise _translate_call's unsupported branch directly via
-        # ArcPyMigrationPlan unsupported_calls aggregation.
+        # ScriptMigrationPlan unsupported_calls aggregation.
         assert plan.unsupported_calls == (unsupported,)
         assert plan.unsupported_families == ("spatial-analyst",)
 
 
 def test_translate_call_unsupported_raises() -> None:
-    """Hit ``_translate_call``'s ``UnsupportedArcPyCallError`` branch directly."""
+    """Hit ``_translate_call``'s ``UnsupportedScriptCallError`` branch directly."""
 
-    from honua_migrate.code.python.arcpy import _translate_call
+    from honua_migrate.code.python.script import _translate_call
 
-    unsupported = ArcPyCall(
+    unsupported = ScriptCall(
         qualified_name="arcpy.sa.Kriging",
         family="spatial-analyst",
         tool="Kriging",
         line=1,
         column=0,
     )
-    with pytest.raises(UnsupportedArcPyCallError, match="not supported"):
+    with pytest.raises(UnsupportedScriptCallError, match="not supported"):
         _translate_call(unsupported, process_id_map={})
 
 
@@ -290,7 +290,7 @@ def test_translate_call_unsupported_raises() -> None:
 
 class TestScanner:
     def test_import_from_non_arcpy_is_ignored(self) -> None:
-        report = scan_arcpy_source(
+        report = scan_script_source(
             "from os import path\n"
             "from collections import defaultdict\n"
             "import arcpy\n"
@@ -304,19 +304,19 @@ class TestScanner:
     def test_import_from_arcpy_star_resolves_unqualified_names(self) -> None:
         # Star imports register the module so that bare names like Buffer_analysis
         # can still resolve.
-        report = scan_arcpy_source(
+        report = scan_script_source(
             "from arcpy import *\nBuffer_analysis('a', 'b', '1 Meter')\n"
         )
         assert any(call.tool == "Buffer" for call in report.calls)
 
     def test_annotated_assignment_target_recorded(self) -> None:
-        report = scan_arcpy_source(
+        report = scan_script_source(
             "import arcpy\nfc: str = arcpy.analysis.Buffer('a', 'b', '1 Meter')\n"
         )
         assert report.calls[0].assignment_targets == ("fc",)
 
     def test_walrus_assignment_target_recorded(self) -> None:
-        report = scan_arcpy_source(
+        report = scan_script_source(
             "import arcpy\n"
             "if (fc := arcpy.analysis.Buffer('a', 'b', '1 Meter')):\n"
             "    pass\n"
@@ -326,7 +326,7 @@ class TestScanner:
     def test_calls_on_non_arcpy_objects_are_skipped(self) -> None:
         # A call expression whose func is a Subscript (not Name/Attribute) and a
         # plain unrelated function are both filtered out.
-        report = scan_arcpy_source(
+        report = scan_script_source(
             "import arcpy\n"
             "data[0]()\n"
             "print('hi')\n"
@@ -418,14 +418,14 @@ class TestHelpers:
 
 
 def test_module_works_with_mocked_arcpy_import(monkeypatch: pytest.MonkeyPatch) -> None:
-    """``honua_migrate.code.python.arcpy`` performs source-only analysis, but
+    """``honua_migrate.code.python.script`` performs source-only analysis, but
     end-user code may have a stubbed arcpy. Sanity-check that the scanner
     still runs even when sys.modules has a mock arcpy."""
 
     import sys
 
     monkeypatch.setitem(sys.modules, "arcpy", MagicMock())
-    report = scan_arcpy_source(
+    report = scan_script_source(
         "import arcpy\narcpy.analysis.Buffer('a', 'b', '1 Meter')\n"
     )
     assert report.calls[0].tool == "Buffer"

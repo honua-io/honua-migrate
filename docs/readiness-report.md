@@ -14,20 +14,22 @@ the footprint is handed to Honua.
 It is **not** a second handoff contract. `EsriFootprint.json` remains the sole
 machine-readable contract the migration commands consume. The
 report is read-only by construction: it is rendered from an already captured
-footprint and does not contact ArcGIS Online, ArcGIS Server, FileGDB paths,
-Honua services, or any telemetry endpoint.
+footprint and does not contact source systems, FileGDB paths, Honua services,
+or any telemetry endpoint.
 
 ## Renderer contract
 
 `honua_esri_assess.report.render()` accepts a parsed footprint mapping and
 returns deterministic Markdown.
 
-- The renderer performs no file, network, logging, or Esri-system I/O.
+- The renderer performs no file, network, logging, or source-system I/O.
 - The renderer does not validate or mutate the input footprint.
 - The CLI owns JSON parsing, optional schema validation, input/output paths,
   logging, and prospect-safe error handling.
 - The report wording, heading layout, and heuristic thresholds are not schema
   versioned. Changes to those surfaces do not change `schemaVersion`.
+- The report title and source labels use neutral terminology. Consumers that
+  match rendered Markdown text should update their matching rules.
 
 The committed sample report is generated from the canonical footprint:
 
@@ -40,16 +42,16 @@ output.
 ## CLI usage
 
 ```bash
-honua-esri-assess report \
+honua-migrate assess report \
   --input EsriFootprint.json \
   --output readiness-report.md
 
-honua-esri-assess report \
+honua-migrate assess report \
   --input docs/samples/esri-footprint.sample.json \
   --output -
 
-honua-esri-assess report --input - --output -
-honua-esri-assess report --input EsriFootprint.json --strict
+honua-migrate assess report --input - --output -
+honua-migrate assess report --input EsriFootprint.json --strict
 ```
 
 | Flag | Required | Description |
@@ -69,7 +71,7 @@ is also rendered as a schema warning. `--strict` fails invalid footprints and
 also fails with a typed schema error when validation cannot run.
 
 The stderr surface remains typed and sanitized. The report command does not
-write customer Esri systems or send network telemetry.
+write customer source systems or send network telemetry.
 
 ## Renderer API
 
@@ -137,7 +139,7 @@ themselves.
 | `unknown-item-type` | A portal item type is `Other`, `Unknown`, `Unsupported`, or `Unsupported Item Type`. |
 | `missing-spatial-reference` | A FileGDB feature class has no `wkid`, `latestWkid`, or `wkt` in its spatial reference. |
 | `legacy-spatial-reference` | A FileGDB feature class uses a v0.1 watchlist WKID: `26711`, `32040`, or `102671`. |
-| `unsupported-service-type` | An ArcGIS Server service type is outside `FeatureServer`, `ImageServer`, `MapServer`, or `VectorTileServer`. |
+| `unsupported-service-type` | A source service type is outside `FeatureServer`, `ImageServer`, `MapServer`, or `VectorTileServer`. |
 
 ## Migration ordering
 
@@ -147,8 +149,8 @@ passes; it does not add write or migration semantics to the footprint.
 | Order | Group | Matching items |
 | ---: | --- | --- |
 | 1 | FileGDB feature classes | `filegdb-feature-class` |
-| 2 | ArcGIS Server feature services | `server-service` with `serviceType: "FeatureServer"` |
-| 3 | ArcGIS Server map and image services | `server-service` with `serviceType: "MapServer"` or `"ImageServer"` |
+| 2 | Source feature services | `server-service` with `serviceType: "FeatureServer"` |
+| 3 | Source map and image services | `server-service` with `serviceType: "MapServer"` or `"ImageServer"` |
 | 4 | AGOL hosted feature services | `portal-item` with `type: "Feature Service"` |
 | 5 | AGOL hosted tile and vector tile services | `portal-item` with `type: "Tile Service"` or `"Vector Tile Service"` |
 | 6 | AGOL web maps | `portal-item` with `type: "Web Map"` |

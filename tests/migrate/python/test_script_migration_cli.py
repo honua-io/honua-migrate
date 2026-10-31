@@ -83,7 +83,7 @@ def test_cli_translate_emits_plan_and_evidence(tmp_path: Path, capsys) -> None:
     assert [t["processId"] for t in plan["translations"]] == ["buffer", "erase"]
 
     evidence = json.loads(evidence_out.read_text())
-    assert evidence["schema"] == "honua.migration.arcpy.parity-evidence/v1"
+    assert evidence["schema"] == "honua.migration.script.parity-evidence/v2"
     assert evidence["summary"]["translatableCalls"] == 1
     assert evidence["summary"]["manualReviewCalls"] == 1
     assert evidence["summary"]["unsupportedCalls"] == 1
@@ -169,7 +169,7 @@ def test_cli_atbx_parses_models(tmp_path: Path, capsys) -> None:
 
     assert rc == 0
     agg = json.loads(evidence.read_text())
-    assert agg["schema"] == "honua.migration.arcpy.atbx-parity-evidence/v1"
+    assert agg["schema"] == "honua.migration.script.atbx-parity-evidence/v2"
     assert agg["summary"]["modelCount"] == 1
     assert agg["summary"]["translatableCalls"] == 1
 
@@ -193,7 +193,7 @@ def test_cli_gpservice_classifies_tasks(tmp_path: Path) -> None:
 
     assert rc == 0
     agg = json.loads(evidence.read_text())
-    assert agg["schema"] == "honua.migration.arcpy.gp-service-parity-evidence/v1"
+    assert agg["schema"] == "honua.migration.script.gp-service-parity-evidence/v2"
     assert agg["url"] == "https://x/GPServer"
     assert agg["summary"]["taskCount"] == 2
     assert agg["summary"]["translatableCalls"] == 1

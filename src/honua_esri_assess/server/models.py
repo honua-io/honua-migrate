@@ -1,4 +1,4 @@
-"""Dataclass shapes returned by the ArcGIS Server scanner.
+"""Dataclass shapes returned by the source server scanner.
 
 These types are the in-Python data model. The wire-format mapping into
 ``EsriFootprint.json`` lives in :mod:`honua_esri_assess.footprint.v0_1`;
@@ -124,7 +124,7 @@ class LayerDetail:
 
 @dataclass(frozen=True)
 class LockInDetail:
-    """An enumerated hard Esri lock-in observed on a service, with extent.
+    """An enumerated source-specific dependency observed on a service, with extent.
 
     ``kind`` is a stable lock-in identifier (``utility-network``,
     ``parcel-fabric``, ``lrs``) matching the verdict registry keys. The count
@@ -156,7 +156,7 @@ class LayerRecord:
 class ServiceRecord:
     """One service entry from the catalog walk.
 
-    ``service_type`` is the raw Esri type string (``FeatureServer``,
+    ``service_type`` is the raw source type string (``FeatureServer``,
     ``MapServer``, ...); ``kind`` is the coarse migration bucket from
     :mod:`honua_esri_assess.server.catalog`. ``deep_scanned`` flips true
     when the per-service body was fetched and parsed.
@@ -179,7 +179,7 @@ class ServiceRecord:
     # Geoprocessing task names advertised on a GPServer's service body (its
     # ``tasks`` array). Empty for non-GP services and for GP services that were
     # not deep-probed; geoprocessing migration itself is out of scope here and
-    # is handled by honua-sdk-python's ArcPy scanner/translator/runner.
+    # is handled by the Python SDK's script scanner/translator/runner.
     gp_tasks: tuple[str, ...] = ()
 
 
