@@ -252,7 +252,7 @@ const query = new Query({
   outFields: ["OBJECTID", "status", "priority"],
 });
 
-const activeBasemap = basemapGallery.select("dark-gray");
+const activeBasemap = basemapGallery.select("osm");
 basemapLayerList.refresh();
 const allSublayers = operationsLayer.allSublayers;
 const foundSublayer = operationsLayer.findSublayerById(2);
