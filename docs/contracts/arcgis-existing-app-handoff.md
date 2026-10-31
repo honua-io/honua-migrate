@@ -7,7 +7,7 @@ tags: [arcgis, handoff, incremental]
 ---
 # ArcGIS existing-app handoff
 
-`honua-migrate services arcgis handoff` documents the bounded incremental
+`honua-migrate services geoservices-rest handoff` documents the bounded incremental
 import path for one ArcGIS service: discover a service, review its
 dependency closure and fidelity in a plan, apply it, verify the result, and
 export the target endpoint plus the source-to-target service/layer ID mapping
