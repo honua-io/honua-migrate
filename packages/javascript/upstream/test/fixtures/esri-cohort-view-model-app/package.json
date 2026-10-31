@@ -1,8 +1,0 @@
-{
-  "name": "esri-cohort-view-model-app",
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "@arcgis/core": "~4.34.8"
-  }
-}

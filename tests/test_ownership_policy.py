@@ -22,12 +22,10 @@ def test_policy_covers_required_surfaces_and_boundaries() -> None:
 
     for surface in (
         "Assessment",
-        "JavaScript",
         "Python / ArcPy",
         "MAUI",
         "ArcGIS services",
         "GeoServer",
-        "Portal content",
         "Reconciliation",
     ):
         assert f"| {surface} |" in policy
@@ -39,8 +37,7 @@ def test_policy_covers_required_surfaces_and_boundaries() -> None:
         "experimental `honua-collect` end-user application",
         "Collect is not a migration source or runtime dependency",
         "Reconciliation is the separate shared surface below",
-        "unified Python content group is reserved but remains a placeholder",
-        "independent `@honua/honua-migrate` package",
+        "standalone JavaScript application-source migration package has been retired",
         "two consecutive `honua-migrate` minor releases",
         "at least 90 days",
         "Removal never depends on usage telemetry",
