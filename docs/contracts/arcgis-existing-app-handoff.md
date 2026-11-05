@@ -82,8 +82,8 @@ field, not a telemetry sink: nothing is transmitted anywhere by this command.
 
 ## Cross-repo scope
 
-Licensed Esri compatibility checks (rendering/query/popup/auth fidelity
-against the real ArcGIS JS SDK) are owned by `honua-esri-compat`, not this
+Licensed rendering, query, popup, and auth fidelity checks against the
+real ArcGIS JS SDK are owned by `honua-esri-compat`, not this
 CLI; `--exercised-*` flags record that those checks were performed, not how.
 Installed-CLI receipt evidence and .NET SDK/server runtime defects are
 tracked against honua-io/honua-release#317, honua-io/honua-release#325,
