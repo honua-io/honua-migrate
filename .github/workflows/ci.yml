@@ -96,7 +96,7 @@ jobs:
 
   javascript:
     name: JavaScript package gate (Node 24 LTS)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
