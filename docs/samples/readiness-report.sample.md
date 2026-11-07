@@ -4,14 +4,14 @@
 | --- | --- |
 | Schema version | v0.1 |
 | Generated at | 2026-05-22T14:08:33Z |
-| Source | ArcGIS Online |
+| Source | hosted GIS portal |
 | Source locator | example.maps.arcgis.com/0123ABCDEF456789 |
 | Source captured at | 2026-05-22T14:02:11Z |
 | Scanner | honua-esri-assess 0.1.0 |
 
 ## Service Inventory
 
-### ArcGIS Online / portal-item
+### hosted GIS portal / portal-item
 
 | Item | Type | Owner | Sharing | Modified |
 | --- | --- | --- | --- | --- |
@@ -28,9 +28,9 @@
 
 | Source | Type | Records | Layers |
 | --- | --- | --- | --- |
-| ArcGIS Online | Feature Service | 2 | - |
-| ArcGIS Online | Survey123 Form | 1 | - |
-| ArcGIS Online | Web Map | 1 | - |
+| hosted GIS portal | Feature Service | 2 | - |
+| hosted GIS portal | Survey123 Form | 1 | - |
+| hosted GIS portal | Web Map | 1 | - |
 
 ## Complexity Estimate
 

@@ -36,7 +36,7 @@ back-compatible in both directions.
 
 ## ServerLayerDetail
 
-For ArcGIS Server `FeatureServer` / `MapServer` services, a deep scan can
+For GeoServices REST server `FeatureServer` / `MapServer` services, a deep scan can
 follow each layer/table to its read-only metadata resource
 (`.../<service>/<id>`) and record a schema & behavior detail block under
 `ServerService.layers`. The probe is strictly read-only — it reads the
@@ -117,11 +117,11 @@ Edges never carry credentials, query strings, or raw on-prem paths.
 
 ## Producer behaviour
 
-- **ArcGIS Online** — for each `Web Map` item, one `webmap-references-service`
+- **hosted GIS portal** — for each `Web Map` item, one `webmap-references-service`
   edge is emitted per dependency that resolves to another scanned portal item
   id. Edges to unscanned ids are dropped so every node stays present in the
   artifact.
-- **ArcGIS Server** — for each retained service, one `service-contains-layer`
+- **GeoServices REST server** — for each retained service, one `service-contains-layer`
   edge per observed layer (`serviceUrl#<layerId>`).
 
 Edges are de-duplicated and sorted deterministically. Sources with no

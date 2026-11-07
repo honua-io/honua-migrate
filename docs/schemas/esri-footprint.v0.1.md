@@ -1,7 +1,7 @@
 ---
 type: reference
 title: "esri-footprint v0.1 schema"
-description: "The original footprint schema: every field the assessment emits about an Esri estate, with types and meaning."
+description: "The original footprint schema: every field the assessment emits about an GIS estate, with types and meaning."
 resource: "https://github.com/honua-io/honua-migrate/tree/trunk/schemas"
 tags: [schema, footprint, v0.1]
 ---
@@ -16,7 +16,7 @@ tags: [schema, footprint, v0.1]
 
 `EsriFootprint.json` is the read-only artifact the assessment scan emits and
 the report, capability crosswalk and migration planning consume. The contract describes the inventory of a single Esri source
-(ArcGIS Online, ArcGIS Server, or FileGDB) in enough detail for the
+(hosted GIS portal, GeoServices REST server, or FileGDB) in enough detail for the
 migration product to plan a Honua takeover *without round-tripping back to
 the source system*.
 
@@ -149,7 +149,7 @@ Required iff `source.kind == "arcgis-online"`; forbidden otherwise (see [Discrim
 
 | Field            | Required | Type                                                | Description                                              |
 |------------------|----------|-----------------------------------------------------|----------------------------------------------------------|
-| `orgId`          | yes      | string                                              | ArcGIS Online organization id.                           |
+| `orgId`          | yes      | string                                              | hosted GIS portal organization id.                           |
 | `orgUrl`         | yes      | URI                                                 | Organization base URL.                                   |
 | `itemCounts`     | yes      | `{ [safe itemType label]: integer }`                | Roll-up by Esri item type (e.g. `Feature Service`). Keys must match `^[A-Za-z0-9][A-Za-z0-9 ._()+-]{0,79}$`. |
 | `sharingSummary` | no       | `{ private, org, public, shared: integer }`         | Roll-up of sharing levels across portal items.           |
@@ -163,8 +163,8 @@ Required iff `source.kind == "arcgis-server"`; forbidden otherwise (see [Discrim
 |-----------------|----------|-----------------------------------------|-----------------------------------------------------------------------------|
 | `folders`       | yes      | string[]                                | Top-level service folder names visited by the scan. Empty array if all services live at the root; filtered scans may contain only the requested folder. |
 | `serviceCounts` | yes      | `{ [safe serviceType label]: integer }` | Roll-up by Esri service type (e.g. `MapServer`). Keys must match `^[A-Za-z0-9][A-Za-z0-9 ._()+-]{0,79}$`. |
-| `version`       | no       | string                                  | Reported ArcGIS Server version (e.g. `"11.2"`).                             |
-| `licensing`     | no       | [`ServerLicensing`](#serverlicensing)   | Read-only license entitlement observations from documented ArcGIS Server REST/admin endpoints. |
+| `version`       | no       | string                                  | Reported GeoServices REST server version (e.g. `"11.2"`).                             |
+| `licensing`     | no       | [`ServerLicensing`](#serverlicensing)   | Read-only license entitlement observations from documented GeoServices REST server REST/admin endpoints. |
 
 ### PortalLicensing
 
@@ -187,7 +187,7 @@ licenses plus enabled per-service SOEs/SOIs from read-only REST/admin GETs.
 
 | Field               | Required | Type                         | Description                                      |
 |---------------------|----------|------------------------------|--------------------------------------------------|
-| `productName`       | no       | string                       | Product name reported by ArcGIS Server.          |
+| `productName`       | no       | string                       | Product name reported by GeoServices REST server.          |
 | `currentVersion`    | no       | string                       | Server version reported by REST/admin info.      |
 | `edition`           | no       | string                       | Server edition when the admin endpoint exposes it. |
 | `extensions`        | yes      | [`ExtensionEntitlement[]`](#extensionentitlement) | Server-level extension entitlements.             |
@@ -306,7 +306,7 @@ AGOL service or layer records to the artifact.
 | `serviceUrl`   | yes      | URI                               | Fully-qualified service URL. Schema pattern `^https?://[^@?#\s]+(/[^?#\s]*)?$` rejects userinfo, query strings, and fragments. **Credentials must never appear in this field.** |
 | `serviceType`  | yes      | string                            | Esri service type (e.g. `MapServer`, `FeatureServer`).                       |
 | `folder`       | yes      | string                            | Folder relative to the services root, or empty string for root services.     |
-| `layerCount`   | yes      | integer ≥ 0                       | Number of layers observed for the service. Current ArcGIS Server producer output fills this from deep service probes; shallow or unprobed services emit `0`. |
+| `layerCount`   | yes      | integer ≥ 0                       | Number of layers observed for the service. Current GeoServices REST server producer output fills this from deep service probes; shallow or unprobed services emit `0`. |
 | `geometryType` | no       | [`GeometryType`](#geometrytype)   | Service geometry type when uniform across layers.                            |
 | `extent`       | no       | [`Extent`](#extent)               | Service full extent.                                                         |
 | `sr`           | no       | [`SpatialReference`](#spatialreference) | Service spatial reference.                                              |

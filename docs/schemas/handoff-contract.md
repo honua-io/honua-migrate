@@ -22,7 +22,7 @@ canonical sample: [`docs/samples/esri-footprint.sample.json`](../samples/esri-fo
 `EsriFootprint.json` is the **only** supported handoff out of an assessment.
 
 - No side-channel data exchange. Consumers do not call the
-  customer's Esri systems on their own, does not consume scanner logs, and does
+  customer's source GIS systems on their own, does not consume scanner logs, and does
   not read CLI exit codes as a signal.
 - No alternate entitlement handoff. The Python entitlement collectors
   (`honua_esri_assess.entitlements`) emit a facet-compatible JSON fragment for
@@ -67,7 +67,7 @@ means the producer did not include entitlement enumeration in that footprint;
 empty required arrays inside a present licensing block mean nothing was
 observed or enumerable with the current credential.
 
-For ArcGIS Server scans in the v0.1 line, the producer records a
+For GeoServices REST server scans in the v0.1 line, the producer records a
 credential-free services root in `source.locator` and writes the ArcGIS
 Server details in the matching `server` facet:
 
@@ -183,11 +183,11 @@ count emitted FileGDB inventory records.
 
 ## Read-only stance
 
-The producer is read-only against the customer's Esri systems. This is a
+The producer is read-only against the customer's source GIS systems. This is a
 constraint of the assessment tool itself, not just a property of the
 artifact:
 
-- No write APIs are called against ArcGIS Online, ArcGIS Server, or any
+- No write APIs are called against hosted GIS portal, GeoServices REST server, or any
   FileGDB.
 - The AGOL producer uses Portal Sharing REST `GET` calls only. It normalizes
   organization URLs and `/sharing/rest` URLs, then reads `portals/self`,
@@ -232,7 +232,7 @@ The Markdown readiness report is a human-facing companion to
 `EsriFootprint.json`, not a second machine handoff contract. It is generated
 from a parsed footprint and summarizes header metadata, schema warnings,
 service inventory, layer counts, complexity, manual-review items, migration
-ordering, and diagnostics without contacting Esri systems.
+ordering, and diagnostics without contacting source GIS systems.
 
 The renderer is a pure deterministic API: parsed `EsriFootprint.json` dict in,
 Markdown string out. File reads, file writes, schema validation, and

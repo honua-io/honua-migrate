@@ -1,6 +1,6 @@
-"""Safe CLI client for Honua's ArcGIS GeoServices import API.
+"""Safe CLI client for Honua's GeoServices REST import API.
 
-The source ArcGIS service is only ever discovered by the server.  This module
+The source GeoServices REST service is only ever discovered by the server.  This module
 does not issue requests to it directly, which keeps planning read-only and
 centralises SSRF protection in the Honua server endpoint.
 """

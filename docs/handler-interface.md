@@ -46,7 +46,7 @@ environment variable into `ScanOptions.token` and never exposes a plaintext
 invocation did not enable network telemetry; it does not grant permission for a
 handler to send telemetry.
 
-The built-in AGOL and ArcGIS Server handlers pass `token`, `user_agent`,
+The built-in AGOL and GeoServices REST server handlers pass `token`, `user_agent`,
 `timeout`, and `max_retries` into their read-only HTTP probes. Token values are
 sent only as Esri request parameters and are not copied into
 `EsriFootprint.json`; FileGDB is local-only and ignores network-only options.

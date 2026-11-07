@@ -14,7 +14,7 @@ the footprint is handed to Honua.
 It is **not** a second handoff contract. `EsriFootprint.json` remains the sole
 machine-readable contract the migration commands consume. The
 report is read-only by construction: it is rendered from an already captured
-footprint and does not contact ArcGIS Online, ArcGIS Server, FileGDB paths,
+footprint and does not contact hosted GIS portal, GeoServices REST server, FileGDB paths,
 Honua services, or any telemetry endpoint.
 
 ## Renderer contract
@@ -69,7 +69,7 @@ is also rendered as a schema warning. `--strict` fails invalid footprints and
 also fails with a typed schema error when validation cannot run.
 
 The stderr surface remains typed and sanitized. The report command does not
-write customer Esri systems or send network telemetry.
+write customer source GIS systems or send network telemetry.
 
 ## Renderer API
 
@@ -137,7 +137,7 @@ themselves.
 | `unknown-item-type` | A portal item type is `Other`, `Unknown`, `Unsupported`, or `Unsupported Item Type`. |
 | `missing-spatial-reference` | A FileGDB feature class has no `wkid`, `latestWkid`, or `wkt` in its spatial reference. |
 | `legacy-spatial-reference` | A FileGDB feature class uses a v0.1 watchlist WKID: `26711`, `32040`, or `102671`. |
-| `unsupported-service-type` | An ArcGIS Server service type is outside `FeatureServer`, `ImageServer`, `MapServer`, or `VectorTileServer`. |
+| `unsupported-service-type` | An GeoServices REST server service type is outside `FeatureServer`, `ImageServer`, `MapServer`, or `VectorTileServer`. |
 
 ## Migration ordering
 
@@ -147,8 +147,8 @@ passes; it does not add write or migration semantics to the footprint.
 | Order | Group | Matching items |
 | ---: | --- | --- |
 | 1 | FileGDB feature classes | `filegdb-feature-class` |
-| 2 | ArcGIS Server feature services | `server-service` with `serviceType: "FeatureServer"` |
-| 3 | ArcGIS Server map and image services | `server-service` with `serviceType: "MapServer"` or `"ImageServer"` |
+| 2 | GeoServices REST server feature services | `server-service` with `serviceType: "FeatureServer"` |
+| 3 | GeoServices REST server map and image services | `server-service` with `serviceType: "MapServer"` or `"ImageServer"` |
 | 4 | AGOL hosted feature services | `portal-item` with `type: "Feature Service"` |
 | 5 | AGOL hosted tile and vector tile services | `portal-item` with `type: "Tile Service"` or `"Vector Tile Service"` |
 | 6 | AGOL web maps | `portal-item` with `type: "Web Map"` |

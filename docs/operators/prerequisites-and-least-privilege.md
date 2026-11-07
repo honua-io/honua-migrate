@@ -46,7 +46,7 @@ You can deliver value at Tier 1 with **no credentials at all**. Tier 2 is opt-in
 | Input | Example | Used by |
 |-------|---------|---------|
 | ArcGIS **Server** base URL | `https://gis.example.com/arcgis` | `scan server --target …` — appends `/rest/info`, `/rest/services` (Tier 1) and, for the authorized tier, `/admin/...` |
-| **Portal / ArcGIS Online** Sharing REST URL | AGOL: `https://yourorg.maps.arcgis.com/sharing/rest` · Enterprise: `https://gis.example.com/portal/sharing/rest` | `scan agol --target …` — the scanner appends `portals/self`, `search`, `content/items/<id>` directly |
+| **Portal / hosted GIS portal** Sharing REST URL | AGOL: `https://yourorg.maps.arcgis.com/sharing/rest` · Enterprise: `https://gis.example.com/portal/sharing/rest` | `scan agol --target …` — the scanner appends `portals/self`, `search`, `content/items/<id>` directly |
 | FileGDB / workspace path | `/data/parcels.gdb` | `scan filegdb` / `scan filegdb-workspace` (local filesystem, no network) |
 
 You pass the target with `--target`; you do not hand it admin consoles or DB
@@ -121,7 +121,7 @@ org settings) and the portal-facing reads will work under it.
 
 1. Create a **dedicated, named service account** used only for the assessment —
    not a shared admin login.
-2. On Portal, scope it to a **custom view-only admin role**; on ArcGIS Server,
+2. On Portal, scope it to a **custom view-only admin role**; on GeoServices REST server,
    accept that Admin-API reads require admin authorization and document that the
    account is used **read-only** (the tool issues only `GET`s — verifiable in
    your gateway/proxy logs).
@@ -146,7 +146,7 @@ org settings) and the portal-facing reads will work under it.
 
 - [ ] Decide tier: Tier 1 (no creds) is enough for a footprint + migratability
       verdict.
-- [ ] Have the target URL(s): ArcGIS Server base and/or Portal/AGOL URL.
+- [ ] Have the target URL(s): GeoServices REST server base and/or Portal/AGOL URL.
 - [ ] (Tier 2 only) Provision a dedicated read-only-intent service account,
       mint a short-lived token, export it to an env var, pass `--token-env`.
 - [ ] Confirm network reachability from the run host to the ArcGIS target.
