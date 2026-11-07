@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from honua_esri_assess.entitlements.http import HttpResponse
-from honua_esri_assess.entitlements.portal import PortalEntitlementsCollector
+from honua_migrate.assessment.entitlements.http import HttpResponse
+from honua_migrate.assessment.entitlements.portal import PortalEntitlementsCollector
 
 from .conftest import StubHttpClient, load_fixture, respond
 

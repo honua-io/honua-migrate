@@ -17,7 +17,7 @@ import pytest
 import responses
 
 from honua_migrate.cli import main
-from honua_migrate.services.arcgis import ArcGisClient
+from honua_migrate.services.geoservices_rest import GeoServicesClient
 from honua_migrate.services.target_readiness import preflight_target
 
 SOURCE_URL = "https://arcgis.test/rest/services/Parcels/FeatureServer"
@@ -755,8 +755,8 @@ def test_disabled_but_inactive_capability_is_not_treated_as_ready(
     _assert_clean(out, err)
 
 
-def _client() -> ArcGisClient:
-    client = ArcGisClient("https://honua.test", API_KEY, 30, 0)
+def _client() -> GeoServicesClient:
+    client = GeoServicesClient("https://honua.test", API_KEY, 30, 0)
 
     def _start(_request: object) -> dict:
         raise AssertionError("client.start must not run during readiness")

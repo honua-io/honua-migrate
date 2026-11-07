@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
-from honua_esri_assess.entitlements.http import HttpResponse
+from honua_migrate.assessment.entitlements.http import HttpResponse
 
 _FIXTURES_DIR = Path(__file__).parent / "fixtures"
 

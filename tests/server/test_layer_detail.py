@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from honua_esri_assess.server.layer_detail import parse_layer_detail
+from honua_migrate.assessment.server.layer_detail import parse_layer_detail
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

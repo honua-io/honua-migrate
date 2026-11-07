@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 authors = [{ name = "Honua" }]
-keywords = ["arcgis", "esri", "filegdb", "gis", "migration", "readiness"]
+keywords = ["geoservices", "assessment", "filegdb", "gis", "migration", "readiness"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
@@ -38,7 +38,6 @@ Repository = "https://github.com/honua-io/honua-migrate"
 Changelog = "https://github.com/honua-io/honua-migrate/blob/trunk/CHANGELOG.md"
 
 [project.scripts]
-honua-esri-assess = "honua_esri_assess.cli:main"
 honua-migrate = "honua_migrate.cli:main"
 
 [project.optional-dependencies]
@@ -66,13 +65,13 @@ reproducible = true
 
 [tool.hatch.build.targets.wheel]
 # The package ships its own schema copy at
-# ``src/honua_esri_assess/schemas/esri-footprint-v0.1.json`` (the resource read
+# ``src/honua_migrate/assessment/schemas/esri-footprint-v0.1.json`` (the resource read
 # at runtime via importlib.resources), so it is already included here. A
 # ``force-include`` of the repo-root ``schemas/`` copy onto the same wheel path
 # is redundant and, under hatchling >=1.27, a hard "second file at the same
 # path" error. The repo-root copy remains the canonical human-readable source
 # and is shipped in the sdist below; test_schema_packaging keeps the two in sync.
-packages = ["src/honua_esri_assess", "src/honua_migrate"]
+packages = ["src/honua_migrate"]
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -96,7 +95,7 @@ addopts = ["--import-mode=importlib"]
 
 [tool.mypy]
 python_version = "3.11"
-packages = ["honua_esri_assess", "honua_migrate"]
+packages = ["honua_migrate"]
 mypy_path = "src"
 ignore_missing_imports = true
 disable_error_code = ["import-untyped"]

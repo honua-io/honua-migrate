@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from honua_esri_assess.footprint.access import build_access_footprint, validate_access_footprint
-from honua_esri_assess.scanners.admin_rbac import scan_portal_rbac, scan_server_rbac
+from honua_migrate.assessment.footprint.access import build_access_footprint, validate_access_footprint
+from honua_migrate.assessment.scanners.admin_rbac import scan_portal_rbac, scan_server_rbac
 
 from .conftest import StubHttpClient, respond, respond_fixture
 

@@ -17,13 +17,13 @@ import typer
 
 from honua_migrate.contract_validation import validate_contract
 from honua_migrate.contracts import MigrationError, MigrationPlan
-from honua_esri_assess.diagnostics import redact
-from honua_esri_assess.output_io import (
+from honua_migrate.assessment.diagnostics import redact
+from honua_migrate.assessment.output_io import (
     OutputExistsError,
     atomic_write_text,
     ensure_overwrite_allowed,
 )
-from honua_esri_assess.redaction import sanitize_handoff_url
+from honua_migrate.assessment.redaction import sanitize_handoff_url
 
 geoserver_app = typer.Typer(help="Migrate GeoServer catalogs through Honua jobs.")
 

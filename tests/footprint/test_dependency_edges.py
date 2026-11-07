@@ -9,14 +9,14 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
-from honua_esri_assess.footprint.v0_1 import (
+from honua_migrate.assessment.footprint.v0_1 import (
     RELATION_SERVICE_LAYER,
     RELATION_WEBMAP_SERVICE,
     to_footprint_v0_1,
 )
-from honua_esri_assess.portal.models import ItemRecord, OrgInfo, PortalScanResult
-from honua_esri_assess.report.heuristics import dependency_edges, dependency_order
-from honua_esri_assess.server.models import (
+from honua_migrate.assessment.portal.models import ItemRecord, OrgInfo, PortalScanResult
+from honua_migrate.assessment.report.heuristics import dependency_edges, dependency_order
+from honua_migrate.assessment.server.models import (
     LayerRecord,
     ServerInfo,
     ServerScanResult,
@@ -126,7 +126,7 @@ def test_omitted_service_contributes_no_layer_edges() -> None:
         url="https://gis.example.com/arcgis/rest/services/Throttled/MapServer",
         layers=(LayerRecord(id=0, name="Layer"),),
     )
-    from honua_esri_assess.server.models import ScanDiagnostic
+    from honua_migrate.assessment.server.models import ScanDiagnostic
 
     result = ServerScanResult(
         info=ServerInfo(url="https://gis.example.com/arcgis/rest/services"),

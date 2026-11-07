@@ -5,7 +5,7 @@ from typing import Any, Callable
 
 import responses
 
-from honua_esri_assess.cli import main
+from honua_migrate.assessment.cli import main
 
 
 @responses.activate
@@ -15,7 +15,7 @@ def test_scan_agol_writes_footprint_file(
     happy_path_responses: Callable[..., None],
 ) -> None:
     happy_path_responses(responses, include_users=False, include_service=False)
-    output = tmp_path / "EsriFootprint.json"
+    output = tmp_path / "AssessmentFootprint.json"
 
     exit_code = main(
         [

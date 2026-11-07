@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, BinaryIO, Iterator, Protocol
 from urllib.parse import urlsplit, urlunsplit
 
-from honua_esri_assess.output_io import atomic_write_text
+from honua_migrate.assessment.output_io import atomic_write_text
 
 from ..contract_validation import assert_artifact_safe, validate_contract
 from ..contracts import (

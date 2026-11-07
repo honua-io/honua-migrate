@@ -7,8 +7,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
+import honua_migrate.app as app
 from honua_migrate.app import cli_app
 from honua_migrate.cli import main
 from honua_migrate.contracts import EXIT_APPLY_REFUSED, EXIT_UNAVAILABLE, MigrationPlan
@@ -74,6 +76,27 @@ def test_service_cli_uses_geoservices_rest_route() -> None:
     retired_route = CliRunner().invoke(cli_app, ["services", "arcgis", "--help"])
     assert retired_route.exit_code == 2
     assert "No such command" in retired_route.output
+
+
+@pytest.mark.parametrize("command", ["geoservices-rest", "geoserver"])
+def test_every_builtin_service_command_registers(command: str) -> None:
+    result = CliRunner().invoke(cli_app, ["services", command, "--help"])
+
+    assert result.exit_code == 0
+    assert f"services {command}" in result.output
+
+
+def test_missing_builtin_service_module_fails_loudly(monkeypatch) -> None:
+    import_module = app.importlib.import_module
+
+    def missing_builtin(name: str):
+        if name == "honua_migrate.services.geoservices_rest":
+            raise ModuleNotFoundError("built-in service module missing", name=name)
+        return import_module(name)
+
+    monkeypatch.setattr(app.importlib, "import_module", missing_builtin)
+    with pytest.raises(ModuleNotFoundError, match="built-in service module missing"):
+        app._discover_service_apps()
 
 
 def test_python_module_entry_point_displays_help() -> None:

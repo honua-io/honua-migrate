@@ -1,21 +1,21 @@
 ---
 type: reference
-title: "Esri license entitlement enumeration"
-description: "Read-only enumeration of Esri license entitlements: what is discovered, what it is used for, and what is deliberately not collected."
-tags: [entitlements, licensing, esri]
+title: "License entitlement enumeration"
+description: "Read-only enumeration of license entitlements: what is discovered, what it is used for, and what is deliberately not collected."
+tags: [entitlements, licensing, assessment]
 ---
 # Entitlement Enumeration
 
-The assessment enumerates Esri license entitlements and extension
+The assessment enumerates source system license entitlements and extension
 observations read-only. The collector output is designed to slot into the optional
-`portal.licensing` and `server.licensing` blocks in `EsriFootprint.json` v0.1.
+`portal.licensing` and `server.licensing` blocks in `AssessmentFootprint.json` v0.1.
 
-`EsriFootprint.json` remains the sole handoff contract; entitlement
+`AssessmentFootprint.json` remains the sole handoff contract; entitlement
 observations only reach downstream consumers when a `scan` handler
 attaches them to the emitted footprint.
 
 > **Status.** The interim standalone
-> `honua-esri-assess entitlements` subcommand has been retired alongside the
+> standalone `entitlements` subcommand has been retired alongside the
 > CLI consolidation in [E9](../README.md#command-line-usage). The Python
 > collectors below remain the supported interim surface until scanner
 > integration lands; the CLI usage examples in earlier revisions of this
@@ -24,10 +24,10 @@ attaches them to the emitted footprint.
 ## Read-only endpoint coverage
 
 The entitlement collectors only issue HTTP GET requests. Tokens, when supplied,
-are sent to Esri endpoints only. No entitlement path posts telemetry or calls a
+are sent only to the source system. No entitlement path posts telemetry or calls a
 Honua-operated service.
 
-Portal / ArcGIS Online collector:
+Portal collector:
 
 | Purpose | Endpoint path |
 | --- | --- |
@@ -37,10 +37,10 @@ Portal / ArcGIS Online collector:
 | Org-wide user total fallback | `/sharing/rest/portals/{orgId}/users` |
 
 When invoked from Python, the Portal collector expects a portal base URL,
-for example `https://www.arcgis.com` or `https://example.maps.arcgis.com`. It
+for example `https://portal.example.com`. It
 is not the `/sharing/rest` base used by `scan agol`.
 
-ArcGIS Server collector:
+Server collector:
 
 | Purpose | Endpoint path |
 | --- | --- |
@@ -50,8 +50,8 @@ ArcGIS Server collector:
 | Service discovery for SOE/SOI checks | `/admin/services` and `/admin/services/{folder}` |
 | Per-service SOEs/SOIs | `/admin/services/{folder}/{name}.{type}` |
 
-When invoked from Python, the Server collector expects the ArcGIS Server
-root, for example `https://gis.example.com/arcgis`.
+When invoked from Python, the Server collector expects the source server root,
+for example `https://gis.example.com/arcgis`.
 
 ## Collector knobs
 
@@ -59,7 +59,7 @@ The Python collectors mirror the option surface of the retired CLI:
 
 | Knob | Applies to | Behavior |
 | --- | --- | --- |
-| `RequestsHttpClient(token=...)` | Portal, Server | Adds the token to Esri GET requests for org/admin endpoints. |
+| `RequestsHttpClient(token=...)` | Portal, Server | Adds the token to source GET requests for org/admin endpoints. |
 | `RequestsHttpClient(default_timeout=...)` | Portal, Server | Sets HTTP timeout in seconds. Default is `30`. |
 | `PortalEntitlementsCollector(anonymous=True)` | Portal | Skips token-required subscription, user-license, and users endpoints. |
 | `ServerEntitlementsCollector(include_service_extensions=False)` | Server | Skips per-service SOE/SOI enumeration. |
@@ -78,7 +78,7 @@ The collectors produce a JSON-serializable fragment:
   "licensing": {
     "server": {
       "licensing": {
-        "productName": "ArcGIS Server",
+        "productName": "Example GIS Server",
         "currentVersion": "11.3",
         "edition": "Advanced",
         "extensions": [
@@ -142,20 +142,20 @@ tokens to prospects.
 
 ## Developer integration
 
-The public Python surface is `honua_esri_assess.entitlements`:
+The public Python surface is `honua_migrate.assessment.entitlements`:
 
 ```python
-from honua_esri_assess.entitlements import (
+from honua_migrate.assessment.entitlements import (
     LicensingFacet,
     PortalEntitlementsCollector,
     RequestsHttpClient,
     ServerEntitlementsCollector,
 )
-from honua_esri_assess.footprint import licensing_facet_to_dict
+from honua_migrate.assessment.footprint import licensing_facet_to_dict
 
 client = RequestsHttpClient(token=token)
 portal_result = PortalEntitlementsCollector(
-    "https://www.arcgis.com", client
+    "https://portal.example.com", client
 ).collect()
 
 fragment = licensing_facet_to_dict(
@@ -165,5 +165,5 @@ fragment = licensing_facet_to_dict(
 
 Collector diagnostics use the same v0.1 diagnostic vocabulary as the footprint
 schema. The wire-shape conversion lives in
-`honua_esri_assess.footprint.licensing_facet_to_dict`, so the dataclasses can
+`honua_migrate.assessment.footprint.licensing_facet_to_dict`, so the dataclasses can
 stay Pythonic while the emitted fragment stays camelCase and schema-aligned.
