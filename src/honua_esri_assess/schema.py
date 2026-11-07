@@ -12,7 +12,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 from . import SCHEMA_VERSION
 from .diagnostics import SchemaValidationError
 
-SCHEMA_FILENAME = "esri-footprint-v0.2.json"
+SCHEMA_FILENAME = "esri-footprint-v0.3.json"
 
 
 def _repo_schema_path() -> Path:
@@ -65,7 +65,7 @@ def validate_footprint_file(path: Path) -> None:
         ) from exc
 
     if not isinstance(payload, dict):
-        raise SchemaValidationError("EsriFootprint.json must be a JSON object.")
+        raise SchemaValidationError("Assessment footprint must be a JSON object.")
     validate_footprint(payload)
 
 

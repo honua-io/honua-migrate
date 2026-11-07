@@ -14,7 +14,7 @@ from honua_esri_assess.commands.version import version_command
 cli_app = typer.Typer(
     add_completion=False,
     context_settings={"help_option_names": ["-h", "--help"]},
-    help="Read-only Esri footprint assessment tooling.",
+    help="Read-only source footprint assessment tooling.",
     no_args_is_help=True,
 )
 
@@ -40,17 +40,17 @@ def root(
 
 cli_app.add_typer(scan_app, name="scan")
 cli_app.add_typer(schema_app, name="schema")
-cli_app.command("report", help="Render EsriFootprint.json to Markdown.")(
+cli_app.command("report", help="Render the assessment footprint to Markdown.")(
     report_command
 )
 cli_app.command(
     "verdict",
-    help="Render a per-shop-profile migratability verdict from EsriFootprint.json.",
+    help="Render a per-shop-profile migratability verdict from an assessment footprint.",
 )(verdict_command)
 cli_app.command(
     "caps",
     help=(
-        "Crosswalk EsriFootprint.json to Honua capability keys, emitting "
+        "Crosswalk an assessment footprint to Honua capability keys, emitting "
         "honua-caps.json plus a shareable catalog URL."
     ),
 )(caps_command)

@@ -23,9 +23,9 @@ def test_policy_covers_required_surfaces_and_boundaries() -> None:
     for surface in (
         "Assessment",
         "JavaScript",
-        "Python / ArcPy",
+        "Python",
         "MAUI",
-        "ArcGIS services",
+        "GeoServices REST services",
         "GeoServer",
         "Portal content",
         "Reconciliation",

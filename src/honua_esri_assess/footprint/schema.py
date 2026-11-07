@@ -10,7 +10,7 @@ from typing import Any
 
 from honua_esri_assess.diagnostics import PortalSchemaError
 
-SCHEMA_FILENAME = "esri-footprint-v0.2.json"
+SCHEMA_FILENAME = "esri-footprint-v0.3.json"
 SCHEMA_PACKAGE = "honua_esri_assess.schemas"
 _PACKAGE_ROOT = "honua_esri_assess"
 _PACKAGE_SCHEMA_DIR = "schemas"

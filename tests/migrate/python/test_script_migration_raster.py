@@ -25,8 +25,8 @@ import pytest
 
 from honua_migrate.code.python import (
     build_parity_evidence_for_source,
-    scan_arcpy_source,
-    translate_arcpy_source,
+    scan_script_source,
+    translate_script_source,
 )
 
 # The 16 working tools -> (arcpy family, honua-server raster process id,
@@ -80,7 +80,7 @@ arcpy.management.Mosaic(["a.tif", "b.tif"], "target.tif")
 
 
 def test_all_sixteen_working_raster_tools_are_recognized() -> None:
-    report = scan_arcpy_source(RASTER_SCRIPT, filename="raster.py")
+    report = scan_script_source(RASTER_SCRIPT, filename="raster.py")
     by_tool = {call.tool: call for call in report.calls}
 
     assert set(WORKING_TOOLS).issubset(by_tool), (
@@ -112,7 +112,7 @@ def test_manual_review_notes_name_the_honua_gp_migration_target() -> None:
 
 
 def test_raster_tools_translate_to_bare_ogc_ids_without_job_ids() -> None:
-    plan = translate_arcpy_source(RASTER_SCRIPT, filename="raster.py")
+    plan = translate_script_source(RASTER_SCRIPT, filename="raster.py")
     process_ids = {t.call.tool: t.process_id for t in plan.translations}
     job_ids = {t.call.tool: t.job_process_id for t in plan.translations}
 
@@ -123,7 +123,7 @@ def test_raster_tools_translate_to_bare_ogc_ids_without_job_ids() -> None:
 
 
 def _payload_for(tool: str) -> dict:
-    plan = translate_arcpy_source(RASTER_SCRIPT, filename="raster.py")
+    plan = translate_script_source(RASTER_SCRIPT, filename="raster.py")
     (translation,) = [t for t in plan.translations if t.call.tool == tool]
     return translation.payload
 
@@ -219,7 +219,7 @@ def test_zonal_statistics_output_and_stat_slots_are_correct() -> None:
 def test_hillshade_z_factor_slot_accounts_for_model_shadows() -> None:
     # Hillshade(in_raster, {azimuth}, {altitude}, {model_shadows}, {z_factor}).
     # A 5-positional call must map z_factor from slot 4, not slot 3.
-    payload = translate_arcpy_source(
+    payload = translate_script_source(
         'import arcpy\narcpy.sa.Hillshade("dem", 315, 45, "NO_SHADOWS", 2.0)\n'
     ).translations[0].payload
     assert payload["inputs"]["azimuth"] == 315
@@ -231,7 +231,7 @@ def test_hillshade_z_factor_slot_accounts_for_model_shadows() -> None:
 def test_bare_project_raster_call_classifies_as_management() -> None:
     # arcpy.ProjectRaster (un-suffixed, un-namespaced) still resolves to the
     # management raster.reproject spec.
-    report = scan_arcpy_source('import arcpy\narcpy.ProjectRaster("dem", "out", 4326)\n')
+    report = scan_script_source('import arcpy\narcpy.ProjectRaster("dem", "out", 4326)\n')
     (call,) = report.calls
     assert call.family == "management"
     assert call.tool == "ProjectRaster"
@@ -245,7 +245,7 @@ def test_honest_stubs_are_unsupported_not_translated(stub: str) -> None:
     # at runtime; the codemod must surface them as UNSUPPORTED (no mapping) so
     # it never emits a translation that pretends they work.
     source = f'import arcpy\narcpy.sa.{stub}("in", "out")\n'
-    report = scan_arcpy_source(source)
+    report = scan_script_source(source)
     (call,) = report.calls
 
     assert call.family == "spatial-analyst"
@@ -257,7 +257,7 @@ def test_honest_stubs_are_unsupported_not_translated(stub: str) -> None:
 
     # No translation is emitted for the stub -- nothing resembling a
     # honua_gp.sa.<stub> call reaches the plan.
-    plan = translate_arcpy_source(source)
+    plan = translate_script_source(source)
     assert plan.translations == ()
     assert ("spatial-analyst", stub) in {
         (c.family, c.tool) for c in plan.unsupported_calls

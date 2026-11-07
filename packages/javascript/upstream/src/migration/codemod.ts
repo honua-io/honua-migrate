@@ -1280,6 +1280,26 @@ function codemodHtmlFile(
   let annotatedTodoComments = 0;
   const manualTodos: MigrationTodo[] = [];
 
+  if (target === "honua-compat") {
+    const tags = /<arcgis-map\b[^>]*>/gi;
+    for (const tag of source.matchAll(tags)) {
+      const basemap = /\bbasemap\s*=\s*(["'])(.*?)\1/i.exec(tag[0]);
+      const hasBasemap = /\bbasemap\s*=/i.test(tag[0]);
+      if (/\bitem-id\s*=/i.test(tag[0]) || (hasBasemap && (!basemap || basemap[2] !== "osm"))) {
+        const prefix = source.slice(0, tag.index);
+        const lines = prefix.split("\n");
+        manualTodos.push({
+          kind: "basemap",
+          file,
+          line: lines.length,
+          column: lines[lines.length - 1].length + 1,
+          reason: "Map shell basemap or portal item requires manual verification.",
+          difficulty: "moderate",
+        });
+      }
+    }
+  }
+
   for (const script of scripts.reverse()) {
     const result = codemodFile(
       `${file}.inline.js`,
@@ -1742,6 +1762,31 @@ function codemodFile(
       importsByLocalName.set(importBinding.localName, importBinding);
     }
   }
+  // The loader rewrite substitutes imports without registering their local bindings as
+  // ordinary imports. Track direct awaited loader bindings so their constructors are
+  // checked before a compatibility source is reported as ready.
+  const dollarBasemapBindings = new Map<string, CodemodConstructorKind>();
+  walk(sourceFile, (node) => {
+    if (!ts.isVariableDeclaration(node) || !node.initializer || !ts.isAwaitExpression(node.initializer)) return;
+    const call = node.initializer.expression;
+    if (!ts.isCallExpression(call) || !isArcGisDollarImportCall(call)) return;
+    const specifiers = dollarImportSpecifiers(call);
+    if (!specifiers) return;
+    const names = ts.isArrayBindingPattern(node.name)
+      ? node.name.elements.map((element) =>
+          ts.isBindingElement(element) && ts.isIdentifier(element.name) ? element.name.text : undefined,
+        )
+      : ts.isIdentifier(node.name)
+        ? [node.name.text]
+        : [];
+    for (let index = 0; index < specifiers.length; index++) {
+      const canonical = canonicalArcGisModulePath(specifiers[index]);
+      const spec = MODULE_TO_SPEC.get(canonical) ?? MODULE_TO_SPEC.get(`${canonical}.js`);
+      if (names[index] && spec && ["map", "web-map", "basemap"].includes(spec.kind)) {
+        dollarBasemapBindings.set(names[index] as string, spec.kind);
+      }
+    }
+  });
   const shadowedImportLocalNames = collectShadowedImportLocalNames(sourceFile, new Set(importsByLocalName.keys()));
   const identifierMemberUsage = buildIdentifierMemberUsageIndex(sourceFile);
   const trackedReceiverKeys = collectTrackedCompatReceiverKeys(sourceFile, importsByLocalName);
@@ -1908,6 +1953,64 @@ function codemodFile(
   }
 
   walk(sourceFile, (node) => {
+    if (target === "honua-compat") {
+      if (ts.isNewExpression(node) && ts.isIdentifier(node.expression)) {
+        const kind = dollarBasemapBindings.get(node.expression.text);
+        if (kind) {
+          const outcome = isSafeConstructorCall(kind, node, target);
+          if (!outcome.ok) {
+            const location = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+            manualTodos.push({
+              kind,
+              file,
+              line: location.line + 1,
+              column: location.character + 1,
+              reason: outcome.reason,
+              difficulty: "moderate",
+            });
+          }
+        }
+      }
+      let value: ts.Expression | undefined;
+      let needsCheck = false;
+      if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
+        const method = node.expression.name.text;
+        if (
+          method === "fromId" &&
+          (/basemap/i.test(node.expression.expression.getText(sourceFile)) ||
+            (ts.isIdentifier(node.expression.expression) &&
+              importsByLocalName.get(node.expression.expression.text)?.kind === "basemap"))
+        ) {
+          needsCheck = true;
+          value = node.arguments[0];
+        } else if (method === "setBasemap") {
+          needsCheck = true;
+          value = node.arguments[0];
+        }
+      } else if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+        const left = node.left;
+        const name = ts.isPropertyAccessExpression(left)
+          ? left.name.text
+          : ts.isElementAccessExpression(left) && ts.isStringLiteral(left.argumentExpression)
+            ? left.argumentExpression.text
+            : undefined;
+        if (name === "basemap" || name === "nextBasemap") {
+          needsCheck = true;
+          value = node.right;
+        }
+      }
+      if (needsCheck && (!value || !isVerifiedBasemap(value))) {
+        const location = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+        manualTodos.push({
+          kind: "basemap",
+          file,
+          line: location.line + 1,
+          column: location.character + 1,
+          reason: "Basemap source is named, dynamic, or otherwise unverified; configure a supported basemap manually.",
+          difficulty: "moderate",
+        });
+      }
+    }
     const dollarImport = arcGisDollarImportRewrite(node, sourceFile, compatImportPath, target);
     if (dollarImport) {
       dynamicImportEdits.push({
@@ -7000,7 +7103,7 @@ function isSafeConstructorCall(
     case "home-widget":
       return isSafeHomeWidgetCompatCall(node);
     case "basemap-toggle-widget":
-      return isSafeBasemapToggleWidgetCompatCall(node);
+      return isSafeBasemapToggleWidgetCompatCall(node, target);
     case "locate-widget":
       return isSafeLocateWidgetCompatCall(node);
     case "locator":
@@ -7012,7 +7115,7 @@ function isSafeConstructorCall(
     case "basemap-layer-list-widget":
       return isSafeBasemapLayerListWidgetCompatCall(node);
     case "basemap-gallery-widget":
-      return isSafeBasemapGalleryWidgetCompatCall(node);
+      return isSafeBasemapGalleryWidgetCompatCall(node, target);
     case "expand-widget":
       return isSafeExpandWidgetCompatCall(node);
     case "compass-widget":
@@ -7305,10 +7408,72 @@ function isSafeRouteTaskCompatCall(node: ts.NewExpression): { ok: true } | { ok:
   return { ok: true };
 }
 
+// Only claim readiness for basemap values whose rendering source is statically known.
+function isVerifiedBasemap(value: ts.Expression): boolean {
+  if (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value)) return value.text === "osm";
+  if (value.kind === ts.SyntaxKind.NullKeyword) return true;
+  if (!ts.isObjectLiteralExpression(value)) return false;
+  const properties = value.properties;
+  if (properties.some((p) => !ts.isPropertyAssignment(p) || !getObjectPropertyName(p))) return false;
+  const names = properties.map((p) => getObjectPropertyName(p));
+  if (new Set(names).size !== names.length) return false;
+  const get = (name: string): ts.Expression | undefined => {
+    const p = properties.find((item) => getObjectPropertyName(item) === name);
+    return p && ts.isPropertyAssignment(p) ? p.initializer : undefined;
+  };
+  if (get("portalItem")) return false;
+  const layers = [get("baseLayers"), get("baseMapLayers"), get("referenceLayers")].filter(
+    (item): item is ts.Expression => item !== undefined,
+  );
+  if (layers.length) {
+    let count = 0;
+    for (const layerList of layers) {
+      if (!ts.isArrayLiteralExpression(layerList)) return false;
+      for (const layer of layerList.elements) {
+        if (!ts.isObjectLiteralExpression(layer)) return false;
+        if (layer.properties.some((p) => !ts.isPropertyAssignment(p) || !getObjectPropertyName(p))) return false;
+        const layerNames = layer.properties.map((p) => getObjectPropertyName(p));
+        if (new Set(layerNames).size !== layerNames.length) return false;
+        const urlProperty = layer.properties.find((p) => getObjectPropertyName(p) === "url");
+        if (!urlProperty || !ts.isPropertyAssignment(urlProperty) || !ts.isStringLiteral(urlProperty.initializer))
+          return false;
+        try {
+          const url = new URL(urlProperty.initializer.text);
+          if (
+            !/^https?:$/.test(url.protocol) ||
+            url.username ||
+            url.password ||
+            url.hash ||
+            !/\/MapServer\/?$/i.test(url.pathname)
+          )
+            return false;
+        } catch {
+          return false;
+        }
+        count++;
+      }
+    }
+    if (count > 0) return true;
+  }
+  const id = get("id");
+  return !!id && ts.isStringLiteral(id) && id.text === "osm";
+}
+
+function basemapOptionIssue(options: ts.ObjectLiteralExpression): string | undefined {
+  for (const property of options.properties) {
+    const name = getObjectPropertyName(property);
+    if (name === "portalItem") return "Portal basemap contents require manual verification.";
+    if (name === "basemap" && (!ts.isPropertyAssignment(property) || !isVerifiedBasemap(property.initializer))) {
+      return "Basemap source is named, dynamic, or otherwise unverified; configure a supported basemap manually.";
+    }
+  }
+  return undefined;
+}
+
 function isSafeBasemapCompatCall(node: ts.NewExpression): { ok: true } | { ok: false; reason: string } {
   const args = node.arguments;
   if (!args || args.length === 0) {
-    return { ok: true };
+    return { ok: false, reason: "Basemap source is empty and requires manual configuration." };
   }
   if (args.length !== 1) {
     return {
@@ -7343,6 +7508,11 @@ function isSafeBasemapCompatCall(node: ts.NewExpression): { ok: true } | { ok: f
     };
   }
 
+  if (!isVerifiedBasemap(arg))
+    return {
+      ok: false,
+      reason: "Basemap source is named, dynamic, or otherwise unverified; configure a supported basemap manually.",
+    };
   return { ok: true };
 }
 
@@ -8562,6 +8732,10 @@ function isSafeMapCompatCall(
     };
   }
 
+  if (target === "honua-compat") {
+    const basemapIssue = basemapOptionIssue(arg);
+    if (basemapIssue) return { ok: false, reason: basemapIssue };
+  }
   return { ok: true };
 }
 
@@ -8663,6 +8837,8 @@ function isSafeWebMapCompatCall(node: ts.NewExpression): { ok: true } | { ok: fa
     };
   }
 
+  const basemapIssue = basemapOptionIssue(arg);
+  if (basemapIssue) return { ok: false, reason: basemapIssue };
   return { ok: true };
 }
 
@@ -9297,10 +9473,15 @@ function isSafeHomeWidgetCompatCall(node: ts.NewExpression): { ok: true } | { ok
   return { ok: true };
 }
 
-function isSafeBasemapToggleWidgetCompatCall(node: ts.NewExpression): { ok: true } | { ok: false; reason: string } {
+function isSafeBasemapToggleWidgetCompatCall(
+  node: ts.NewExpression,
+  target: CodemodTarget,
+): { ok: true } | { ok: false; reason: string } {
   const args = node.arguments;
   if (!args || args.length === 0) {
-    return { ok: true };
+    return target === "honua-compat"
+      ? { ok: false, reason: "Basemap toggle source requires manual configuration." }
+      : { ok: true };
   }
   if (args.length !== 1) {
     return {
@@ -9335,6 +9516,10 @@ function isSafeBasemapToggleWidgetCompatCall(node: ts.NewExpression): { ok: true
     };
   }
 
+  const next = arg.properties.find((p) => getObjectPropertyName(p) === "nextBasemap");
+  if (target === "honua-compat" && (!next || !ts.isPropertyAssignment(next) || !isVerifiedBasemap(next.initializer))) {
+    return { ok: false, reason: "Basemap toggle source requires manual configuration." };
+  }
   return { ok: true };
 }
 
@@ -9544,10 +9729,15 @@ function isSafeBasemapLayerListWidgetCompatCall(node: ts.NewExpression): { ok: t
   return { ok: true };
 }
 
-function isSafeBasemapGalleryWidgetCompatCall(node: ts.NewExpression): { ok: true } | { ok: false; reason: string } {
+function isSafeBasemapGalleryWidgetCompatCall(
+  node: ts.NewExpression,
+  target: CodemodTarget,
+): { ok: true } | { ok: false; reason: string } {
   const args = node.arguments;
   if (!args || args.length === 0) {
-    return { ok: true };
+    return target === "honua-compat"
+      ? { ok: false, reason: "Basemap gallery sources require manual verification." }
+      : { ok: true };
   }
   if (args.length !== 1) {
     return {
@@ -9582,6 +9772,17 @@ function isSafeBasemapGalleryWidgetCompatCall(node: ts.NewExpression): { ok: tru
     };
   }
 
+  const source = arg.properties.find((p) => getObjectPropertyName(p) === "source");
+  if (
+    target === "honua-compat" &&
+    (!source ||
+      !ts.isPropertyAssignment(source) ||
+      !ts.isArrayLiteralExpression(source.initializer) ||
+      !source.initializer.elements.length ||
+      !source.initializer.elements.every(isVerifiedBasemap))
+  ) {
+    return { ok: false, reason: "Basemap gallery sources require manual verification." };
+  }
   return { ok: true };
 }
 

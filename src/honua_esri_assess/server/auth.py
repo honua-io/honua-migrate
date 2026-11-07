@@ -1,4 +1,4 @@
-"""Credential carriers for the ArcGIS Server scanner.
+"""Credential carriers for the source server scanner.
 
 Two modes are supported: anonymous and pre-existing token. The carrier is
 responsible for redacting itself from :func:`repr`; the actual token value
@@ -37,7 +37,7 @@ class AnonymousCredential:
 
 
 class TokenCredential:
-    """Wraps a pre-existing ArcGIS Server token.
+    """Wraps a pre-existing source server token.
 
     The token is appended to outbound requests as ``token=…``. The carrier
     overrides :func:`repr` so the token cannot leak through accidental

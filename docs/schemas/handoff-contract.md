@@ -11,8 +11,9 @@ This document is the short, prospect-facing summary of what an assessment
 hands over to the rest of the migration.
 
 For semver rules, deprecation policy, and full producer/consumer contracts,
-see [versioning.md](./versioning.md). The published JSON Schema body for the
-current `0.1.x` line lives in
+see [versioning.md](./versioning.md). The current draft schema is
+[`schemas/esri-footprint-v0.3.json`](../../schemas/esri-footprint-v0.3.json).
+The earlier v0.1 reference is
 [`docs/schemas/esri-footprint.v0.1.md`](./esri-footprint.v0.1.md)
 (schema file: [`schemas/esri-footprint-v0.1.json`](../../schemas/esri-footprint-v0.1.json),
 canonical sample: [`docs/samples/esri-footprint.sample.json`](../samples/esri-footprint.sample.json)).
@@ -20,9 +21,14 @@ canonical sample: [`docs/samples/esri-footprint.sample.json`](../samples/esri-fo
 ## The sole handoff
 
 `EsriFootprint.json` is the **only** supported handoff out of an assessment.
+Starting with schema v0.3, `migrationHandoff.target` identifies the Python
+script migration pipeline as `honua-migrate:python-script`. Consumers must opt
+in to v0.3 and update any routing based on the previous target value; the
+accompanying note also changes. Coordinate the producer and consumer rollout:
+the closed-product consumer has not been verified against this version.
 
 - No side-channel data exchange. Consumers do not call the
-  customer's Esri systems on their own, does not consume scanner logs, and does
+  customer's source systems on their own, do not consume scanner logs, and do
   not read CLI exit codes as a signal.
 - No alternate entitlement handoff. The Python entitlement collectors
   (`honua_esri_assess.entitlements`) emit a facet-compatible JSON fragment for
@@ -67,9 +73,9 @@ means the producer did not include entitlement enumeration in that footprint;
 empty required arrays inside a present licensing block mean nothing was
 observed or enumerable with the current credential.
 
-For ArcGIS Server scans in the v0.1 line, the producer records a
-credential-free services root in `source.locator` and writes the ArcGIS
-Server details in the matching `server` facet:
+For server scans in the v0.1 line, the producer records a
+credential-free services root in `source.locator` and writes the source
+server details in the matching `server` facet:
 
 ```json
 {
@@ -176,25 +182,24 @@ function) when stable path hashes are needed across runs; otherwise a
 per-run random salt is used.
 
 FileGDB inventory records use `kind == "filegdb-feature-class"` and include
-the reader's layer name, normalized Esri geometry type, spatial reference,
+the reader's layer name, normalized source geometry type, spatial reference,
 and any returned field or feature-count metadata. `filegdb.featureClassCount`,
 `counts.items["filegdb-feature-class"]`, and `counts.featureClasses` all
 count emitted FileGDB inventory records.
 
 ## Read-only stance
 
-The producer is read-only against the customer's Esri systems. This is a
+The producer is read-only against the customer's source systems. This is a
 constraint of the assessment tool itself, not just a property of the
 artifact:
 
-- No write APIs are called against ArcGIS Online, ArcGIS Server, or any
-  FileGDB.
+- No write APIs are called against the source portal, server, or any FileGDB.
 - The AGOL producer uses Portal Sharing REST `GET` calls only. It normalizes
   organization URLs and `/sharing/rest` URLs, then reads `portals/self`,
   `community/groups`, `search`, and `community/users` when token-authenticated.
   The AGOL CLI also supports a per-request `--timeout`; that timeout only limits
   local waiting and does not change the handoff artifact shape.
-- Pre-existing AGOL tokens are passed as query-string credentials to Esri only;
+- Pre-existing portal tokens are passed as query-string credentials only to the source system;
   they are redacted from diagnostics, logs, and the emitted footprint.
 - No field in the artifact records or implies a write.
 - Consumers are expected to honor the same read-only stance on
@@ -232,7 +237,7 @@ The Markdown readiness report is a human-facing companion to
 `EsriFootprint.json`, not a second machine handoff contract. It is generated
 from a parsed footprint and summarizes header metadata, schema warnings,
 service inventory, layer counts, complexity, manual-review items, migration
-ordering, and diagnostics without contacting Esri systems.
+ordering, and diagnostics without contacting source systems.
 
 The renderer is a pure deterministic API: parsed `EsriFootprint.json` dict in,
 Markdown string out. File reads, file writes, schema validation, and

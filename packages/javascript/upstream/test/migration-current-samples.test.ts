@@ -123,13 +123,29 @@ describe("current ArcGIS sample corpus", () => {
       "@arcgis/core/layers/FeatureLayer",
       "@arcgis/core/views/MapView",
     ]);
-    expect(report.conversion.recommendedMode).not.toBe("keep-esri-client");
-    expect(written).toContain("MapCompat");
+    expect(report.conversion.recommendedMode).toBe("assisted-conversion");
+    expect(codemodResult.manualTodos.some((todo) => todo.kind === "map")).toBe(true);
+    expect(written).toContain("new ArcGISMap(");
     expect(written).toContain("MapViewCompat");
     expect(written).toContain("FeatureLayerCompat");
     expect(written).not.toContain("registerHonuaWidgetKit");
-    expect(written).not.toContain('from "esri/Map"');
+    expect(written).toContain('from "esri/Map"');
     expect(fs.readFileSync(path.join(dir, "assets.d.ts"), "utf8")).toBe('declare module "*.svg";\n');
+  });
+
+  it.each([
+    ["const MapCtor = await $arcgis.import('esri/Map');", "new MapCtor({ basemap: 'streets' });", 1],
+    ["const [MapCtor] = await $arcgis.import(['esri/Map']);", "new MapCtor({ basemap: selected });", 1],
+    ["const [MapCtor] = await $arcgis.import(['esri/Map']);", "new MapCtor({ basemap: 'osm' });", 0],
+  ])("checks awaited map loader basemaps", (loader, mapConstruction, manualCount) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-loader-basemap-"));
+    tempDirs.push(dir);
+    fs.writeFileSync(path.join(dir, "app.ts"), `${loader}\n${mapConstruction}\n`);
+    const scanReport = scanArcGisUsage(dir);
+    const codemodResult = runEsriCompatCodemod({ rootDir: dir, write: false, target: "honua-compat" });
+    const report = buildJsMigrationReport(dir, codemodResult, scanReport);
+    expect(codemodResult.manualTodos.filter((todo) => todo.kind === "map")).toHaveLength(manualCount);
+    if (manualCount) expect(report.conversion.recommendedMode).toBe("keep-esri-client");
   });
 
   it("rewrites a named geodesicLength import and a Point constructed with longitude and latitude", () => {
@@ -463,9 +479,10 @@ describe("current ArcGIS sample corpus", () => {
     const counties = migrate("featurelayer-query");
     const related = migrate("query-related-features");
 
-    expect(trees.report.conversion.recommendedMode).toBe("complete-honua-conversion");
+    expect(trees.report.conversion.recommendedMode).toBe("assisted-conversion");
+    expect(trees.codemodResult.manualTodos.some((todo) => todo.reason.includes("Map shell basemap"))).toBe(true);
     expect(trees.codemodResult.filesChanged).toBe(1);
-    expect(trees.report.conversion.files.find((file) => file.file === "index.html")?.boundary).toBe("converted");
+    expect(trees.report.conversion.files.find((file) => file.file === "index.html")?.boundary).toBe("mixed");
     expect(trees.report.unhandledArcGisModules.map((module) => module.modulePath)).not.toContain(
       "@arcgis/core/layers/FeatureLayer.js",
     );
@@ -495,7 +512,13 @@ describe("current ArcGIS sample corpus", () => {
     const rewrittenTwice = fs.readFileSync(path.join(rerunDir, "index.html"), "utf8");
     expect(rewrittenTwice.match(/registerHonuaWidgetKit\(/g)).toHaveLength(1);
 
-    expect(counties.report.conversion.recommendedMode).toBe("complete-honua-conversion");
+    expect(counties.report.conversion.recommendedMode).toBe("assisted-conversion");
+    expect(counties.codemodResult.manualTodos).toContainEqual(
+      expect.objectContaining({
+        kind: "map",
+        reason: expect.stringContaining("Basemap source is named"),
+      }),
+    );
     const countyModules = counties.report.unhandledArcGisModules.map((module) => module.modulePath);
     expect(countyModules).not.toContain("@arcgis/core/layers/FeatureLayer.js");
     expect(countyModules).not.toContain("@arcgis/core/Map.js");
@@ -507,6 +530,7 @@ describe("current ArcGIS sample corpus", () => {
 
     expect(related.report.conversion.recommendedMode).toBe("assisted-conversion");
     expect(related.report.conversion.recommendedMode).not.toBe("complete-honua-conversion");
+    expect(related.codemodResult.manualTodos.some((todo) => todo.reason.includes("portal item"))).toBe(true);
     expect(related.codemodResult.filesChanged).toBe(1);
     const relatedModules = related.report.unhandledArcGisModules.map((module) => module.modulePath);
     expect(relatedModules).toContain("@arcgis/map-components/queryRelatedFeatures");
@@ -676,7 +700,7 @@ describe("current ArcGIS sample corpus", () => {
     expect(fs.readFileSync(path.join(dir, "index.html"), "utf8")).toContain("<arcgis-map");
   });
 
-  it("rewrites a supported AMD module and leaves an unsupported one", () => {
+  it("holds a named basemap and an unsupported AMD module", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "honua-amd-"));
     tempDirs.push(dir);
     fs.writeFileSync(
@@ -693,10 +717,9 @@ describe("current ArcGIS sample corpus", () => {
     );
     runEsriCompatCodemod({ rootDir: dir, write: true, target: "honua-compat" });
     const written = fs.readFileSync(path.join(dir, "page.js"), "utf8");
-    expect(written).toContain("new MapCompat(");
+    expect(written).toContain("new Map(");
     expect(written).toContain("SketchViewModel");
-    expect(written).not.toContain('"esri/Map"');
-    expect(written).toContain("MapCompat");
+    expect(written).toContain('"esri/Map"');
   });
 
   it("sees import-equals requires and rewrites a covered geometry call", () => {
@@ -727,7 +750,9 @@ describe("current ArcGIS sample corpus", () => {
       expect.arrayContaining(["@arcgis/core/Map", "@arcgis/core/geometry/geometryEngine"]),
     );
     expect(report.conversion.files.map((file) => file.file)).toContain("main.ts");
-    expect(written).toContain("new MapCompat(");
+    expect(written).toContain("new EsriMap(");
+    expect(codemodResult.manualTodos.some((todo) => todo.kind === "map")).toBe(true);
+    expect(report.conversion.recommendedMode).toBe("assisted-conversion");
     expect(written).toContain('geometryEngineCompat.buffer(geometry, 10, "meters")');
   });
 
@@ -840,12 +865,12 @@ describe("current ArcGIS sample corpus", () => {
     const html = fs.readFileSync(path.join(dir, "index.html"), "utf8");
     const main = fs.readFileSync(path.join(dir, "src", "main.ts"), "utf8");
 
-    expect(amd).toContain("new MapCompat(");
+    expect(amd).toContain("new Map(");
     expect(amd).toContain("new FeatureLayerCompat(");
     expect(amd).toContain("SketchViewModel");
-    expect(amd).not.toContain('"esri/Map"');
+    expect(amd).toContain('"esri/Map"');
     expect(amd).not.toContain('"esri/layers/FeatureLayer"');
-    expect(equalsFile).toContain("new MapCompat(");
+    expect(equalsFile).toContain("new EsriMap(");
     expect(equalsFile).toContain('geometryEngineCompat.buffer(geometry, 10, "meters")');
     expect(worker).toContain('geometryEngineCompat.buffer(line, 200, "meters")');
     expect(worker).toContain("generalizeOperator.execute");
@@ -855,6 +880,7 @@ describe("current ArcGIS sample corpus", () => {
     expect(report.conversion.files.map((file) => file.file)).toEqual(
       expect.arrayContaining(["amd.html", "import-equals.ts", "worker.js", "index.html"]),
     );
+    expect(report.manualTodos.some((todo) => todo.kind === "map")).toBe(true);
     expect(report.manualTodos.map((todo) => todo.reason)).toContain(
       "generalizeOperator is not covered by geometryEngineCompat",
     );

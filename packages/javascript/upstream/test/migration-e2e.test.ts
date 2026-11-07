@@ -89,7 +89,7 @@ describe("e2e ArcGIS sample app conversion", () => {
 
     // Constructors rewritten.
     expect(migratedMain).toContain("new FeatureLayerCompat({");
-    expect(migratedMain).toContain('new MapCompat({ basemap: "streets" })');
+    expect(migratedMain).toContain('new MapCompat({ basemap: "osm" })');
     expect(migratedMain).toContain("new MapViewCompat({");
 
     // popupTemplate option preserved verbatim on the rewritten FeatureLayer.

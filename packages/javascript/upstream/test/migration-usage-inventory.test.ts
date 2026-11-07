@@ -330,7 +330,12 @@ describe("denominator-complete usage inventory", () => {
     const htmlFile = report.conversion.files.find((file) => file.file === "index.html");
     expect(htmlFile?.boundary).toBe("mixed");
     expect(htmlFile?.handledModuleSites).toBe(3);
-    expect(htmlFile?.diagnostics.map((diagnostic) => diagnostic.modulePath).sort()).toEqual([
+    expect(
+      htmlFile?.diagnostics
+        .map((diagnostic) => diagnostic.modulePath)
+        .filter(Boolean)
+        .sort(),
+    ).toEqual([
       "@arcgis/map-components/arcgisViewClick",
       "@arcgis/map-components/queryObjectIds",
       "@arcgis/map-components/queryRelatedFeatures",

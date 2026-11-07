@@ -5,7 +5,7 @@ import LayerList from "@arcgis/core/widgets/LayerList";
 import PopupTemplate from "@arcgis/core/PopupTemplate";
 
 const map = new Map({
-  basemap: "streets",
+  basemap: "osm",
 });
 
 const view = new MapView({

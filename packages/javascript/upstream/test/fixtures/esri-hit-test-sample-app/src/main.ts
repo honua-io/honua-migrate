@@ -7,7 +7,7 @@ const trails = new FeatureLayer({
 });
 
 const map = new Map({
-  basemap: "topo-vector",
+  basemap: "osm",
   layers: [trails],
 });
 

@@ -94,7 +94,7 @@ describe("migration real sample runtime", () => {
       uiCount: 13,
       popupBefore: { id: "parcel-1" },
       popupAfterNext: { id: "parcel-2" },
-      toggledBasemapId: "satellite",
+      toggledBasemapId: "osm",
       locateLongitude: -157.857,
       locateLatitude: 21.307,
       searchResultCount: 2,
@@ -281,7 +281,7 @@ describe("migration real sample runtime", () => {
       updateWorkflowStarted: true,
       directionsStopCount: 2,
       queryWhere: "priority = 'high'",
-      activeBasemapId: "dark-gray",
+      activeBasemapId: "osm",
       foundSublayerId: 2,
       searchResultCount: 2,
       searchSelectedResult: "Incident IC-B",
@@ -298,7 +298,7 @@ describe("migration real sample runtime", () => {
     expect(output.routeTaskCount).toBe(1);
     expect(output.routeTaskDistance).toBeGreaterThan(0);
     expect(output.directionsPathPoints).toBeGreaterThan(1);
-    expect(output.basemapBaseLayerCount).toBe(1);
+    expect(output.basemapBaseLayerCount).toBe(0);
     expect(output.sublayerCount).toBe(2);
     expect(Array.isArray(output.conversions)).toBe(true);
     expect(output.conversions).toEqual(["lonlat", "dms"]);

@@ -18,7 +18,7 @@ const parcelsLayer = new FeatureLayer({
 });
 
 const map = new Map({
-  basemap: "topo-vector",
+  basemap: "osm",
   layers: [parcelsLayer],
   tables: [{ id: "edit-table-1" }, { id: "edit-table-2" }],
 });

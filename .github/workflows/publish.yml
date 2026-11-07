@@ -179,7 +179,7 @@ jobs:
             --output EsriFootprint.json --validate
           .venv/bin/honua-migrate assess report \
             --input EsriFootprint.json --output readiness-report.md
-          jq -e '.schemaVersion == "v0.2"' EsriFootprint.json
+          jq -e '.schemaVersion == "v0.3"' EsriFootprint.json
           test -s readiness-report.md
       - name: Install and verify source distribution
         run: |

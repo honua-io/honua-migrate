@@ -63,7 +63,7 @@ export async function runMigrationWorkbenchScenario() {
     };
   };
 
-  const map = new Map({ basemap: "streets", layers: [parcels] });
+  const map = new Map({ basemap: "osm", layers: [parcels] });
   const view = new MapView({
     map,
     container: null,

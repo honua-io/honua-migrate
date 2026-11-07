@@ -13,8 +13,8 @@ from honua_migrate.code.python import (
     EXECUTABLE_PROCESS_IDS,
     build_parity_evidence,
     build_parity_evidence_for_source,
-    scan_arcpy_source,
-    translate_arcpy_source,
+    scan_script_source,
+    translate_script_source,
 )
 
 # Mix of: executable geometry targets (buffer, simplify, dissolve, make-valid),
@@ -39,7 +39,7 @@ def test_migration_is_reachable_from_top_level_package() -> None:
     from honua_migrate.code import python as migration
 
     assert migration.__name__ == "honua_migrate.code.python"
-    assert hasattr(migration, "scan_arcpy_source")
+    assert hasattr(migration, "scan_script_source")
     assert hasattr(migration, "build_parity_evidence")
     assert hasattr(migration, "parse_pyt_source")
     assert isinstance(migration.EXECUTABLE_PROCESS_IDS, frozenset)
@@ -64,7 +64,7 @@ def test_executable_set_is_the_reconciled_server_job_catalog() -> None:
 
 
 def test_translations_keep_bare_ogc_ids_and_carry_job_ids() -> None:
-    plan = translate_arcpy_source(MIXED_SOURCE, filename="mixed.py")
+    plan = translate_script_source(MIXED_SOURCE, filename="mixed.py")
 
     # The OGC run path keeps bare process ids for every supported call.
     assert [t.process_id for t in plan.translations] == [
@@ -91,7 +91,7 @@ def test_translations_keep_bare_ogc_ids_and_carry_job_ids() -> None:
 
 
 def test_status_partitions_into_translatable_manual_unsupported() -> None:
-    report = scan_arcpy_source(MIXED_SOURCE, filename="mixed.py")
+    report = scan_script_source(MIXED_SOURCE, filename="mixed.py")
 
     translatable = {(c.family, c.tool) for c in report.translatable_calls}
     manual = {(c.family, c.tool) for c in report.manual_review_calls}
@@ -114,7 +114,7 @@ def test_status_partitions_into_translatable_manual_unsupported() -> None:
 
 
 def test_erase_is_manual_review_due_to_semantics_mismatch() -> None:
-    report = scan_arcpy_source('import arcpy\narcpy.analysis.Erase("a", "b", "c")')
+    report = scan_script_source('import arcpy\narcpy.analysis.Erase("a", "b", "c")')
     (call,) = report.calls
 
     assert call.supported is True
@@ -126,7 +126,7 @@ def test_erase_is_manual_review_due_to_semantics_mismatch() -> None:
 
 
 def test_spatial_join_one_to_many_is_downgraded_to_manual_review() -> None:
-    report = scan_arcpy_source(
+    report = scan_script_source(
         'import arcpy\n'
         'arcpy.analysis.SpatialJoin("t", "j", "o", join_operation="JOIN_ONE_TO_MANY")\n'
     )
@@ -137,7 +137,7 @@ def test_spatial_join_one_to_many_is_downgraded_to_manual_review() -> None:
 
 
 def test_spatial_join_keep_common_is_downgraded_to_manual_review() -> None:
-    report = scan_arcpy_source(
+    report = scan_script_source(
         'import arcpy\n'
         'arcpy.analysis.SpatialJoin("t", "j", "o", join_type="KEEP_COMMON")\n'
     )
@@ -147,7 +147,7 @@ def test_spatial_join_keep_common_is_downgraded_to_manual_review() -> None:
 
 
 def test_spatial_join_one_to_one_is_translatable() -> None:
-    report = scan_arcpy_source(
+    report = scan_script_source(
         'import arcpy\n'
         'arcpy.analysis.SpatialJoin("t", "j", "o", join_operation="JOIN_ONE_TO_ONE", join_type="KEEP_ALL")\n'
     )
@@ -159,7 +159,7 @@ def test_spatial_join_one_to_one_is_translatable() -> None:
 def test_parity_evidence_report_shape_and_coverage() -> None:
     evidence = build_parity_evidence_for_source(MIXED_SOURCE, filename="mixed.py")
 
-    assert evidence["schema"] == "honua.migration.arcpy.parity-evidence/v1"
+    assert evidence["schema"] == "honua.migration.script.parity-evidence/v2"
     assert evidence["source"] == "mixed.py"
 
     summary = evidence["summary"]
@@ -199,7 +199,7 @@ import arcpy
 arcpy.analysis.Buffer("a", "b", "1 Meters")
 arcpy.analysis.Buffer("c", "d", "2 Meters")
 """
-    evidence = build_parity_evidence(translate_arcpy_source(src))
+    evidence = build_parity_evidence(translate_script_source(src))
     buffer_status = next(t for t in evidence["toolStatus"] if t["tool"] == "Buffer")
     assert buffer_status["count"] == 2
     assert evidence["summary"]["coveragePercent"] == 100.0
@@ -235,7 +235,7 @@ _REPOINTED_MAPPINGS = [
     _REPOINTED_MAPPINGS,
 )
 def test_repointed_arcpy_to_process_mappings(source_line, tool, ogc_id, job_id, executable) -> None:
-    report = scan_arcpy_source(f"import arcpy\n{source_line}\n")
+    report = scan_script_source(f"import arcpy\n{source_line}\n")
     (call,) = report.calls
     assert call.tool == tool
     assert call.process_id == ogc_id, f"{tool} OGC id"

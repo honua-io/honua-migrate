@@ -7,10 +7,12 @@ tags: [assess, read-only, workflow]
 ---
 # Assessment command transition
 
-`honua-migrate assess` is the primary surface for read-only Esri discovery.
+`honua-migrate assess` is the primary surface for read-only source discovery.
 It mounts the existing assessment application directly, so command options,
 exit codes, `EsriFootprint.json`, `EsriAccessFootprint.json`, schema versions,
-and redaction behavior do not change during the transition.
+and redaction behavior do not change during the transition. The version command
+now reports the `honua-migrate` package and a neutral assessment schema label;
+consumers matching the previous version text must update their parsing.
 
 Both command/import families ship from the single `honua-migrate` PyPI
 distribution. The obsolete `honua-esri-assess` distribution name is not a
@@ -39,7 +41,7 @@ described as archived while these compatibility surfaces are supported.
 Examples use the successor command:
 
 ```bash
-honua-migrate assess scan agol --target https://example.maps.arcgis.com
+honua-migrate assess scan agol --target https://portal.example.com
 honua-migrate assess report --input EsriFootprint.json --output readiness-report.md
 honua-migrate assess schema validate EsriFootprint.json
 ```

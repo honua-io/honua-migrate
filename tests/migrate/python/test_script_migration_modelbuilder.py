@@ -201,7 +201,7 @@ def test_parse_atbx_toolbox_aggregated_evidence(tmp_path) -> None:
     toolbox = parse_atbx_toolbox(atbx)
     evidence = build_atbx_parity_evidence(toolbox)
 
-    assert evidence["schema"] == "honua.migration.arcpy.atbx-parity-evidence/v1"
+    assert evidence["schema"] == "honua.migration.script.atbx-parity-evidence/v2"
     summary = evidence["summary"]
     assert summary["modelCount"] == 1
     assert summary["totalCalls"] == 3
@@ -309,7 +309,7 @@ def test_gp_service_aggregated_evidence() -> None:
         task_definitions={"Buffer": BUFFER_TASK_DEF},
     )
     evidence = build_gp_service_parity_evidence(service)
-    assert evidence["schema"] == "honua.migration.arcpy.gp-service-parity-evidence/v1"
+    assert evidence["schema"] == "honua.migration.script.gp-service-parity-evidence/v2"
     summary = evidence["summary"]
     assert summary["taskCount"] == 3
     assert summary["translatableCalls"] == 1
@@ -331,7 +331,7 @@ def test_parse_gp_service_definition_rejects_non_object() -> None:
 def test_model_to_dict_is_json_serializable() -> None:
     model = parse_model_definition(MODEL_DEFINITION)
     payload = model.to_dict()
-    assert payload["schema"] == "honua.migration.arcpy.modelbuilder-model/v1"
+    assert payload["schema"] == "honua.migration.script.modelbuilder-model/v2"
     # Round-trips through json without raising.
     json.dumps(payload)
     assert payload["steps"][0]["status"] == "translatable"
@@ -342,6 +342,7 @@ def test_atbx_toolbox_to_dict_records_parse_error(tmp_path) -> None:
     bad = tmp_path / "broken.atbx"
     bad.write_text("not a zip", encoding="utf-8")
     payload = parse_atbx_toolbox(bad).to_dict()
+    assert payload["schema"] == "honua.migration.script.modelbuilder-toolbox/v2"
     assert payload["parseError"] is not None
     json.dumps(payload)
 
@@ -351,9 +352,9 @@ def test_gp_service_and_task_to_dict_are_serializable() -> None:
         {"tasks": ["Buffer"]}, task_definitions={"Buffer": BUFFER_TASK_DEF}
     )
     payload = service.to_dict()
-    assert payload["schema"] == "honua.migration.arcpy.gp-service/v1"
+    assert payload["schema"] == "honua.migration.script.gp-service/v2"
     task_payload = payload["tasks"][0]
-    assert task_payload["schema"] == "honua.migration.arcpy.gp-task/v1"
+    assert task_payload["schema"] == "honua.migration.script.gp-task/v2"
     assert task_payload["parameters"][1]["defaultValue"] == "100 Meters"
     json.dumps(payload)
 

@@ -448,7 +448,7 @@ def _rationale(
         )
     else:
         lines.append(
-            "Blocked by a hard Esri lock-in; federate-only or no-go for this profile."
+            "Blocked by a source-specific dependency; federate-only or no-go for this profile."
         )
     if lock_ins:
         names = ", ".join(entry.label for entry in lock_ins)

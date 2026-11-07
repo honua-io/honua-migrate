@@ -1,7 +1,7 @@
 ---
 type: reference
-title: "esri-footprint v0.1 schema"
-description: "The original footprint schema: every field the assessment emits about an Esri estate, with types and meaning."
+title: "Assessment footprint v0.1 schema"
+description: "The original footprint schema: every field the assessment emits about a source deployment, with types and meaning."
 resource: "https://github.com/honua-io/honua-migrate/tree/trunk/schemas"
 tags: [schema, footprint, v0.1]
 ---
@@ -15,8 +15,8 @@ tags: [schema, footprint, v0.1]
 ## Purpose
 
 `EsriFootprint.json` is the read-only artifact the assessment scan emits and
-the report, capability crosswalk and migration planning consume. The contract describes the inventory of a single Esri source
-(ArcGIS Online, ArcGIS Server, or FileGDB) in enough detail for the
+the report, capability crosswalk and migration planning consume. The contract describes the inventory of a single source
+(portal, server, or FileGDB) in enough detail for the
 migration product to plan a Honua takeover *without round-tripping back to
 the source system*.
 
@@ -85,7 +85,7 @@ contract fields.
 | `schemaVersion` | yes      | const `"v0.1"`                    | Contract major.minor carried in-band.                                                                        |
 | `generatedAt`   | yes      | RFC3339 UTC                       | When the scanner finished producing this artifact.                                                           |
 | `tool`          | yes      | [`ToolProvenance`](#toolprovenance) | Scanner provenance.                                                                                          |
-| `source`        | yes      | [`Source`](#source)               | Identifies the scanned Esri source. `source.kind` is the discriminator (see [Discriminator rules](#discriminator-rules)). |
+| `source`        | yes      | [`Source`](#source)               | Identifies the scanned source. `source.kind` is the discriminator (see [Discriminator rules](#discriminator-rules)). |
 | `portal`        | conditional | [`PortalFacet`](#portalfacet)  | **Required** iff `source.kind == "arcgis-online"`; **forbidden** otherwise.                                  |
 | `server`        | conditional | [`ServerFacet`](#serverfacet)  | **Required** iff `source.kind == "arcgis-server"`; **forbidden** otherwise.                                  |
 | `filegdb`       | conditional | [`FileGdbFacet`](#filegdbfacet)| **Required** iff `source.kind == "filegdb"`; **forbidden** otherwise.                                        |
@@ -149,9 +149,9 @@ Required iff `source.kind == "arcgis-online"`; forbidden otherwise (see [Discrim
 
 | Field            | Required | Type                                                | Description                                              |
 |------------------|----------|-----------------------------------------------------|----------------------------------------------------------|
-| `orgId`          | yes      | string                                              | ArcGIS Online organization id.                           |
+| `orgId`          | yes      | string                                              | Portal organization id.                           |
 | `orgUrl`         | yes      | URI                                                 | Organization base URL.                                   |
-| `itemCounts`     | yes      | `{ [safe itemType label]: integer }`                | Roll-up by Esri item type (e.g. `Feature Service`). Keys must match `^[A-Za-z0-9][A-Za-z0-9 ._()+-]{0,79}$`. |
+| `itemCounts`     | yes      | `{ [safe itemType label]: integer }`                | Roll-up by source item type (e.g. `Feature Service`). Keys must match `^[A-Za-z0-9][A-Za-z0-9 ._()+-]{0,79}$`. |
 | `sharingSummary` | no       | `{ private, org, public, shared: integer }`         | Roll-up of sharing levels across portal items.           |
 | `licensing`      | no       | [`PortalLicensing`](#portallicensing)               | Read-only license entitlement observations from documented Portal Sharing endpoints. |
 
@@ -162,9 +162,9 @@ Required iff `source.kind == "arcgis-server"`; forbidden otherwise (see [Discrim
 | Field           | Required | Type                                    | Description                                                                 |
 |-----------------|----------|-----------------------------------------|-----------------------------------------------------------------------------|
 | `folders`       | yes      | string[]                                | Top-level service folder names visited by the scan. Empty array if all services live at the root; filtered scans may contain only the requested folder. |
-| `serviceCounts` | yes      | `{ [safe serviceType label]: integer }` | Roll-up by Esri service type (e.g. `MapServer`). Keys must match `^[A-Za-z0-9][A-Za-z0-9 ._()+-]{0,79}$`. |
-| `version`       | no       | string                                  | Reported ArcGIS Server version (e.g. `"11.2"`).                             |
-| `licensing`     | no       | [`ServerLicensing`](#serverlicensing)   | Read-only license entitlement observations from documented ArcGIS Server REST/admin endpoints. |
+| `serviceCounts` | yes      | `{ [safe serviceType label]: integer }` | Roll-up by source service type (e.g. `MapServer`). Keys must match `^[A-Za-z0-9][A-Za-z0-9 ._()+-]{0,79}$`. |
+| `version`       | no       | string                                  | Reported source server version (e.g. `"11.2"`).                             |
+| `licensing`     | no       | [`ServerLicensing`](#serverlicensing)   | Read-only license entitlement observations from documented source server REST/admin endpoints. |
 
 ### PortalLicensing
 
@@ -187,7 +187,7 @@ licenses plus enabled per-service SOEs/SOIs from read-only REST/admin GETs.
 
 | Field               | Required | Type                         | Description                                      |
 |---------------------|----------|------------------------------|--------------------------------------------------|
-| `productName`       | no       | string                       | Product name reported by ArcGIS Server.          |
+| `productName`       | no       | string                       | Product name reported by the source server.          |
 | `currentVersion`    | no       | string                       | Server version reported by REST/admin info.      |
 | `edition`           | no       | string                       | Server edition when the admin endpoint exposes it. |
 | `extensions`        | yes      | [`ExtensionEntitlement[]`](#extensionentitlement) | Server-level extension entitlements.             |
@@ -219,7 +219,7 @@ the CLI consolidation, and the handoff remains the full
 
 | Field    | Required | Type | Description |
 |----------|----------|------|-------------|
-| `code`   | yes      | string | Esri extension code, catalog-normalized when known. |
+| `code`   | yes      | string | Source extension code, catalog-normalized when known. |
 | `name`   | yes      | string | Human-readable extension name. |
 | `status` | yes      | enum | `licensed`, `evaluation`, `expired`, or `unknown`. |
 | `source` | yes      | enum | `server-admin-licenses`, `service-extensions`, or `portal-subscription`. |
@@ -283,7 +283,7 @@ dependency edges across types are deliberately out of scope at v0.1 (see
 | Field          | Required | Type                              | Description                                                           |
 |----------------|----------|-----------------------------------|-----------------------------------------------------------------------|
 | `id`           | yes      | string                            | Portal item id.                                                       |
-| `type`         | yes      | string                            | Esri portal item type (e.g. `Feature Service`).                       |
+| `type`         | yes      | string                            | Source portal item type (e.g. `Feature Service`).                       |
 | `owner`        | yes      | string                            | Item owner username.                                                  |
 | `title`        | yes      | string                            | Display title.                                                        |
 | `sharing`      | yes      | enum                              | One of `private`, `org`, `public`, `shared`.                          |
@@ -304,9 +304,9 @@ AGOL service or layer records to the artifact.
 | Field          | Required | Type                              | Description                                                                  |
 |----------------|----------|-----------------------------------|------------------------------------------------------------------------------|
 | `serviceUrl`   | yes      | URI                               | Fully-qualified service URL. Schema pattern `^https?://[^@?#\s]+(/[^?#\s]*)?$` rejects userinfo, query strings, and fragments. **Credentials must never appear in this field.** |
-| `serviceType`  | yes      | string                            | Esri service type (e.g. `MapServer`, `FeatureServer`).                       |
+| `serviceType`  | yes      | string                            | source service type (e.g. `MapServer`, `FeatureServer`).                       |
 | `folder`       | yes      | string                            | Folder relative to the services root, or empty string for root services.     |
-| `layerCount`   | yes      | integer ≥ 0                       | Number of layers observed for the service. Current ArcGIS Server producer output fills this from deep service probes; shallow or unprobed services emit `0`. |
+| `layerCount`   | yes      | integer ≥ 0                       | Number of layers observed for the service. Current server producer output fills this from deep service probes; shallow or unprobed services emit `0`. |
 | `geometryType` | no       | [`GeometryType`](#geometrytype)   | Service geometry type when uniform across layers.                            |
 | `extent`       | no       | [`Extent`](#extent)               | Service full extent.                                                         |
 | `sr`           | no       | [`SpatialReference`](#spatialreference) | Service spatial reference.                                              |
@@ -329,7 +329,7 @@ Current FileGDB scanner behavior:
 - The `scan filegdb --target ...` CLI surface remains the fixture-backed
   descriptor scanner; it reads `_inventory.json` and emits the same v0.1
   FileGDB artifact shape.
-- Normalizes common OGR geometry labels to Esri geometry tags. Tables,
+- Normalizes common OGR geometry labels to source geometry tags. Tables,
   unknown geometry, and unsupported geometry are emitted with
   `geometryType: null`; unsupported geometry also gets an
   `unsupported-item-type` diagnostic.
@@ -389,14 +389,14 @@ values are rejected, not only strings that miss the timestamp shape.
 
 #### SpatialReference
 
-Esri publishes `wkid`, `latestWkid`, and `wkt` inconsistently. The schema
+The source may publish `wkid`, `latestWkid`, and `wkt` inconsistently. The schema
 requires **at least one** via `anyOf`. Consumers cannot rely on a single
 canonical SR field — handle all three.
 
 | Field        | Required | Type     | Description                                |
 |--------------|----------|----------|--------------------------------------------|
 | `wkid`       | one of   | integer  | Well-known spatial reference id.           |
-| `latestWkid` | one of   | integer  | Latest WKID published by Esri.             |
+| `latestWkid` | one of   | integer  | Latest WKID published by the source.             |
 | `wkt`        | one of   | string   | OGC WKT spatial reference string.          |
 
 #### Extent
@@ -408,7 +408,7 @@ canonical SR field — handle all three.
 
 #### GeometryType
 
-Either an Esri geometry type tag (`esriGeometryPoint`,
+Either a source geometry type tag (`esriGeometryPoint`,
 `esriGeometryMultipoint`, `esriGeometryPolyline`, `esriGeometryPolygon`,
 `esriGeometryEnvelope`) or `null` for tables and non-spatial items.
 
@@ -417,7 +417,7 @@ Either an Esri geometry type tag (`esriGeometryPoint`,
 | Field      | Required | Type    | Description                                                |
 |------------|----------|---------|------------------------------------------------------------|
 | `name`     | yes      | string  | Field name.                                                |
-| `type`     | yes      | string  | Esri field type tag (e.g. `esriFieldTypeOID`).             |
+| `type`     | yes      | string  | Source field type tag (e.g. `esriFieldTypeOID`).             |
 | `nullable` | no       | boolean | Whether the field permits NULL.                            |
 
 ## Diagnostic code catalog

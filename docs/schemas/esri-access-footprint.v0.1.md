@@ -1,6 +1,6 @@
 ---
 type: reference
-title: "esri-access-footprint v0.1 schema"
+title: "Assessment access footprint v0.1 schema"
 description: "The access-footprint schema: what the assessment records about permissions and reachability, separate from the estate itself."
 resource: "https://github.com/honua-io/honua-migrate/tree/trunk/schemas"
 tags: [schema, access, permissions]
@@ -26,7 +26,7 @@ access policies (see the mapping transform below).
 ## Promises (same constraints as EsriFootprint.json)
 
 - **Read-only.** The scanner only issues HTTP `GET`s against documented
-  endpoints and never writes to the source Esri system. ArcSDE/GDB internals
+  endpoints and never writes to the source system. ArcSDE/GDB internals
   are never parsed.
 - **No credentials in the artifact.** `source.locator` and every
   `servicePermissions[].serviceUrl` are sanitized; the schema patterns reject
@@ -39,8 +39,8 @@ access policies (see the mapping transform below).
 
 | Target          | Endpoints |
 |-----------------|-----------|
-| ArcGIS Online / Enterprise Portal | `/sharing/rest/portals/self`, `/sharing/rest/portals/self/users`, `/sharing/rest/portals/self/roles`, `/sharing/rest/portals/self/roles/<id>/privileges`, `/sharing/rest/community/groups` |
-| ArcGIS Server admin | `/arcgis/admin/security/roles/getRoles`, `/arcgis/admin/security/users/getUsers`, `/arcgis/admin/services/<svc>/permissions` |
+| Portal | `/sharing/rest/portals/self`, `/sharing/rest/portals/self/users`, `/sharing/rest/portals/self/roles`, `/sharing/rest/portals/self/roles/<id>/privileges`, `/sharing/rest/community/groups` |
+| Server admin | `/arcgis/admin/security/roles/getRoles`, `/arcgis/admin/security/users/getUsers`, `/arcgis/admin/services/<svc>/permissions` |
 
 ## Top-level shape
 
@@ -73,8 +73,8 @@ See the JSON Schema for per-object field tables (`User`, `Role`, `Group`,
 function over an access footprint that emits the typed mapping target
 migration planning consumes:
 
-- `honuaRoles` — one Honua role per Esri role, with the Honua permission
-  verbs the role's privileges imply. Unmapped Esri privileges are surfaced in
+- `honuaRoles` — one Honua role per source role, with the Honua permission
+  verbs the role's privileges imply. Unmapped source privileges are surfaced in
   `unmappedPrivileges` rather than dropped.
 - `oidcRoleClaims` — OIDC `roles` claim value → Honua role id, so the IdP can
   drive role assignment after migration.
@@ -82,7 +82,7 @@ migration planning consumes:
   service permission and per item-sharing record, with role principals
   resolved to their Honua role ids.
 
-This v0.1 mapping is a documented *first* table covering common Esri built-in
+This v0.1 mapping is a documented *first* table covering common source built-in
 privileges; it is intentionally conservative.
 
 ## Stability policy

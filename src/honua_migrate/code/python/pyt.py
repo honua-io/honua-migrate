@@ -1,15 +1,15 @@
-"""Python toolbox (``.pyt``) parsing slice for the ArcPy migration codemod.
+"""Python toolbox (``.pyt``) parsing slice for the migration codemod.
 
 A ``.pyt`` file is ordinary Python source: a module defining a ``Toolbox``
 class whose ``self.tools`` attribute lists tool classes, where each tool class
 exposes ``label`` / ``description`` attributes, a ``getParameterInfo`` method
-that builds ``arcpy.Parameter(...)`` objects, and an ``execute`` method that
+that builds parameter objects, and an ``execute`` method that
 runs the geoprocessing logic.
 
-Because ``.pyt`` files are plain Python, we can reuse the AST-only ArcPy
+Because ``.pyt`` files are plain Python, we can reuse the AST-only
 scanner: this module extracts the toolbox/tool/parameter structure and feeds
-each tool's ``execute`` body through :func:`scan_arcpy_source` /
-:func:`translate_arcpy_source` to classify the GP calls inside it.
+each tool's ``execute`` body through :func:`scan_script_source` /
+:func:`translate_script_source` to classify the GP calls inside it.
 
 Binary ``.tbx`` / ``.atbx`` toolboxes are NOT parsed here -- see
 :func:`parse_binary_toolbox` for the explicit stub + TODO.
@@ -22,14 +22,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .arcpy import (
-    ArcPyMigrationPlan,
-    ArcPyScanReport,
+from .script import (
+    ScriptMigrationPlan,
+    ScriptScanReport,
     JsonObject,
     JsonValue,
     build_parity_evidence,
-    scan_arcpy_source,
-    translate_arcpy_source,
+    scan_script_source,
+    translate_script_source,
 )
 
 
@@ -39,7 +39,7 @@ class UnsupportedToolboxError(NotImplementedError):
 
 @dataclass(frozen=True)
 class PytParameter:
-    """One ``arcpy.Parameter(...)`` discovered in ``getParameterInfo``.
+    """One parameter constructor discovered in ``getParameterInfo``.
 
     Besides the constructor keywords, common script-tool parameter attributes
     set *after* construction are captured when they are literal: a default
@@ -78,8 +78,8 @@ class PytTool:
     description: str | None
     parameters: tuple[PytParameter, ...]
     execute_source: str | None
-    report: ArcPyScanReport
-    plan: ArcPyMigrationPlan
+    report: ScriptScanReport
+    plan: ScriptMigrationPlan
 
     def to_dict(self) -> JsonObject:
         return {
@@ -105,7 +105,7 @@ class PytToolbox:
 
     def to_dict(self) -> JsonObject:
         result: JsonObject = {
-            "schema": "honua.migration.arcpy.pyt-toolbox/v1",
+            "schema": "honua.migration.script.pyt-toolbox/v2",
             "filename": self.filename,
             "label": self.label,
             "alias": self.alias,
@@ -120,7 +120,7 @@ class PytToolbox:
 def parse_pyt_source(source: str, *, filename: str | None = None) -> PytToolbox:
     """Parse Python-toolbox source into a :class:`PytToolbox`.
 
-    Each tool's ``execute`` method body is fed through the ArcPy scanner and
+    Each tool's ``execute`` method body is fed through the Python scanner and
     translator so its GP calls are classified just like a standalone script.
     """
 
@@ -177,7 +177,7 @@ def parse_binary_toolbox(path: str | Path) -> PytToolbox:
 
     The proprietary binary ``.tbx`` format is NOT parseable here -- it is a
     closed binary format and parsing it clean-room is out of scope (compliance:
-    do not decompile or run licensed Esri software to learn it).
+    do not decompile or run licensed source software to learn it).
 
     The newer ``.atbx`` format IS a published zip-of-JSON container. It is
     parsed by :func:`honua_migrate.code.python.modelbuilder.parse_atbx_toolbox`,
@@ -224,7 +224,7 @@ def build_pyt_parity_evidence(toolbox: PytToolbox) -> JsonObject:
 
     coverage_pct = round(100.0 * translatable / total, 2) if total else 0.0
     return {
-        "schema": "honua.migration.arcpy.pyt-parity-evidence/v1",
+        "schema": "honua.migration.script.pyt-parity-evidence/v2",
         "filename": toolbox.filename,
         "label": toolbox.label,
         "alias": toolbox.alias,
@@ -251,11 +251,11 @@ def _parse_tool(node: ast.ClassDef, *, filename: str | None) -> PytTool:
     parameters = _parse_parameters(node)
     execute_source = _method_body_source(node, "execute")
     if execute_source:
-        report = scan_arcpy_source(execute_source, filename=filename)
-        plan = translate_arcpy_source(execute_source, filename=filename)
+        report = scan_script_source(execute_source, filename=filename)
+        plan = translate_script_source(execute_source, filename=filename)
     else:
-        report = ArcPyScanReport(filename=filename, calls=())
-        plan = ArcPyMigrationPlan(report=report, translations=())
+        report = ScriptScanReport(filename=filename, calls=())
+        plan = ScriptMigrationPlan(report=report, translations=())
     return PytTool(
         class_name=node.name,
         label=label,
@@ -401,7 +401,7 @@ def _parse_parameters(node: ast.ClassDef) -> tuple[PytParameter, ...]:
             )
         )
 
-    # Fall back to any inline ``arcpy.Parameter(...)`` calls not bound to a
+    # Fall back to any inline parameter constructor calls not bound to a
     # local (e.g. constructed directly inside the returned list) so the original
     # detection behaviour is preserved.
     for call in ast.walk(method):
@@ -472,7 +472,7 @@ def _attribute_chain(node: ast.AST) -> tuple[str | None, tuple[str, ...]]:
 
 
 def _is_parameter_constructor(func: ast.AST) -> bool:
-    # Match arcpy.Parameter(...), arcpy.management.Parameter? -> only Parameter.
+    # Match parameter constructors, including qualified calls.
     if isinstance(func, ast.Attribute):
         return func.attr == "Parameter"
     if isinstance(func, ast.Name):

@@ -60,10 +60,10 @@ const routeLayer = new RouteLayer({
 
 const map = new Map({
   basemap: {
-    id: "streets",
-    title: "Streets",
-    baseLayers: [{ id: "streets-base" }],
-    referenceLayers: [{ id: "streets-ref" }],
+    id: "osm",
+    baseLayers: [
+      { id: "osm-base", url: "https://example.test/rest/services/basemap/MapServer" },
+    ],
   },
   layers: [tileLayer, operationsLayer, incidentsLayer, zoningLayer, routeLayer],
   tables: [{ id: "incidents-table" }, { id: "operations-table" }],
@@ -167,20 +167,7 @@ const printer = new Print({
 });
 const basemapGallery = new BasemapGallery({
   view,
-  source: [
-    {
-      id: "streets",
-      title: "Streets",
-      baseLayers: [{ id: "streets-base" }],
-      referenceLayers: [{ id: "streets-ref" }],
-    },
-    {
-      id: "dark-gray",
-      title: "Dark Gray",
-      baseLayers: [{ id: "dark-base" }],
-      referenceLayers: [{ id: "dark-ref" }],
-    },
-  ],
+  source: [{ id: "osm" }],
 });
 const basemapLayerList = new BasemapLayerList({ view });
 const toolsPanel = new Expand({ view, content: [layerList, legend], expanded: true });
@@ -270,7 +257,7 @@ const query = new Query({
   outFields: ["OBJECTID", "status", "priority"],
 });
 
-const activeBasemap = basemapGallery.select("dark-gray");
+const activeBasemap = basemapGallery.select("osm");
 basemapLayerList.refresh();
 const allSublayers = operationsLayer.allSublayers;
 const foundSublayer = operationsLayer.findSublayerById(2);

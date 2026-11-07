@@ -33,7 +33,7 @@ export function bootstrapParcelViewer(options: ParcelViewerOptions): ParcelViewe
     },
   });
 
-  const map = new Map({ basemap: "streets" });
+  const map = new Map({ basemap: "osm" });
   map.add(parcels);
 
   const view = new MapView({

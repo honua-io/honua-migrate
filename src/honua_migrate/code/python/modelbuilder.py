@@ -1,33 +1,32 @@
 """ModelBuilder (``.atbx``) + GP-service task-definition translation slice.
 
-This module extends the ArcPy migration codemod beyond standalone ``.py``
+This module extends the migration codemod beyond standalone ``.py``
 scripts and ``.pyt`` Python toolboxes (see :mod:`honua_migrate.code.python.pyt`) to
 two more inventory sources:
 
-* **ModelBuilder models** packaged in ArcGIS Pro ``.atbx`` toolboxes. The
-  ``.atbx`` format is a published, open, **zip-of-JSON** container (Esri
+* **ModelBuilder models** packaged in ``.atbx`` toolboxes. The
+  ``.atbx`` format is a published, open, **zip-of-JSON** container (the source
   documents it as "JSON-based with an open specification"); each model tool is
   stored as a JSON model definition listing its geoprocessing process steps.
   We read those JSON definitions **clean-room** -- we never decompile or run
-  licensed Esri software, and we never parse the proprietary binary ``.tbx``
+  licensed source software, and we never parse the proprietary binary ``.tbx``
   format (kept an explicit stub in :func:`honua_migrate.code.python.pyt`).
 
-* **GP-service task definitions** -- the JSON returned by an ArcGIS REST
+* **GP-service task definitions** -- the JSON returned by a GeoServices REST
   ``GPServer`` service (``.../GPServer?f=json`` and each task's
-  ``.../GPServer/<task>?f=json``). These are public REST API documents (fair
-  use; Google v. Oracle) describing a geoprocessing task's name and parameters.
+  ``.../GPServer/<task>?f=json``). These documents describe a geoprocessing
+  task's name and parameters.
 
 Both readers reuse the registry-driven classification in
-:mod:`honua_migrate.code.python.arcpy`: each discovered geoprocessing step is mapped
+the shared script scanner: each discovered geoprocessing step is mapped
 to its Honua OGC API - Processes target (or flagged ``manual-review`` /
 ``unsupported`` with a reason) so the parity-evidence story is identical across
 script / toolbox / model / service inputs.
 
 Because ModelBuilder models and GP tasks reference tools by their *toolbox
-tool name* (e.g. ``Buffer``, ``analysis.Buffer``, ``Buffer_analysis``) rather
-than a fully-qualified ``arcpy.analysis.Buffer`` call, this module normalizes
-those forms to an :class:`~honua_migrate.code.python.arcpy.ArcPyCall` and runs it
-through the same spec lookup.
+tool name* (e.g. ``Buffer``, ``analysis.Buffer``, ``Buffer_analysis``), this
+module normalizes those forms and runs them through the same spec lookup as
+script calls.
 """
 
 from __future__ import annotations
@@ -39,12 +38,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .arcpy import (
+from .script import (
     _SUPPORTED_TOOL_SPECS,
-    ArcPyCall,
-    ArcPyMigrationPlan,
-    ArcPyProcessTranslation,
-    ArcPyScanReport,
+    ScriptCall,
+    ScriptMigrationPlan,
+    ScriptProcessTranslation,
+    ScriptScanReport,
     JsonObject,
     JsonValue,
     _classify_qualified_name,
@@ -68,14 +67,13 @@ class UnsupportedModelFormatError(NotImplementedError):
 
 
 def _qualified_name_for_tool_reference(tool_name: str, *, toolbox: str | None = None) -> str:
-    """Map a ModelBuilder / GP tool reference to an ``arcpy.<family>.<Tool>`` name.
+    """Map a model or GP tool reference to a qualified source-tool name.
 
     Accepts the common toolbox-tool reference spellings:
 
-    * ``"Buffer"`` with a toolbox alias (``toolbox="analysis"``) ->
-      ``"arcpy.analysis.Buffer"``,
+    * ``"Buffer"`` with a toolbox alias (``toolbox="analysis"``),
     * ``"analysis.Buffer"`` / ``"Buffer_analysis"`` (legacy underscore form),
-    * already-qualified ``"arcpy.analysis.Buffer"`` (passed through).
+    * already-qualified names (passed through).
 
     The result is fed to the shared classifier so registry lookup matches the
     same specs the ``.py`` scanner uses. Unknown families simply fail spec
@@ -86,10 +84,10 @@ def _qualified_name_for_tool_reference(tool_name: str, *, toolbox: str | None = 
     if name.startswith("arcpy."):
         return name
     if "." in name:
-        # "analysis.Buffer" -> "arcpy.analysis.Buffer"
+        # Prefix a family-qualified name.
         return f"arcpy.{name}"
     if "_" in name:
-        # Legacy "Buffer_analysis" -> "arcpy.analysis.Buffer".
+        # Normalize a legacy underscore-qualified name.
         base, _, suffix = name.rpartition("_")
         if base and suffix:
             return f"arcpy.{suffix.lower()}.{base}"
@@ -127,8 +125,8 @@ def _call_from_tool_reference(
     inputs: Mapping[str, JsonValue] | None,
     line: int,
     filename: str | None,
-) -> ArcPyCall:
-    """Build an :class:`ArcPyCall` for a model/GP step, keyed by tool reference."""
+) -> ScriptCall:
+    """Build an :class:`ScriptCall` for a model/GP step, keyed by tool reference."""
 
     qualified_name = _qualified_name_for_tool_reference(tool_name, toolbox=toolbox)
     family, tool = _classify_qualified_name(qualified_name)
@@ -143,7 +141,7 @@ def _call_from_tool_reference(
             family = candidates[0]
             qualified_name = f"arcpy.{family}.{tool}"
     kwargs: dict[str, JsonValue] = dict(inputs or {})
-    return ArcPyCall(
+    return ScriptCall(
         qualified_name=qualified_name,
         family=family,
         tool=tool,
@@ -157,21 +155,21 @@ def _call_from_tool_reference(
 
 
 def _plan_from_calls(
-    calls: Sequence[ArcPyCall], *, filename: str | None
-) -> ArcPyMigrationPlan:
+    calls: Sequence[ScriptCall], *, filename: str | None
+) -> ScriptMigrationPlan:
     """Build a scan report + translation plan from pre-built calls.
 
-    Mirrors :func:`honua_migrate.code.python.arcpy.translate_arcpy_report`: every
+    Mirrors :func:`honua_migrate.code.python.script.translate_script_report`: every
     *supported* call (one with a registered Honua mapping) is translated;
     coverage gating to job-executable tools is handled by the parity-evidence
     builder, not by dropping translations here.
     """
 
-    report = ArcPyScanReport(filename=filename, calls=tuple(calls))
-    translations: list[ArcPyProcessTranslation] = []
+    report = ScriptScanReport(filename=filename, calls=tuple(calls))
+    translations: list[ScriptProcessTranslation] = []
     for call in report.supported_calls:
         translations.append(_translate_call(call, process_id_map={}))
-    return ArcPyMigrationPlan(report=report, translations=tuple(translations))
+    return ScriptMigrationPlan(report=report, translations=tuple(translations))
 
 
 # ---------------------------------------------------------------------------
@@ -187,7 +185,7 @@ class ModelStep:
     toolbox: str | None
     label: str | None
     inputs: Mapping[str, JsonValue]
-    call: ArcPyCall
+    call: ScriptCall
 
     def to_dict(self) -> JsonObject:
         return {
@@ -211,12 +209,12 @@ class ModelBuilderModel:
     name: str
     label: str | None
     steps: tuple[ModelStep, ...]
-    plan: ArcPyMigrationPlan
+    plan: ScriptMigrationPlan
     filename: str | None = None
 
     def to_dict(self) -> JsonObject:
         return {
-            "schema": "honua.migration.arcpy.modelbuilder-model/v1",
+            "schema": "honua.migration.script.modelbuilder-model/v2",
             "name": self.name,
             "label": self.label,
             "filename": self.filename,
@@ -237,7 +235,7 @@ class ModelBuilderToolbox:
 
     def to_dict(self) -> JsonObject:
         result: JsonObject = {
-            "schema": "honua.migration.arcpy.modelbuilder-toolbox/v1",
+            "schema": "honua.migration.script.modelbuilder-toolbox/v2",
             "filename": self.filename,
             "scriptToolNames": list(self.script_tool_names),
             "models": [model.to_dict() for model in self.models],
@@ -279,7 +277,7 @@ def _model_steps_from_definition(
     """Extract ordered GP steps from a tolerant model-definition JSON shape.
 
     The ``.atbx`` model JSON stores its processes under a few possible keys
-    across ArcGIS Pro releases. We accept any of ``processes`` / ``steps`` /
+    across source application releases. We accept any of ``processes`` / ``steps`` /
     ``tools`` (a list of step objects). Each step object may carry its tool name
     under ``toolName`` / ``tool`` / ``name`` / ``toolID``, an optional toolbox
     alias under ``toolbox`` / ``toolboxAlias``, a label under ``label`` /
@@ -410,7 +408,7 @@ def parse_atbx_toolbox(path: str | Path) -> ModelBuilderToolbox:
             entry = info.filename
             lowered = entry.lower()
             tool_name = _tool_name_from_entry(entry)
-            # ArcGIS Pro stores tool definitions as JSON in files whose
+            # The source application stores tool definitions as JSON in files whose
             # extension varies by release (``.content``, ``.content.rc``,
             # ``.rc``, ``.json``). Be tolerant: try to JSON-decode any text
             # entry inside a ``*.tool`` folder (or any ``.json``/.rc/.content
@@ -495,7 +493,7 @@ def build_atbx_parity_evidence(toolbox: ModelBuilderToolbox) -> JsonObject:
 
     coverage_pct = round(100.0 * translatable / total, 2) if total else 0.0
     return {
-        "schema": "honua.migration.arcpy.atbx-parity-evidence/v1",
+        "schema": "honua.migration.script.atbx-parity-evidence/v2",
         "filename": toolbox.filename,
         "scriptToolNames": list(toolbox.script_tool_names),
         "summary": {
@@ -511,7 +509,7 @@ def build_atbx_parity_evidence(toolbox: ModelBuilderToolbox) -> JsonObject:
 
 
 # ---------------------------------------------------------------------------
-# GP-service task definitions (ArcGIS REST GPServer)
+# GP-service task definitions (GeoServices REST GPServer)
 # ---------------------------------------------------------------------------
 
 
@@ -539,17 +537,17 @@ class GpTaskParameter:
 
 @dataclass(frozen=True)
 class GpTask:
-    """A single ArcGIS REST GPServer task translated to a Honua plan."""
+    """A single GeoServices REST GPServer task translated to a Honua plan."""
 
     name: str
     display_name: str | None
     execution_type: str | None
     parameters: tuple[GpTaskParameter, ...]
-    plan: ArcPyMigrationPlan
+    plan: ScriptMigrationPlan
 
     def to_dict(self) -> JsonObject:
         return {
-            "schema": "honua.migration.arcpy.gp-task/v1",
+            "schema": "honua.migration.script.gp-task/v2",
             "name": self.name,
             "displayName": self.display_name,
             "executionType": self.execution_type,
@@ -561,14 +559,14 @@ class GpTask:
 
 @dataclass(frozen=True)
 class GpService:
-    """A parsed ArcGIS REST GPServer service: its tasks and their plans."""
+    """A parsed GeoServices REST GPServer service: its tasks and their plans."""
 
     url: str | None
     tasks: tuple[GpTask, ...]
 
     def to_dict(self) -> JsonObject:
         return {
-            "schema": "honua.migration.arcpy.gp-service/v1",
+            "schema": "honua.migration.script.gp-service/v2",
             "url": self.url,
             "tasks": [task.to_dict() for task in self.tasks],
         }
@@ -700,7 +698,7 @@ def build_gp_service_parity_evidence(service: GpService) -> JsonObject:
 
     coverage_pct = round(100.0 * translatable / total, 2) if total else 0.0
     return {
-        "schema": "honua.migration.arcpy.gp-service-parity-evidence/v1",
+        "schema": "honua.migration.script.gp-service-parity-evidence/v2",
         "url": service.url,
         "summary": {
             "taskCount": len(service.tasks),

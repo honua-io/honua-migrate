@@ -45,12 +45,12 @@ describe("migration runtime smoke", () => {
         "import FeatureLayer from '@arcgis/core/layers/FeatureLayer';",
         "import MapImageLayer from '@arcgis/core/layers/MapImageLayer';",
         "import RouteTask from '@arcgis/core/rest/route/RouteTask';",
-        "const basemap = new Basemap({ id: 'streets' });",
+        "const basemap = new Basemap({ id: 'osm' });",
         "const featureLayer = new FeatureLayer({ url: 'https://example.test/rest/services/default/FeatureServer/0' });",
         "const mapImage = new MapImageLayer({ url: 'https://example.test/rest/services/default/MapServer' });",
         "const routeTask = new RouteTask({ url: 'https://example.test/rest/services/network/RouteServer' });",
         "const routeResult = await routeTask.solve({ stops: [{ location: [-157.0, 21.3] }, { location: [-157.01, 21.31] }] });",
-        "const map = new Map({ basemap, layers: [featureLayer, mapImage] });",
+        "const map = new Map({ basemap: 'osm', layers: [featureLayer, mapImage] });",
         "export default {",
         "  basemapCtor: basemap.constructor.name,",
         "  mapCtor: map.constructor.name,",
@@ -129,7 +129,7 @@ describe("migration runtime smoke", () => {
         "import CoordinateConversion from '@arcgis/core/widgets/CoordinateConversion';",
         "import Print from '@arcgis/core/widgets/Print';",
         "import Swipe from '@arcgis/core/widgets/Swipe';",
-        "const map = new Map({ basemap: { id: 'streets', baseLayers: [{ id: 'base-layer' }], referenceLayers: [{ id: 'ref-layer' }] }, tables: [{ id: 'parcel-table' }] });",
+        "const map = new Map({ basemap: { baseLayers: [{ id: 'base-layer', url: 'https://example.test/rest/services/base/MapServer' }], referenceLayers: [{ id: 'ref-layer', url: 'https://example.test/rest/services/ref/MapServer' }] }, tables: [{ id: 'parcel-table' }] });",
         "const routeLayer = new RouteLayer({ stops: [{ name: 'Start', location: [-157.0, 21.3] }, { name: 'End', location: [-157.01, 21.31] }] });",
         "map.add(routeLayer);",
         "const view = new MapView({ map, center: [0, 0], zoom: 2 });",
@@ -263,8 +263,32 @@ describe("migration runtime smoke", () => {
     });
     expect(codemodResult.filesChanged).toBe(1);
     expect(codemodResult.metrics.totalCodemodScopedCallSites).toBe(34);
-    expect(codemodResult.metrics.autoMigratedCallSites).toBe(34);
-    expect(codemodResult.metrics.manualCallSites).toBe(0);
+    expect(codemodResult.metrics.autoMigratedCallSites).toBe(32);
+    expect(codemodResult.metrics.manualCallSites).toBe(2);
+    expect(codemodResult.manualTodos.map((todo) => todo.kind)).toEqual([
+      "basemap-toggle-widget",
+      "basemap-gallery-widget",
+    ]);
+
+    // Apply the held widget adaptations explicitly, then execute the full flow.
+    let source = fs.readFileSync(file, "utf8");
+    expect(source).toContain("import BasemapToggle from '@arcgis/core/widgets/BasemapToggle';");
+    expect(source).toContain("import BasemapGallery from '@arcgis/core/widgets/BasemapGallery';");
+    source = source
+      .replace(
+        "import BasemapToggle from '@arcgis/core/widgets/BasemapToggle';",
+        `import { BasemapToggleCompat as BasemapToggle } from ${JSON.stringify(compatEntryPath)};`,
+      )
+      .replace(
+        "import BasemapGallery from '@arcgis/core/widgets/BasemapGallery';",
+        `import { BasemapGalleryCompat as BasemapGallery } from ${JSON.stringify(compatEntryPath)};`,
+      )
+      .replace("nextBasemap: { id: 'satellite', baseLayers: [{ id: 'sat-base' }] }", "nextBasemap: { id: 'osm' }")
+      .replace(
+        "new BasemapGallery({ view, container: 'gallery' })",
+        "new BasemapGallery({ view, container: 'gallery', source: [{ id: 'osm' }] })",
+      );
+    fs.writeFileSync(file, source);
 
     const migrated = await import(pathToFileURL(file).href);
     expect(migrated.default).toMatchObject({
@@ -275,7 +299,7 @@ describe("migration runtime smoke", () => {
       bookmarkCount: 1,
       popupBefore: { id: "a" },
       popupAfterNext: { id: "b" },
-      toggledBasemapId: "satellite",
+      toggledBasemapId: "osm",
       locateLongitude: -157.8583,
       locateLatitude: 21.3069,
       mapTableCount: 2,

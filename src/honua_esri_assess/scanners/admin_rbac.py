@@ -327,7 +327,7 @@ def _decode(
         diagnostics.append(
             Diagnostic(
                 code="partial-coverage",
-                message=f"Esri returned an error envelope for {scope}.",
+                message=f"The source returned an error envelope for {scope}.",
                 scope=scope,
             )
         )

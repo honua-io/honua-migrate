@@ -32,7 +32,7 @@ const parcels = new FeatureLayer({
 });
 
 const map = new Map({
-  basemap: "gray-vector",
+  basemap: "osm",
   layers: [parcels],
 });
 

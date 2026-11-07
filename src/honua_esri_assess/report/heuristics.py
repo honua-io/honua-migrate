@@ -138,8 +138,8 @@ def total_feature_class_count(footprint: Mapping[str, Any]) -> int:
 
 def source_label(source_kind: Any) -> str:
     return {
-        "arcgis-online": "ArcGIS Online",
-        "arcgis-server": "ArcGIS Server",
+        "arcgis-online": "Portal",
+        "arcgis-server": "GeoServices REST server",
         "filegdb": "FileGDB",
     }.get(source_kind, "Unknown source")
 
@@ -147,9 +147,9 @@ def source_label(source_kind: Any) -> str:
 def item_source_label(item: Mapping[str, Any], footprint: Mapping[str, Any] | None = None) -> str:
     kind = item.get("kind")
     if kind == "portal-item":
-        return "ArcGIS Online"
+        return "Portal"
     if kind == "server-service":
-        return "ArcGIS Server"
+        return "GeoServices REST server"
     if kind == "filegdb-feature-class":
         return "FileGDB"
     if footprint:
@@ -193,8 +193,8 @@ def item_label(item: Mapping[str, Any]) -> str:
 def item_sort_key(item: Mapping[str, Any]) -> tuple[str, str, str, str]:
     source_rank = {
         "FileGDB": "0",
-        "ArcGIS Server": "1",
-        "ArcGIS Online": "2",
+        "GeoServices REST server": "1",
+        "Portal": "2",
     }.get(item_source_label(item), "9")
     kind_rank = {
         "filegdb-feature-class": "0",
@@ -367,27 +367,27 @@ def recommended_order(footprint: Mapping[str, Any]) -> tuple[OrderingGroup, ...]
 
 ORDERING_DEFINITIONS = (
     (10, "FileGDB feature classes", "Stage cold data first before dependent services."),
-    (20, "ArcGIS Server feature services", "Move authoritative service-backed feature data early."),
+    (20, "GeoServices REST server feature services", "Move authoritative service-backed feature data early."),
     (
         30,
-        "ArcGIS Server map and image services",
+        "GeoServices REST server map and image services",
         "Migrate read-side services after their data sources are staged.",
     ),
-    (40, "AGOL hosted feature services", "Move cloud-side authoritative feature services next."),
+    (40, "Portal hosted feature services", "Move cloud-side authoritative feature services next."),
     (
         50,
-        "AGOL hosted tile and vector tile services",
+        "Portal hosted tile and vector tile services",
         "Rebuild derived rendering layers after feature services are available.",
     ),
-    (60, "AGOL web maps", "Web maps should follow the services they reference."),
+    (60, "Portal web maps", "Web maps should follow the services they reference."),
     (
         70,
-        "AGOL web apps, dashboards, and experiences",
+        "Portal web apps, dashboards, and experiences",
         "Apps and dashboards should follow their web maps and service dependencies.",
     ),
     (
         80,
-        "AGOL notebooks, solutions, workforce, survey, and insights",
+        "Portal notebooks, solutions, workforce, survey, and insights",
         "Specialized portal content should be handled late with human review.",
     ),
     (90, "Other or unknown item types", "Triage unknown types before assigning a final sequence."),

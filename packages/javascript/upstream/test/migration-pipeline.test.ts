@@ -119,8 +119,7 @@ const COMPAT_ADDITIONS: Array<[string, string, string, string, boolean]> = [
   ["add", "dependencies", "maplibre-gl", "^6.4.1", false],
 ];
 
-const MAP_ONLY_SOURCE =
-  'import Map from "@arcgis/core/Map";\n\nexport const map = new Map({ basemap: "streets-vector" });\n';
+const MAP_ONLY_SOURCE = 'import Map from "@arcgis/core/Map";\n\nexport const map = new Map({ basemap: "osm" });\n';
 
 describe("JS migration pipeline", () => {
   it("pins generated runtimes to the tested stable dependency floor", () => {
@@ -735,6 +734,9 @@ describe("JS migration pipeline", () => {
 
     expect(report.verdict).toBe("unvalidated");
     expect(fs.readFileSync(path.join(app, "src", "selection.ts"), "utf8")).toBe(selectionBefore);
+    const main = fs.readFileSync(path.join(app, "src", "main.ts"), "utf8");
+    expect(main).toContain("MapCompat");
+    expect(main).toContain('basemap: "osm"');
     // selection.ts keeps its four type-only imports (Graphic, Point, FeatureLayer, MapView).
     expect(report.arcgisRuntime).toEqual({
       moduleSites: 4,

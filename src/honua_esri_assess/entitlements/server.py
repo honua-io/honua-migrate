@@ -365,7 +365,7 @@ def _interpret_response(
                     Diagnostic(
                         code="missing-permission",
                         severity="warn",
-                        message="ArcGIS Server returned forbidden; skipping endpoint.",
+                        message="The source server returned forbidden; skipping endpoint.",
                         scope=scope,
                     )
                 )
@@ -408,7 +408,7 @@ def _interpret_response(
             Diagnostic(
                 code="unresolved-reference",
                 severity="warn",
-                message="ArcGIS Server endpoint not found; skipping.",
+                message="Source server endpoint not found; skipping.",
                 scope=scope,
             )
         )

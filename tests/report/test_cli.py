@@ -24,7 +24,7 @@ def test_report_writes_output_file(tmp_path: Path, capsys) -> None:
     )
 
     assert exit_code == 0
-    assert output_path.read_text(encoding="utf-8").startswith("# Honua Esri Readiness Report")
+    assert output_path.read_text(encoding="utf-8").startswith("# Honua Readiness Report")
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err == ""
@@ -38,7 +38,7 @@ def test_report_creates_output_parent_directories(tmp_path: Path, capsys) -> Non
     )
 
     assert exit_code == 0
-    assert output_path.read_text(encoding="utf-8").startswith("# Honua Esri Readiness Report")
+    assert output_path.read_text(encoding="utf-8").startswith("# Honua Readiness Report")
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err == ""
@@ -54,7 +54,7 @@ def test_report_reads_stdin_and_writes_stdout(monkeypatch, capsys) -> None:
 
     assert exit_code == 0
     captured = capsys.readouterr()
-    assert "# Honua Esri Readiness Report" in captured.out
+    assert "# Honua Readiness Report" in captured.out
     assert captured.err == ""
 
 

@@ -172,7 +172,7 @@ def _install_sdk(monkeypatch: pytest.MonkeyPatch, behavior: dict[str, Any]) -> _
 
 
 def _quiet_sleep(monkeypatch: pytest.MonkeyPatch) -> None:
-    import honua_migrate.code.python.arcpy as arcpy_mod
+    import honua_migrate.code.python.script as arcpy_mod
 
     monkeypatch.setattr(arcpy_mod.time, "sleep", lambda _seconds: None)
 

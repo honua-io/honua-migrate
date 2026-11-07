@@ -50,7 +50,7 @@ describe("migration cli target selection", () => {
 
     fs.writeFileSync(
       appFile,
-      ["import Map from '@arcgis/core/Map';", "const map = new Map({ basemap: 'streets' });", "void map;"].join("\n"),
+      ["import Map from '@arcgis/core/Map';", "const map = new Map({ basemap: 'osm' });", "void map;"].join("\n"),
       "utf8",
     );
 
@@ -62,7 +62,7 @@ describe("migration cli target selection", () => {
 
     const migrated = fs.readFileSync(appFile, "utf8");
     expect(migrated).toContain('import { MapCompat } from "@honua/sdk-esri-compat";');
-    expect(migrated).toContain("const map = new MapCompat({ basemap: 'streets' });");
+    expect(migrated).toContain("const map = new MapCompat({ basemap: 'osm' });");
   }, 240_000);
 
   it("runs codemod with --target esri-leaflet and emits a deterministic mixed mapping report", () => {
@@ -277,7 +277,7 @@ describe("migration cli target selection", () => {
         preview: {
           filesChanged: number;
           autoMigratedCallSites: number;
-          fileBoundaries: { converted: number };
+          fileBoundaries: { converted: number; mixed: number };
         };
       };
       codemodResult: { filesChanged: number; metrics: { autoMigratedCallSites: number } };
@@ -293,7 +293,8 @@ describe("migration cli target selection", () => {
     expect(report.codemodExecution.applied).toBe(false);
     expect(report.codemodExecution.preview.filesChanged).toBeGreaterThan(0);
     expect(report.codemodExecution.preview.autoMigratedCallSites).toBeGreaterThan(0);
-    expect(report.codemodExecution.preview.fileBoundaries.converted).toBeGreaterThan(0);
+    expect(report.codemodExecution.preview.fileBoundaries.converted).toBe(0);
+    expect(report.codemodExecution.preview.fileBoundaries.mixed).toBe(1);
     expect(report.codemodResult.filesChanged).toBe(0);
     expect(report.codemodResult.metrics.autoMigratedCallSites).toBe(0);
     expect(report.conversion.recommendedMode).toBe("keep-esri-client");
@@ -313,7 +314,7 @@ describe("migration cli target selection", () => {
     const source = [
       "import Map from '@arcgis/core/Map';",
       "import MapView from '@arcgis/core/views/MapView';",
-      "const map = new Map({ basemap: 'streets-vector' });",
+      "const map = new Map({ basemap: 'osm' });",
       "const view = new MapView({ map, container: 'view' });",
       "void view;",
     ].join("\n");

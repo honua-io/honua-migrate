@@ -48,7 +48,7 @@ incidentsLayer.queryFeatures = async (options = {}) => {
 };
 
 const map = new Map({
-  basemap: "streets",
+  basemap: "osm",
   layers: [incidentsLayer],
 });
 

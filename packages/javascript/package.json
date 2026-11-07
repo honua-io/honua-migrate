@@ -1,7 +1,7 @@
 {
   "name": "@honua/honua-migrate",
   "version": "0.3.0-beta.0",
-  "description": "ArcGIS-to-Honua migration scanner, AST codemod, content, reconciliation, and reporting engine.",
+  "description": "Geospatial application migration scanner, AST codemod, content, reconciliation, and reporting engine.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

@@ -1,6 +1,6 @@
-"""Service-type and geometry-type taxonomy for ArcGIS Server REST.
+"""Service-type and geometry-type taxonomy for GeoServices REST.
 
-Single source of truth for mapping raw Esri type strings to coarse
+Single source of truth for mapping raw source type strings to coarse
 migration buckets used by scanner diagnostics and future emitters. The
 published v0.1 footprint persists the raw ``serviceType`` only. Adding a
 new service type is one constant-table edit and one test fixture.
@@ -8,7 +8,7 @@ new service type is one constant-table edit and one test fixture.
 
 from __future__ import annotations
 
-# Raw Esri service-type string -> coarse migration bucket used inside scan results.
+# Raw source service-type string -> coarse migration bucket used inside scan results.
 SERVICE_TYPE_TO_KIND: dict[str, str] = {
     "MapServer": "mapService",
     "FeatureServer": "featureService",
@@ -33,7 +33,7 @@ DEEP_PROBE_TYPES: frozenset[str] = frozenset(
     {"MapServer", "FeatureServer", "ImageServer", "SceneServer", "StreamServer", "GPServer"}
 )
 
-# Raw Esri supported-extension string -> normalized OGC capability flag. ArcGIS
+# Raw source supported-extension string -> normalized OGC capability flag. ArcGIS
 # advertises OGC interfaces (and a few well-known SOEs) on each catalog entry via
 # the per-service ``supportedExtensions`` field; this maps the documented
 # interface extensions to a stable, prospect-safe flag without a deep probe.
@@ -43,7 +43,7 @@ SUPPORTED_EXTENSION_TO_OGC: dict[str, str] = {
     "WCSServer": "WCS",
 }
 
-# Esri geometry-type string -> coarse bucket used for layer summaries.
+# Source geometry-type string -> coarse bucket used for layer summaries.
 GEOMETRY_TYPE_TO_KIND: dict[str, str] = {
     "esriGeometryPoint": "point",
     "esriGeometryMultipoint": "multipoint",
@@ -61,7 +61,7 @@ def classify_service(raw_type: str) -> str:
 
 
 def classify_geometry(raw_geometry: str | None) -> str | None:
-    """Map an Esri ``esriGeometryX`` string to a coarse bucket."""
+    """Map a source ``esriGeometryX`` string to a coarse bucket."""
 
     if raw_geometry is None:
         return None
@@ -77,7 +77,7 @@ def is_known_service_type(raw_type: str) -> bool:
 def classify_ogc_capabilities(supported_extensions: str | None) -> tuple[str, ...]:
     """Map a service's ``supportedExtensions`` string to OGC capability flags.
 
-    ArcGIS Server advertises OGC interfaces (``WMSServer``, ``WFSServer``,
+    The source server advertises OGC interfaces (``WMSServer``, ``WFSServer``,
     ``WCSServer``) and SOEs through a comma-separated ``supportedExtensions``
     field on each catalog entry. Only the documented OGC interfaces are
     normalized here; everything else is ignored so unknown SOEs never become

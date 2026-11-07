@@ -1,4 +1,4 @@
-"""Parse a single ArcGIS Server layer's metadata JSON into typed detail.
+"""Parse a source server layer's metadata JSON into typed detail.
 
 The layer resource (``.../<FeatureServer|MapServer>/<id>``) exposes a rich,
 read-only description of a layer's schema and behavior: fields, coded/range

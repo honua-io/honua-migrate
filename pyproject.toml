@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 authors = [{ name = "Honua" }]
-keywords = ["arcgis", "esri", "filegdb", "gis", "migration", "readiness"]
+keywords = ["geoservices", "rest", "filegdb", "gis", "migration", "readiness"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",

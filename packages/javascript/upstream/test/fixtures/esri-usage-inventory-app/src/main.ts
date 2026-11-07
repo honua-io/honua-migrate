@@ -10,7 +10,7 @@ const parcels = new FeatureLayer({
 });
 
 const map = new Map({
-  basemap: "streets",
+  basemap: "osm",
   layers: [parcels],
 });
 

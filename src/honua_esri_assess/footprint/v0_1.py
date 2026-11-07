@@ -38,7 +38,7 @@ from honua_esri_assess.server.models import (
     ServiceRecord,
 )
 
-SCHEMA_VERSION = "v0.2"
+SCHEMA_VERSION = "v0.3"
 PRODUCER_NAME = "honua-esri-assess"
 
 #: Dependency-edge relation tags emitted at v0.2.
@@ -46,12 +46,12 @@ RELATION_WEBMAP_SERVICE = "webmap-references-service"
 RELATION_SERVICE_LAYER = "service-contains-layer"
 
 #: Cross-repo handoff target for geoprocessing migration. GPServer/GP task
-#: migration is owned by honua-sdk-python's ArcPy scanner/translator/runner;
-#: this repo only records a read-only pointer at it, never the translation.
-GP_HANDOFF_TARGET = "honua-sdk-python:arcpy"
+#: migration is owned by the Python script migration pipeline; this footprint
+#: records a read-only pointer, never the translation.
+GP_HANDOFF_TARGET = "honua-migrate:python-script"
 GP_HANDOFF_NOTE = (
-    "Geoprocessing migration is handled by honua-sdk-python's ArcPy "
-    "scanner/translator/runner; this footprint only records a pointer."
+    "Geoprocessing migration is handled by the Python script migration "
+    "pipeline; this footprint only records a pointer."
 )
 
 __all__ = [
@@ -368,7 +368,7 @@ def _server_service_to_dict(service: ServiceRecord) -> dict[str, Any]:
     if layer_details:
         payload["layers"] = layer_details
     # Additive v0.2 cross-repo handoff for geoprocessing services. GPServer
-    # migration is owned by honua-sdk-python's ArcPy pipeline, so the footprint
+    # migration is owned by the Python script pipeline, so the footprint
     # records only a pointer (service URL + any known task names + a note).
     # Emitted for GP services exclusively; v0.1/v0.2 readers ignore the field.
     handoff = _gp_migration_handoff(service)
@@ -403,8 +403,8 @@ def _gp_migration_handoff(service: ServiceRecord) -> dict[str, Any] | None:
     Returns ``None`` for any non-geoprocessing service so the additive field is
     present only where it applies. The pointer is fully read-only: it captures
     the credential-free service URL, the geoprocessing task names already read
-    from the service body (if a deep probe ran), and a note that the ArcPy
-    translation lives in honua-sdk-python. No task is crawled or translated.
+    from the service body (if a deep probe ran), and a note naming the
+    migration pipeline. No task is crawled or translated.
     """
 
     if service.kind != "geoprocessingService":
