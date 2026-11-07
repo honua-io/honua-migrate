@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.10.0](https://github.com/honua-io/honua-migrate/compare/honua-migrate-v0.9.1...honua-migrate-v0.10.0) (2026-11-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* use services geoservices-rest instead of services arcgis. The old route has no alias.
+
+### Bug Fixes
+
+* rename the service migration command to GeoServices REST ([#252](https://github.com/honua-io/honua-migrate/issues/252)) ([61487f0](https://github.com/honua-io/honua-migrate/commit/61487f04d0d1d074504d50ee74a9fe49fe49b9de))
+
+
+### Documentation
+
+* describe the ArcGIS JS fidelity checks directly ([#248](https://github.com/honua-io/honua-migrate/issues/248)) ([c3397d5](https://github.com/honua-io/honua-migrate/commit/c3397d576f085b14da9aa44b009e7e558bb7191d))
+* the server this CLI calls is FCL-1.0-ALv2, not ELv2 ([#234](https://github.com/honua-io/honua-migrate/issues/234)) ([323c5f8](https://github.com/honua-io/honua-migrate/commit/323c5f87286d965e7028c4b36221ed32418878bd))
+
 ## [0.9.1](https://github.com/honua-io/honua-migrate/compare/honua-migrate-v0.9.0...honua-migrate-v0.9.1) (2026-10-30)
 
 
