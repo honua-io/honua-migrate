@@ -25,7 +25,7 @@ def test_policy_covers_required_surfaces_and_boundaries() -> None:
         "JavaScript",
         "Python / ArcPy",
         "MAUI",
-        "ArcGIS services",
+        "GeoServices REST import",
         "GeoServer",
         "Portal content",
         "Reconciliation",
