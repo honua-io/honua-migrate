@@ -320,7 +320,8 @@ def test_apply_rejects_plaintext_credential_without_echoing_it(tmp_path):
 
 
 def test_accepts_environment_and_provider_credential_references():
-    assert _validate_secret_reference("env:ARCGIS_TOKEN") == "env:ARCGIS_TOKEN"
+    reference = "env:GEOSERVICES_REST_TOKEN"
+    assert _validate_secret_reference(reference) == reference
     assert _validate_secret_reference("vault:gis/arcgis-token") == "vault:gis/arcgis-token"
 
 

@@ -54,18 +54,19 @@ def register_service_app(name: str, app: typer.Typer, *, help: str | None = None
 
 
 def _discover_service_apps() -> None:
-    for service in ("arcgis", "geoserver"):
+    services = (("arcgis", "geoservices-rest"), ("geoserver", "geoserver"))
+    for module_name, command_name in services:
         try:
-            module = importlib.import_module(f"honua_migrate.services.{service}")
-            service_app = getattr(module, f"{service}_app")
+            module = importlib.import_module(f"honua_migrate.services.{module_name}")
+            service_app = getattr(module, f"{module_name}_app")
         except ModuleNotFoundError as exc:
             if exc.name in {
                 "honua_migrate.services",
-                f"honua_migrate.services.{service}",
+                f"honua_migrate.services.{module_name}",
             }:
                 continue
             raise
-        register_service_app(service, service_app)
+        register_service_app(command_name, service_app)
 
 
 plan_app.command("create")(unavailable("plan create"))

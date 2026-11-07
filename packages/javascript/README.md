@@ -52,7 +52,7 @@ The `codemod` report's `readiness` is one of:
 naming what stands in its way, and `conversion.recommendedMode` picks one:
 
 - `keep-esri-client`: leave the ArcGIS source as written and repoint the app's
-  service URLs at Honua; `honua-migrate services arcgis handoff` records the
+  service URLs at Honua; `honua-migrate services geoservices-rest handoff` records the
   target endpoint and layer ID mapping. Recommended when the codemod rewrites
   no file, or when the scan is `blocked`, even if some files would convert.
 - `assisted-conversion`: apply the codemod where it rewrites and work through

@@ -257,7 +257,7 @@ a diagnostic may say; see the
 
 ## Resuming service imports
 
-`honua-migrate services arcgis resume JOB_ID --output result.json` polls an
+`honua-migrate services geoservices-rest resume JOB_ID --output result.json` polls an
 existing job with GET requests; it never requeues an import. Both numeric and
 named GeoServices import statuses are supported using the 2026.1 status contract
 (recorded in `response.statusContract`). This is distinct from file-import enums:
@@ -280,7 +280,7 @@ waiting for a future terminal state. Unknown statuses stop with an explicit
 
 ## Target readiness before GeoServices import
 
-`honua-migrate services arcgis preflight` checks the Honua target before a long
+`honua-migrate services geoservices-rest preflight` checks the Honua target before a long
 import. It sends read-only GETs only: the capability manifest
 (`GET /api/v1/capabilities/manifest`) and, after the caller is authenticated,
 the import job list. It does not upload a license, change entitlements, or call
@@ -404,7 +404,7 @@ are not the Python GP run outcomes above.
 | `3` | `report --strict` / `verdict --strict` / `caps --strict` rejected an invalid footprint (`report.schema.invalid`). |
 | `4` | Report rendering failed after input parsing succeeded (`report.render.internal`). |
 | `5` | `caps --crosswalk` document failed structural or key validation, e.g. an unknown assess-registry key (`report.crosswalk.invalid`). |
-| `10`+ | Expected scanner failure (`scanner-error`, `portal.*`, `server.*`); `services arcgis resume` uses `10` for an unsuccessful or unverified terminal observation, with its receipt retained. |
+| `10`+ | Expected scanner failure (`scanner-error`, `portal.*`, `server.*`); `services geoservices-rest resume` uses `10` for an unsuccessful or unverified terminal observation, with its receipt retained. |
 | `20`+ | Could not save the requested output artifact (`output-write-failed`, or output exists without `--force`). |
 | `30` | Schema validation failed for `scan --validate` or `schema validate`. |
 

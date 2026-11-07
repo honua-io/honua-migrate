@@ -54,12 +54,26 @@ def test_main_surfaces_actionable_typer_bad_parameter_errors(capsys) -> None:
     failure fallback (regression: Typer's vendored ``_click`` fork moved
     ``Exit`` out of ``_click.exceptions``, which masked every ClickException)."""
 
-    exit_code = main(["services", "arcgis", "status", "../secrets"])
+    exit_code = main(["services", "geoservices-rest", "status", "../secrets"])
 
     assert exit_code == 2
     output = capsys.readouterr().err
     assert "internal migration command failure" not in output
     assert "Job ID may contain only letters" in output
+
+
+def test_service_cli_uses_geoservices_rest_route() -> None:
+    result = CliRunner().invoke(cli_app, ["services", "geoservices-rest", "--help"])
+
+    assert result.exit_code == 0
+    assert "discover" in result.output
+    service_help = CliRunner().invoke(cli_app, ["services", "--help"])
+    assert service_help.exit_code == 0
+    assert "geoservices-rest" in service_help.output
+    assert "arcgis" not in service_help.output
+    retired_route = CliRunner().invoke(cli_app, ["services", "arcgis", "--help"])
+    assert retired_route.exit_code == 2
+    assert "No such command" in retired_route.output
 
 
 def test_python_module_entry_point_displays_help() -> None:
