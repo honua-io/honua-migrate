@@ -10,12 +10,12 @@ from urllib.parse import urlsplit
 
 import pytest
 
-from honua_esri_assess.cli import main as cli_main
-from honua_esri_assess.commands.common import ScanOptions, ScanResult
-from honua_esri_assess.commands.scan_handlers import HANDLERS, ScanHandler, register
-from honua_esri_assess.footprint import build_footprint
-from honua_esri_assess.scanners import agol as agol_scanner
-from honua_esri_assess.scanners import server as server_scanner
+from honua_migrate.assessment.cli import main as cli_main
+from honua_migrate.assessment.commands.common import ScanOptions, ScanResult
+from honua_migrate.assessment.commands.scan_handlers import HANDLERS, ScanHandler, register
+from honua_migrate.assessment.footprint import build_footprint
+from honua_migrate.assessment.scanners import agol as agol_scanner
+from honua_migrate.assessment.scanners import server as server_scanner
 
 SECRET_TARGET = (
     "https://alice:superpass@fixture.local/sharing/rest;jsessionid=session-secret"
@@ -101,7 +101,7 @@ def test_scan_cli_uses_raw_target_but_writes_sanitized_handoff(
 
     register(ScanHandler(name=backend, run=_fake_scan))
 
-    output = tmp_path / "EsriFootprint.json"
+    output = tmp_path / "AssessmentFootprint.json"
     exit_code = cli_main(
         ["scan", backend, "--target", SECRET_TARGET, "--output", str(output)]
     )
@@ -135,7 +135,7 @@ def test_report_over_scan_output_does_not_render_target_credentials(
         )
 
     register(ScanHandler(name="agol", run=_fake_scan))
-    footprint_path = tmp_path / "EsriFootprint.json"
+    footprint_path = tmp_path / "AssessmentFootprint.json"
     scan_exit = cli_main(
         ["scan", "agol", "--target", SECRET_TARGET, "--output", str(footprint_path)]
     )

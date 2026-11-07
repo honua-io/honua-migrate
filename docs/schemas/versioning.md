@@ -5,30 +5,30 @@ description: "How the migration schemas are versioned while the line is pre-1.0,
 resource: "https://github.com/honua-io/honua-migrate/tree/trunk/schemas"
 tags: [versioning, schemas, policy]
 ---
-# `EsriFootprint.json` Versioning Policy
+# `AssessmentFootprint.json` Versioning Policy
 
 Status: pre-1.0 (current line: `0.1.x`).
 Companion: [Handoff contract](./handoff-contract.md).
-Schema body: [`docs/schemas/esri-footprint.v0.1.md`](./esri-footprint.v0.1.md)
+Schema body: [`docs/schemas/assessment-footprint.v0.1.md`](./assessment-footprint.v0.1.md)
 (JSON Schema at [`schemas/esri-footprint-v0.1.json`](../../schemas/esri-footprint-v0.1.json)).
 
 ## Scope
 
-This policy governs the `EsriFootprint.json` artifact emitted by
-`honua-esri-assess`. It is the sole supported handoff out of an
+This policy governs the `AssessmentFootprint.json` artifact emitted by
+`honua-migrate assess`. It is the sole supported handoff out of an
 assessment.
 
 The policy does **not** govern:
 
-- CLI flags, argument names, or shell-level UX of `honua-esri-assess`.
+- CLI flags, argument names, or shell-level UX of `honua-migrate assess`.
 - The CLI process-level stderr diagnostic codes (e.g. `scanner-error`,
   `output-write-failed`, `schema-validation-failed`, `report.input.*`,
   `report.schema.invalid`, `report.render.internal`, `internal-error`). These
   describe local CLI process state and are separate from the locked artifact
   `diagnostics[].code` enum.
-- The internal Python API (anything importable from `honua_esri_assess.*`).
+- The internal Python API (anything importable from `honua_migrate.assessment.*`).
 - The layout, headings, or wording of the human-readable Markdown readiness
-  report. The report is a derivative view of `EsriFootprint.json`, not a
+  report. The report is a derivative view of `AssessmentFootprint.json`, not a
   second handoff contract.
 - Local log line formats.
 
@@ -149,14 +149,14 @@ schemas across tags is a follow-on for the 1.0 milestone (see
 
 ## Producer guarantees
 
-Every `EsriFootprint.json` emitted by this tool:
+Every `AssessmentFootprint.json` emitted by this tool:
 
 - **Validates** against the JSON Schema published in this repo for its
   declared `schemaVersion`.
 - **Identifies itself.** Top-level metadata, present on every footprint:
   - `schemaVersion` — major.minor of the contract, carried in-band as a
     literal (at v0.1, `"v0.1"`). Full SemVer is in the schema's `$id`.
-  - `tool` — object with `name` (always `"honua-esri-assess"`) and
+  - `tool` — object with `name` (always `"honua-migrate assess"`) and
     `version` (the installed CLI build, as a SemVer string).
   - `generatedAt` — RFC3339 UTC timestamp of emission.
   - `source` — object identifying the Esri system kind: `kind` is one of
@@ -179,7 +179,7 @@ Every `EsriFootprint.json` emitted by this tool:
 
 ## Consumer expectations
 
-A consumer of `EsriFootprint.json` (Honua's migration commands, or any
+A consumer of `AssessmentFootprint.json` (Honua's migration commands, or any
 third-party reader) MUST:
 
 - **Reject on incompatible major.** Refuse documents whose
@@ -197,7 +197,7 @@ third-party reader) MUST:
   exactly one facet (`portal` | `server` | `filegdb`) and constrains the
   `inventory[]` variant. Sibling facets and mismatched inventory variants
   are schema-rejected. See
-  [Discriminator rules](./esri-footprint.v0.1.md#discriminator-rules).
+  [Discriminator rules](./assessment-footprint.v0.1.md#discriminator-rules).
 - **Not depend on object key ordering.** JSON object key order is not
   part of the contract.
 - **Honor `diagnostics[]`.** Surface `warn`- and `error`-severity
@@ -227,7 +227,7 @@ Each diagnostic carries:
 
 - `code` — stable identifier drawn from a vocabulary fixed per release
   line. At v0.1 the vocabulary is **closed** (six codes; see the
-  [v0.1 diagnostic code catalog](./esri-footprint.v0.1.md#diagnostic-code-catalog)).
+  [v0.1 diagnostic code catalog](./assessment-footprint.v0.1.md#diagnostic-code-catalog)).
   Adding a code requires a minor bump (a v0.2 vocabulary expansion);
   clarifying an existing code is a v0.1.x doc bump. This policy fixes the
   **shape** of a diagnostic; the **vocabulary** is owned by each release
@@ -239,7 +239,7 @@ Each diagnostic carries:
 - `hint` (optional) — remediation hint surfaced to the prospect.
 
 The CLI never prints raw Python tracebacks to a customer. If a scanner returns
-a result, the CLI exits `0`, writes `EsriFootprint.json`, and mirrors each
+a result, the CLI exits `0`, writes `AssessmentFootprint.json`, and mirrors each
 diagnostic to stderr as a typed line, even when the resulting inventory is
 empty or partial. If a scanner fails before returning a result, or if the CLI
 cannot read or save the requested artifact, it exits nonzero with a
@@ -250,7 +250,7 @@ artifact `diagnostics[].code` vocabulary. Process codes such as
 `scanner-error`, `report.input.*`, `report.schema.invalid`,
 `report.render.internal`, `output-write-failed`, `schema-validation-failed`,
 and `internal-error` describe command execution, not source inventory
-observations, and are not valid values inside `EsriFootprint.json`.
+observations, and are not valid values inside `AssessmentFootprint.json`.
 ## Network telemetry
 
 - **Off by default.** The scanner does not phone home, beacon, or post
@@ -261,13 +261,13 @@ observations, and are not valid values inside `EsriFootprint.json`.
 - **Local logs are allowed.** Structured local logs on stderr and explicitly
   requested local output files are part of the normal operating surface and are
   not considered telemetry.
-- **No telemetry inside the artifact.** `EsriFootprint.json` never
+- **No telemetry inside the artifact.** `AssessmentFootprint.json` never
   carries a callback URL or remote endpoint.
 
 ## Follow-ons
 
 The schema body for the current `0.1.x` line is published — see
-[`docs/schemas/esri-footprint.v0.1.md`](./esri-footprint.v0.1.md) for the
+[`docs/schemas/assessment-footprint.v0.1.md`](./assessment-footprint.v0.1.md) for the
 field-by-field reference, the discriminator rules, and the locked v0.1
 diagnostic code catalog. Remaining follow-ons:
 

@@ -1,4 +1,4 @@
-"""Typer commands for the Python/ArcPy migration engine."""
+"""Typer commands for the Python migration engine."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from ._cli import (
 )
 
 python_app = typer.Typer(
-    help="Scan and translate ArcPy, Python-toolbox, and ModelBuilder code.",
+    help="Scan and translate Python scripts and toolbox models.",
     no_args_is_help=True,
 )
 
@@ -30,7 +30,7 @@ def _finish(exit_code: int) -> None:
 
 @python_app.command("scan")
 def scan_command(
-    path: Annotated[Path, typer.Argument(help="Path to an ArcPy .py script.")],
+    path: Annotated[Path, typer.Argument(help="Path to a Python script.")],
     output: Annotated[
         Path | None,
         typer.Option("--output", help="Write the JSON report here (default: stdout)."),
@@ -40,14 +40,14 @@ def scan_command(
         typer.Option("--force", help="Replace existing output files."),
     ] = False,
 ) -> None:
-    """Classify ArcPy calls without importing ArcPy or using the network."""
+    """Classify geoprocessing calls without importing the source library or using the network."""
 
     _finish(_cmd_scan(argparse.Namespace(path=path, output=output, force=force)))
 
 
 @python_app.command("translate")
 def translate_command(
-    path: Annotated[Path, typer.Argument(help="Path to an ArcPy .py script.")],
+    path: Annotated[Path, typer.Argument(help="Path to a Python script.")],
     output: Annotated[
         Path | None,
         typer.Option("--output", help="Write the migration plan here (default: stdout)."),
@@ -77,7 +77,7 @@ def translate_command(
 
 @python_app.command("run")
 def run_command(
-    path: Annotated[Path, typer.Argument(help="Path to an ArcPy .py script.")],
+    path: Annotated[Path, typer.Argument(help="Path to a Python script.")],
     server: Annotated[str, typer.Option("--server", help="Honua server base URL.")],
     output: Annotated[
         Path | None,
@@ -210,7 +210,7 @@ def gpservice_command(
         typer.Option("--force", help="Replace existing output files."),
     ] = False,
 ) -> None:
-    """Classify tasks from an ArcGIS REST GPServer definition."""
+    """Classify tasks from a GeoServices REST GPServer definition."""
 
     _finish(
         _cmd_gpservice(

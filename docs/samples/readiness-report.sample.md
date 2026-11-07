@@ -1,17 +1,17 @@
-# Honua Esri Readiness Report
+# Honua Readiness Report
 
 | Field | Value |
 | --- | --- |
 | Schema version | v0.1 |
 | Generated at | 2026-05-22T14:08:33Z |
-| Source | ArcGIS Online |
+| Source | Portal |
 | Source locator | example.maps.arcgis.com/0123ABCDEF456789 |
 | Source captured at | 2026-05-22T14:02:11Z |
 | Scanner | honua-esri-assess 0.1.0 |
 
 ## Service Inventory
 
-### ArcGIS Online / portal-item
+### Portal / portal-item
 
 | Item | Type | Owner | Sharing | Modified |
 | --- | --- | --- | --- | --- |
@@ -28,9 +28,9 @@
 
 | Source | Type | Records | Layers |
 | --- | --- | --- | --- |
-| ArcGIS Online | Feature Service | 2 | - |
-| ArcGIS Online | Survey123 Form | 1 | - |
-| ArcGIS Online | Web Map | 1 | - |
+| Portal | Feature Service | 2 | - |
+| Portal | Survey123 Form | 1 | - |
+| Portal | Web Map | 1 | - |
 
 ## Complexity Estimate
 
@@ -50,12 +50,12 @@
 | flagged-by-diagnostic | Public Asset Viewer (`c3d4e5f6`) | Diagnostic `unresolved-reference` (warn) applies to this item. |
 
 ## Migration Ordering
-1. **AGOL hosted feature services** - Move cloud-side authoritative feature services next.
+1. **Portal hosted feature services** - Move cloud-side authoritative feature services next.
    - Hydrants (`b2c3d4e5`)
    - Parcels (`a1b2c3d4`)
-2. **AGOL web maps** - Web maps should follow the services they reference.
+2. **Portal web maps** - Web maps should follow the services they reference.
    - Public Asset Viewer (`c3d4e5f6`)
-3. **AGOL notebooks, solutions, workforce, survey, and insights** - Specialized portal content should be handled late with human review.
+3. **Portal notebooks, solutions, workforce, survey, and insights** - Specialized portal content should be handled late with human review.
    - Field Damage Survey (`d4e5f607`)
 
 ## Diagnostics Summary

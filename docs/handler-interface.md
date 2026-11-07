@@ -3,12 +3,12 @@
 E9 owns the CLI dispatch slots. Scanner tickets register backend handlers
 without changing the top-level command tree.
 
-Handlers live under `honua_esri_assess.commands.scan_handlers` and register a
+Handlers live under `honua_migrate.assessment.commands.scan_handlers` and register a
 `ScanHandler`:
 
 ```python
-from honua_esri_assess.commands.common import ScanOptions, ScanResult
-from honua_esri_assess.commands.scan_handlers import ScanHandler, register
+from honua_migrate.assessment.commands.common import ScanOptions, ScanResult
+from honua_migrate.assessment.commands.scan_handlers import ScanHandler, register
 
 
 def run(options: ScanOptions) -> ScanResult:
@@ -28,13 +28,13 @@ treat every field as read-only.
 | Field | Type | Notes |
 | --- | --- | --- |
 | `target` | `str` | URL, portal locator, or local FileGDB path supplied to `--target`. |
-| `output` | `Path` | Destination passed to `--output`; defaults to `./EsriFootprint.json`. The CLI owns persistence. |
+| `output` | `Path` | Destination passed to `--output`; defaults to `./AssessmentFootprint.json`. The CLI owns persistence. |
 | `token_env` | `str \| None` | Environment variable name from `--token-env`. Logged by name only. |
 | `token` | `str \| None` | Resolved token value read from `token_env`. Never log this. |
 | `log_format` | `str` | `"text"` or `"json"`. Logging is configured by the CLI before the handler runs. |
 | `log_level` | `str` | Standard log level name. |
 | `no_network_telemetry_confirm` | `bool` | Audit acknowledgement; not a telemetry opt-in. |
-| `user_agent` | `str` | User-Agent header to use on Esri GET requests. |
+| `user_agent` | `str` | User-Agent header to use on source GET requests. |
 | `max_retries` | `int` | Maximum retries for read-only network calls. |
 | `timeout` | `float` | HTTP timeout in seconds. |
 | `validate` | `bool` | Whether `--validate` was set; the CLI handles validation. |
@@ -46,10 +46,10 @@ environment variable into `ScanOptions.token` and never exposes a plaintext
 invocation did not enable network telemetry; it does not grant permission for a
 handler to send telemetry.
 
-The built-in AGOL and ArcGIS Server handlers pass `token`, `user_agent`,
+The built-in portal and server handlers pass `token`, `user_agent`,
 `timeout`, and `max_retries` into their read-only HTTP probes. Token values are
-sent only as Esri request parameters and are not copied into
-`EsriFootprint.json`; FileGDB is local-only and ignores network-only options.
+sent only as source request parameters and are not copied into
+`AssessmentFootprint.json`; FileGDB is local-only and ignores network-only options.
 
 ## `ScanResult`
 
@@ -59,7 +59,7 @@ Handlers return a `ScanResult`:
 ScanResult(footprint={"schemaVersion": "v0.1", ...}, diagnostics=(...,))
 ```
 
-- `footprint` — a dictionary that conforms to `EsriFootprint.json` v0.1.
+- `footprint` — a dictionary that conforms to `AssessmentFootprint.json` v0.1.
 - `diagnostics` — an immutable tuple of `Diagnostic` records the CLI mirrors
   to stderr as typed, prospect-safe lines after the artifact is written.
   Diagnostics in this tuple are in addition to those the handler may have
@@ -75,7 +75,7 @@ The CLI owns:
 - **Persistence.** The CLI writes the footprint to `options.output`,
   sort-keyed and indented. Handlers should not write files; doing so risks
   emitting a second artifact, which violates the
-  `EsriFootprint.json`-only handoff contract.
+  `AssessmentFootprint.json`-only handoff contract.
 - **Diagnostic mirroring.** Each entry in `result.diagnostics` is rendered
   on stderr with `print_diagnostic`. Handlers must produce
   `Diagnostic` instances with codes from the locked v0.1 enum
@@ -95,20 +95,20 @@ can return a typed prospect-safe stderr line with a stable exit code:
 | Unexpected internal failure | unhandled exception → `internal-error` | `1` |
 
 These CLI process-diagnostic codes are deliberately separate from the locked
-`diagnostics[].code` enum inside `EsriFootprint.json`.
+`diagnostics[].code` enum inside `AssessmentFootprint.json`.
 
 Raw tracebacks must never be printed in default mode. Token values, raw
 URLs with credentials, and on-prem paths must not appear in diagnostic
-messages or log lines. The `redact` helper in `honua_esri_assess.diagnostics`
+messages or log lines. The `redact` helper in `honua_migrate.assessment.diagnostics`
 strips common secret patterns from strings before they reach a crash dump.
 
 ## Telemetry and read-only stance
 
-- Handlers must remain read-only against the customer's Esri system. No
+- Handlers must remain read-only against the customer's source system. No
   write or admin APIs should be reachable from a handler entry point.
 - No network telemetry. Handlers must not POST to Honua-operated services
   or any third-party telemetry sink. Local stderr logs (text or JSON) are
   the only allowed reporting channel.
 - Crash dumps are off by default and only enabled when
-  `HONUA_ESRI_ASSESS_CRASH_DUMPS=1` is set; the CLI writes them locally
-  under `~/.cache/honua-esri-assess/crashes/` with redaction applied.
+  `HONUA_MIGRATE_ASSESSMENT_CRASH_DUMPS=1` is set; the CLI writes them locally
+  under `~/.cache/honua-migrate/assessment/crashes/` with redaction applied.

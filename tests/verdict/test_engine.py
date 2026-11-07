@@ -5,9 +5,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from honua_esri_assess import verdict
-from honua_esri_assess.verdict.engine import evaluate
-from honua_esri_assess.verdict.registry import HARD_LOCK_IN_KEYS, SHOP_PROFILES
+from honua_migrate.assessment import verdict
+from honua_migrate.assessment.verdict.engine import evaluate
+from honua_migrate.assessment.verdict.registry import HARD_LOCK_IN_KEYS, SHOP_PROFILES
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = REPO_ROOT / "tests" / "fixtures"

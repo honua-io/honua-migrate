@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from honua_esri_assess.cli import main as cli_main
+from honua_migrate.assessment.cli import main as cli_main
 
 
 def _required_headings() -> list[str]:
@@ -17,7 +17,7 @@ def test_report_renders_against_agol_happy_footprint(
     mocked_routes,
     tmp_output_dir: Path,
 ) -> None:
-    footprint_path = tmp_output_dir / "EsriFootprint.json"
+    footprint_path = tmp_output_dir / "AssessmentFootprint.json"
     with mocked_routes("agol/happy"):
         scan_exit = cli_main(
             [

@@ -163,9 +163,7 @@ jobs:
           "$RUNNER_TEMP/wheel-smoke/.venv/bin/pip" check
           "$RUNNER_TEMP/wheel-smoke/.venv/bin/honua-migrate" --help
           "$RUNNER_TEMP/wheel-smoke/.venv/bin/honua-migrate" assess --help
-          "$RUNNER_TEMP/wheel-smoke/.venv/bin/honua-esri-assess" --help
           "$RUNNER_TEMP/wheel-smoke/.venv/bin/python" -m honua_migrate assess --help
-          "$RUNNER_TEMP/wheel-smoke/.venv/bin/python" -m honua_esri_assess --help
           "$RUNNER_TEMP/wheel-smoke/.venv/bin/python" -c \
             "from importlib.resources import files; assert files('honua_migrate').joinpath('py.typed').is_file()"
       - name: Run installed fixture-backed smoke suite
@@ -195,9 +193,7 @@ jobs:
             -r "$RUNNER_TEMP/sdist-requirement.txt"
           "$RUNNER_TEMP/sdist-smoke/bin/pip" check
           "$RUNNER_TEMP/sdist-smoke/bin/honua-migrate" assess --help
-          "$RUNNER_TEMP/sdist-smoke/bin/honua-esri-assess" --help
           "$RUNNER_TEMP/sdist-smoke/bin/python" -m honua_migrate assess --help
-          "$RUNNER_TEMP/sdist-smoke/bin/python" -m honua_esri_assess --help
           "$RUNNER_TEMP/sdist-smoke/bin/python" -c \
             "from importlib.resources import files; assert files('honua_migrate').joinpath('py.typed').is_file()"
 

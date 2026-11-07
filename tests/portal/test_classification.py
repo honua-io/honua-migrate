@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from honua_esri_assess.portal.classification import (
+from honua_migrate.assessment.portal.classification import (
     CATEGORY_DASHBOARD,
     CATEGORY_EXPERIENCE_BUILDER,
     CATEGORY_FIELD_MAPS,

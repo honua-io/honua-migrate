@@ -75,7 +75,7 @@ jobs:
           "$RUNNER_TEMP/python-smoke/bin/pip" install "$RUNNER_TEMP/python-dist"/*.whl
           "$RUNNER_TEMP/python-smoke/bin/pip" check
           "$RUNNER_TEMP/python-smoke/bin/honua-migrate" --help
-          "$RUNNER_TEMP/python-smoke/bin/honua-esri-assess" --help
+          "$RUNNER_TEMP/python-smoke/bin/honua-migrate" assess --help
       - uses: actions/upload-artifact@v7
         with:
           name: python-dist-${{ github.sha }}

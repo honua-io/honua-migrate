@@ -22,7 +22,6 @@ NORMALIZED_PROJECT = "honua_migrate"
 REPOSITORY = "https://github.com/honua-io/honua-migrate"
 SCRIPTS = {
     "honua-migrate": "honua_migrate.cli:main",
-    "honua-esri-assess": "honua_esri_assess.cli:main",
 }
 _FORBIDDEN_ASSESSMENT_HOSTS = re.compile(
     rb"https?://[a-z0-9.\-]*(honua\.io|honua-sdk|telemetry|analytics)",
@@ -102,7 +101,7 @@ def _validate_record(wheel: zipfile.ZipFile, names: set[str], prefix: str) -> No
 
 
 def _assessment_telemetry_offenders(name: str, payload: bytes) -> list[str]:
-    if "honua_esri_assess/" not in name or not name.endswith(".py"):
+    if "honua_migrate/assessment/" not in name or not name.endswith(".py"):
         return []
     return [
         f"{name}: {match.group(0).decode('ascii')}"
@@ -186,10 +185,10 @@ def validate_wheel(path: Path, version: str) -> None:
             "honua_migrate/py.typed",
             "honua_migrate/code/python/provenance.json",
             "honua_migrate/contract_schemas/v1/run.schema.json",
-            "honua_esri_assess/__init__.py",
-            "honua_esri_assess/cli.py",
-            "honua_esri_assess/py.typed",
-            "honua_esri_assess/schemas/esri-footprint-v0.2.json",
+            "honua_migrate/assessment/__init__.py",
+            "honua_migrate/assessment/cli.py",
+            "honua_migrate/assessment/py.typed",
+            "honua_migrate/assessment/schemas/esri-footprint-v0.2.json",
         }
         missing = sorted(required - names)
         if missing:
@@ -229,7 +228,7 @@ def validate_sdist(path: Path, version: str) -> None:
         f"{root}/scripts/validate_python_dist.py",
         f"{root}/src/honua_migrate/cli.py",
         f"{root}/src/honua_migrate/py.typed",
-        f"{root}/src/honua_esri_assess/cli.py",
+        f"{root}/src/honua_migrate/assessment/cli.py",
     }
     with tarfile.open(path, mode="r:gz") as archive:
         members = archive.getmembers()

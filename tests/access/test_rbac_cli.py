@@ -10,9 +10,9 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from honua_esri_assess.app import cli_app
-from honua_esri_assess.commands.scan_handlers import HANDLERS
-from honua_esri_assess.commands.scan_handlers import rbac as rbac_handler
+from honua_migrate.assessment.app import cli_app
+from honua_migrate.assessment.commands.scan_handlers import HANDLERS
+from honua_migrate.assessment.commands.scan_handlers import rbac as rbac_handler
 
 from .conftest import StubHttpClient, respond, respond_fixture
 
@@ -107,7 +107,7 @@ def test_rbac_portal_writes_access_footprint_to_file(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     stub = _stub_client(monkeypatch, _portal_handlers())
-    output = tmp_path / "EsriAccessFootprint.json"
+    output = tmp_path / "AssessmentAccessFootprint.json"
 
     result = runner.invoke(
         cli_app,
@@ -154,7 +154,7 @@ def test_rbac_server_kind_reads_admin_security(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     stub = _stub_client(monkeypatch, _server_handlers())
-    output = tmp_path / "EsriAccessFootprint.json"
+    output = tmp_path / "AssessmentAccessFootprint.json"
 
     result = runner.invoke(
         cli_app,
@@ -187,7 +187,7 @@ def test_rbac_token_from_env_never_reaches_artifact_or_logs(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     stub = _stub_client(monkeypatch, _portal_handlers())
-    output = tmp_path / "EsriAccessFootprint.json"
+    output = tmp_path / "AssessmentAccessFootprint.json"
     secret = "super-secret-rbac-token"
 
     result = runner.invoke(
@@ -227,7 +227,7 @@ def test_rbac_partial_coverage_still_writes_valid_artifact(
         "community/groups": respond(200, {"results": []}),
     }
     _stub_client(monkeypatch, handlers)  # type: ignore[arg-type]
-    output = tmp_path / "EsriAccessFootprint.json"
+    output = tmp_path / "AssessmentAccessFootprint.json"
 
     result = runner.invoke(
         cli_app,

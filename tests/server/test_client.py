@@ -7,7 +7,7 @@ import logging
 import pytest
 import responses
 
-from honua_esri_assess.diagnostics import (
+from honua_migrate.assessment.diagnostics import (
     ServerApiError,
     ServerAuthError,
     ServerConnectionError,
@@ -15,8 +15,8 @@ from honua_esri_assess.diagnostics import (
     ServerNotFoundError,
     ServerRateLimitedError,
 )
-from honua_esri_assess.server.auth import AnonymousCredential, TokenCredential
-from honua_esri_assess.server.client import (
+from honua_migrate.assessment.server.auth import AnonymousCredential, TokenCredential
+from honua_migrate.assessment.server.client import (
     RetryPolicy,
     ServerClient,
     normalize_base_url,
@@ -192,7 +192,7 @@ def test_esri_error_envelope_unknown_raises_api_error() -> None:
     client = ServerClient("https://gis.example.com/arcgis")
     with pytest.raises(ServerApiError) as exc_info:
         client.get_services_root()
-    assert exc_info.value.esri_code == 5000
+    assert exc_info.value.source_code == 5000
 
 
 @responses.activate
@@ -292,7 +292,7 @@ def test_token_does_not_appear_in_log_records(caplog: pytest.LogCaptureFixture) 
         retry=RetryPolicy(max_attempts=3, initial_backoff=0.0),
         sleep=lambda _: None,
     )
-    with caplog.at_level(logging.DEBUG, logger="honua_esri_assess"):
+    with caplog.at_level(logging.DEBUG, logger="honua_migrate.assessment"):
         client.get_services_root()
     joined = "\n".join(record.getMessage() for record in caplog.records)
     extras = "\n".join(str(record.__dict__) for record in caplog.records)
