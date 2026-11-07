@@ -15,7 +15,7 @@ see [versioning.md](./versioning.md). The published JSON Schema body for the
 current `0.1.x` line lives in
 [`docs/schemas/assessment-footprint.v0.1.md`](./assessment-footprint.v0.1.md)
 (schema file: [`schemas/esri-footprint-v0.1.json`](../../schemas/esri-footprint-v0.1.json),
-canonical sample: [`docs/samples/assessment-footprint.sample.json`](../samples/esri-footprint.sample.json)).
+canonical sample: [`docs/samples/assessment-footprint.sample.json`](../samples/assessment-footprint.sample.json)).
 
 ## The sole handoff
 
@@ -50,7 +50,7 @@ does not extend the handoff contract.
 ```json
 {
   "schemaVersion": "v0.1",
-  "tool": { "name": "honua-migrate assess", "version": "<cli version>" },
+  "tool": { "name": "honua-esri-assess", "version": "<cli version>" },
   "generatedAt": "<RFC3339 UTC>",
   "source": { "kind": "arcgis-online|arcgis-server|filegdb", "locator": "<prospect-safe id>", "capturedAt": "<RFC3339 UTC>" }
 }
@@ -114,7 +114,7 @@ for the full state machine.
 
 Per release line, a consumer receives:
 
-1. A tagged release of `honua-migrate assess` with a `schemaVersion` matching
+1. A tagged `honua-migrate` release with a `schemaVersion` matching
    the release line (e.g., the `0.1.x` line emits `schemaVersion: "v0.1"`;
    patch lives in the schema `$id` and `tool.version`).
 2. The JSON Schema body for that line under
@@ -122,7 +122,7 @@ Per release line, a consumer receives:
 3. A `CHANGELOG.md` entry summarizing what changed, including any
    deprecations and their planned removal window.
 4. At least one canonical sample footprint under
-   [`docs/samples/`](../samples/esri-footprint.sample.json)
+   [`docs/samples/`](../samples/assessment-footprint.sample.json)
    that a consumer can use as a conformance check, plus fixture
    corpora and golden expectations under `tests/smoke/` for scanner-backed
    conformance checks. Scanner-specific unit fixtures may live under
@@ -146,7 +146,7 @@ A prospect or a consumer can verify a footprint locally:
    scan; treat `warn`-severity entries as actionable but non-blocking.
    The v0.1 vocabulary is locked — see the
    [v0.1 diagnostic code catalog](./assessment-footprint.v0.1.md#diagnostic-code-catalog).
-5. Confirm `tool.name == "honua-migrate assess"` and the `source.kind`
+5. Confirm `tool.name == "honua-esri-assess"` and the `source.kind`
    matches the target system the customer expected to scan.
 
 No part of this verification requires contacting a Honua-operated service.
@@ -170,9 +170,9 @@ current release; embedding it behind a CLI surface is a follow-on.
 The emitted `source.kind` is `"filegdb"` and the only source-specific facet
 is `filegdb`; `portal` and `server` facets are schema-rejected. The raw
 workspace path is never published. `source.locator` and
-`filegdb.pathHash` carry the same salted `sha256:<64 hex>` value. Set
-`HONUA_MIGRATE_ASSESSMENT_PATH_HASH_SALT` (or pass `path_hash_salt` to the library
-function) when stable path hashes are needed across runs; otherwise a
+`filegdb.pathHash` carry the same salted `sha256:<64 hex>` value. Pass
+`FileGdbScanOptions(path_hash_salt=...)` to the workspace scanner when stable path
+hashes are needed across runs; otherwise a
 per-run random salt is used.
 
 FileGDB inventory records use `kind == "filegdb-feature-class"` and include
@@ -266,7 +266,7 @@ CLI response contract and the v0.1 report heuristics:
 - Schema body for v0.1: [`docs/schemas/assessment-footprint.v0.1.md`](./assessment-footprint.v0.1.md)
 - Entitlement enumeration: [`../entitlements.md`](../entitlements.md)
 - JSON Schema file: [`schemas/esri-footprint-v0.1.json`](../../schemas/esri-footprint-v0.1.json)
-- Canonical sample: [`docs/samples/assessment-footprint.sample.json`](../samples/esri-footprint.sample.json)
+- Canonical sample: [`docs/samples/assessment-footprint.sample.json`](../samples/assessment-footprint.sample.json)
 - Sample readiness report: [`docs/samples/readiness-report.sample.md`](../samples/readiness-report.sample.md)
 - Readiness report guide: [`docs/readiness-report.md`](../readiness-report.md)
 - Repository landing page: [`../../README.md`](../../README.md)

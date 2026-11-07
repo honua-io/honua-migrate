@@ -9,7 +9,7 @@ from honua_migrate.assessment.caps.crosswalk import load_bundled_crosswalk
 from honua_migrate.assessment.caps.mapper import evaluate
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SAMPLE = REPO_ROOT / "docs" / "samples" / "esri-footprint.sample.json"
+SAMPLE = REPO_ROOT / "docs" / "samples" / "assessment-footprint.sample.json"
 UTILITY_NETWORK = REPO_ROOT / "tests" / "fixtures" / "esri-footprint-utility-network.json"
 PORTAL_FEDERATION = REPO_ROOT / "tests" / "fixtures" / "esri-footprint-portal-federation.json"
 

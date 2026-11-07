@@ -139,9 +139,9 @@ def _install_sdk(monkeypatch: pytest.MonkeyPatch) -> tuple[_Geoprocessing, dict[
 
 
 def _quiet_sleep(monkeypatch: pytest.MonkeyPatch) -> None:
-    import honua_migrate.code.python.script as arcpy_mod
+    import honua_migrate.code.python.script as script_migration
 
-    monkeypatch.setattr(arcpy_mod.time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(script_migration.time, "sleep", lambda _seconds: None)
 
 
 def _run(

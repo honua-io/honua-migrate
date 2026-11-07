@@ -256,11 +256,9 @@ class ReportRenderError(AssessmentError):
 
 
 class ReportCrosswalkError(AssessmentError):
-    """The ``caps`` command's crosswalk document failed validation at load.
+    """The ``caps`` crosswalk document is malformed or references an unknown key.
 
-    Covers both structural problems (missing fields, wrong types) and the
-    "unknown assess key" contract from honua-io/honua-migrate assess#84: a
-    crosswalk that references an esri-assess-registry key not present in
+    A crosswalk that references a capability key not present in
     :data:`honua_migrate.assessment.verdict.registry.CAPABILITY_REGISTRY` must fail
     loudly rather than silently mapping nothing.
     """
@@ -317,11 +315,11 @@ class ServerApiError(ServerError):
         self,
         message: str,
         *,
-        source_code: int | None = None,
+        source_error_code: int | None = None,
         context: Mapping[str, Any] | None = None,
     ) -> None:
         super().__init__(message, context=context)
-        self.source_code = source_code
+        self.source_error_code = source_error_code
 
 
 class ServerSchemaError(ServerError):

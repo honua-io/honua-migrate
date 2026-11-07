@@ -33,7 +33,7 @@ returns deterministic Markdown.
 
 The committed sample report is generated from the canonical footprint:
 
-- Footprint: [`docs/samples/assessment-footprint.sample.json`](./samples/esri-footprint.sample.json)
+- Footprint: [`docs/samples/assessment-footprint.sample.json`](./samples/assessment-footprint.sample.json)
 - Report: [`docs/samples/readiness-report.sample.md`](./samples/readiness-report.sample.md)
 
 The test suite compares the sample report byte-for-byte with freshly rendered
@@ -149,19 +149,19 @@ passes; it does not add write or migration semantics to the footprint.
 | Order | Group | Matching items |
 | ---: | --- | --- |
 | 1 | FileGDB feature classes | `filegdb-feature-class` |
-| 2 | Source feature services | `server-service` with `serviceType: "FeatureServer"` |
-| 3 | Source map and image services | `server-service` with `serviceType: "MapServer"` or `"ImageServer"` |
-| 4 | AGOL hosted feature services | `portal-item` with `type: "Feature Service"` |
-| 5 | AGOL hosted tile and vector tile services | `portal-item` with `type: "Tile Service"` or `"Vector Tile Service"` |
-| 6 | AGOL web maps | `portal-item` with `type: "Web Map"` |
-| 7 | AGOL web apps, dashboards, and experiences | `portal-item` with `type: "Dashboard"`, `"Experience"`, or `"Web Mapping Application"` |
-| 8 | AGOL notebooks, solutions, workforce, survey, and insights | Portal items in the specialized manual-review set. |
+| 2 | GeoServices REST server feature services | `server-service` with `serviceType: "FeatureServer"` |
+| 3 | GeoServices REST server map and image services | `server-service` with `serviceType: "MapServer"` or `"ImageServer"` |
+| 4 | Portal hosted feature services | `portal-item` with `type: "Feature Service"` |
+| 5 | Portal hosted tile and vector tile services | `portal-item` with `type: "Tile Service"` or `"Vector Tile Service"` |
+| 6 | Portal web maps | `portal-item` with `type: "Web Map"` |
+| 7 | Portal web apps, dashboards, and experiences | `portal-item` with `type: "Dashboard"`, `"Experience"`, or `"Web Mapping Application"` |
+| 8 | Portal notebooks, solutions, workforce, survey, and insights | Portal items in the specialized manual-review set. |
 | 9 | Other or unknown item types | Any remaining inventory item. |
 
 ## Samples and tests
 
 - Canonical footprint:
-  [`docs/samples/assessment-footprint.sample.json`](./samples/esri-footprint.sample.json)
+  [`docs/samples/assessment-footprint.sample.json`](./samples/assessment-footprint.sample.json)
 - Sample report:
   [`docs/samples/readiness-report.sample.md`](./samples/readiness-report.sample.md)
 - Schema reference:

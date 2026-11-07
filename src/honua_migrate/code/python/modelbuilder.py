@@ -5,11 +5,11 @@ scripts and ``.pyt`` Python toolboxes (see :mod:`honua_migrate.code.python.pyt`)
 two more inventory sources:
 
 * **ModelBuilder models** packaged in ``.atbx`` toolboxes. The
-  ``.atbx`` format is a published, open, **zip-of-JSON** container (the source
+  ``.atbx`` format is a published, open, **zip-of-JSON** container (Esri
   documents it as "JSON-based with an open specification"); each model tool is
   stored as a JSON model definition listing its geoprocessing process steps.
   We read those JSON definitions **clean-room** -- we never decompile or run
-  licensed source software, and we never parse the proprietary binary ``.tbx``
+  licensed Esri software, and we never parse the proprietary binary ``.tbx``
   format (kept an explicit stub in :func:`honua_migrate.code.python.pyt`).
 
 * **GP-service task definitions** -- the JSON returned by a GeoServices REST

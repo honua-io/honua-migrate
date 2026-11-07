@@ -34,6 +34,17 @@ def visible_cli_output(output: str) -> str:
     return ANSI_ESCAPE.sub("", output)
 
 
+def test_filegdb_scan_creates_default_assessment_filename(tmp_path, monkeypatch) -> None:
+    from honua_migrate.cli import main
+
+    fixture = REPO_ROOT / "tests/smoke/fixtures/filegdb/happy/sample.gdb"
+    monkeypatch.chdir(tmp_path)
+    assert main(["assess", "scan", "filegdb", "--target", str(fixture)]) == 0
+    artifact = json.loads((tmp_path / "AssessmentFootprint.json").read_text())
+    assert artifact["source"]["kind"] == "filegdb"
+    assert artifact["tool"]["name"] == "honua-esri-assess"
+
+
 @pytest.fixture
 def runner() -> CliRunner:
     return CliRunner()

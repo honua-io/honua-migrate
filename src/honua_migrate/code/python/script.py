@@ -2,7 +2,7 @@
 
 The scanner works from Python source text only. It does not import the source
 library or require a source desktop GIS installation, which makes it suitable for CI and
-inventory work on developer machines without licensed source software.
+inventory work on developer machines without licensed Esri software.
 """
 
 from __future__ import annotations
@@ -590,7 +590,7 @@ _register(
         family="analysis",
         tool="Erase",
         process_id="erase",
-        # Intentionally NOT job-executable: Source Erase subtracts the *union of
+        # Intentionally NOT job-executable: ArcPy Erase subtracts the *union of
         # the whole erase feature class* from each input feature, whereas the
         # reconciled server's geometry.difference is a single-geometry pairwise
         # subtract. The feature-class-vs-single-geometry semantics differ, so
@@ -603,7 +603,7 @@ _register(
         ),
         aliases=_aliases(("output", "result"), ("out_features", "result")),
         notes=(
-            "Source Erase subtracts the union of the erase feature class from "
+            "ArcPy Erase subtracts the union of the erase feature class from "
             "each input feature; geometry.difference is single-geometry subtract. "
             "Semantics differ -- migrate manually (per honua-server#1228 review).",
         ),
@@ -721,7 +721,7 @@ _register(
         ),
         aliases=_aliases(("input_layer", "input_features")),
         notes=(
-            "Source RepairGeometry mutates in_features in place; geometry.make-valid "
+            "ArcPy RepairGeometry mutates in_features in place; geometry.make-valid "
             "returns a repaired feature result. delete_null/validation_method are "
             "passed through for server-side review.",
         ),
@@ -883,7 +883,7 @@ _register(
         ),
         aliases=_aliases(("output", "result"), ("out_features", "result")),
         notes=(
-            "FeatureToPoint maps to geometry.centroid; source INSIDE point_location "
+            "FeatureToPoint maps to geometry.centroid; ArcPy INSIDE point_location "
             "(label point) differs from a true centroid -- review before running.",
         ),
     )
@@ -905,7 +905,7 @@ _register(
         ),
         aliases=_aliases(("output", "result"), ("out_features", "result")),
         notes=(
-            "Source SymDiff computes the symmetric difference of two feature "
+            "ArcPy SymDiff computes the symmetric difference of two feature "
             "classes; no job-executable Honua process maps to it yet -- migrate "
             "manually.",
         ),
@@ -925,7 +925,7 @@ _register(
         ),
         aliases=_aliases(("output", "result"), ("out_features", "result")),
         notes=(
-            "Source Update cuts the input with the update feature class and "
+            "ArcPy Update cuts the input with the update feature class and "
             "replaces overlapping geometry; no job-executable Honua process maps "
             "to it yet -- migrate manually.",
         ),
@@ -1110,7 +1110,7 @@ _register(
         ),
         aliases=_aliases(("method", "method")),
         notes=(
-            "Source Densify mutates in_features in place by adding vertices; no "
+            "ArcPy Densify mutates in_features in place by adding vertices; no "
             "job-executable Honua process maps to it yet -- migrate manually.",
         ),
     )
@@ -1130,7 +1130,7 @@ _register(
         ),
         aliases=_aliases(("method", "method")),
         notes=(
-            "Computes the nearest feature and distance; source Near mutates "
+            "Computes the nearest feature and distance; ArcPy Near mutates "
             "in_features with NEAR_* fields. No job-executable Honua process "
             "maps to it yet -- migrate manually.",
         ),
@@ -1140,12 +1140,8 @@ _register(
 # ---------------------------------------------------------------------------
 # Raster / Spatial Analyst tools (honua-sdk-python raster codemod).
 #
-# PR #175 added ``honua_gp.sa`` -- an raster-analysis surface wrapping
-# honua-server's raster/surface GDAL-worker processes (and re-exporting the four
-# raster Data Management tools under ``honua_gp.management``). This block teaches
-# the codemod to recognize the source raster tools those 16 working wrappers
-# cover and to map each onto its honua-server raster process id + honua_gp.sa
-# migration target.
+# Raster mappings bind source tool names to Honua raster/surface process IDs
+# and the corresponding honua_gp.sa migration targets.
 #
 # HONEST-CLASSIFICATION CONTRACT: raster/surface process ids 404 on *direct* OGC
 # API Processes execution -- ``honua_gp.sa`` auto-wraps each as a ``geoprocess``

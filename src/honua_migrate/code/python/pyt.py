@@ -177,7 +177,7 @@ def parse_binary_toolbox(path: str | Path) -> PytToolbox:
 
     The proprietary binary ``.tbx`` format is NOT parseable here -- it is a
     closed binary format and parsing it clean-room is out of scope (compliance:
-    do not decompile or run licensed source software to learn it).
+    do not decompile or run licensed Esri software to learn it).
 
     The newer ``.atbx`` format IS a published zip-of-JSON container. It is
     parsed by :func:`honua_migrate.code.python.modelbuilder.parse_atbx_toolbox`,

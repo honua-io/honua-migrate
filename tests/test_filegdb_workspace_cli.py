@@ -38,7 +38,7 @@ def _options(target: Path, output: Path) -> ScanOptions:
         log_format="text",
         log_level="info",
         no_network_telemetry_confirm=False,
-        user_agent="honua-migrate assess/test",
+        user_agent="honua-migrate/test",
         max_retries=3,
         timeout=30.0,
         validate=False,

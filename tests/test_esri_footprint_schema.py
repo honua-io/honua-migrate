@@ -21,7 +21,7 @@ PACKAGED_SCHEMA_PATH = (
     / "schemas"
     / "esri-footprint-v0.1.json"
 )
-SAMPLE_PATH = REPO_ROOT / "docs" / "samples" / "esri-footprint.sample.json"
+SAMPLE_PATH = REPO_ROOT / "docs" / "samples" / "assessment-footprint.sample.json"
 
 LOCKED_DIAGNOSTIC_CODES_V01 = frozenset(
     {

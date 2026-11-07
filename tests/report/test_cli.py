@@ -13,7 +13,7 @@ import zipfile
 from honua_migrate.assessment import cli
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SAMPLE_FOOTPRINT = REPO_ROOT / "docs" / "samples" / "esri-footprint.sample.json"
+SAMPLE_FOOTPRINT = REPO_ROOT / "docs" / "samples" / "assessment-footprint.sample.json"
 
 
 def test_report_writes_output_file(tmp_path: Path, capsys) -> None:

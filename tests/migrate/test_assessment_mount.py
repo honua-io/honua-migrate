@@ -72,11 +72,11 @@ def test_assessment_mount_help_matches_implementation(args: tuple[str, ...]) -> 
     runner = CliRunner()
     env = {"COLUMNS": "160"}
 
-    legacy = runner.invoke(assessment_app, list(args), env=env)
-    successor = runner.invoke(migration_app, ["assess", *args], env=env)
+    direct = runner.invoke(assessment_app, list(args), env=env)
+    mounted = runner.invoke(migration_app, ["assess", *args], env=env)
 
-    assert legacy.exit_code == successor.exit_code == 0
-    assert _visible_help(successor.output) == _visible_help(legacy.output)
+    assert direct.exit_code == mounted.exit_code == 0
+    assert _visible_help(mounted.output) == _visible_help(direct.output)
 
 
 def test_unified_cli_mounts_the_assessment_application() -> None:
@@ -125,15 +125,15 @@ def test_footprint_artifact_and_redaction_are_byte_identical(
         )
 
     register(ScanHandler(name=backend, run=run))
-    legacy_output = tmp_path / f"legacy-{backend}.json"
-    successor_output = tmp_path / f"successor-{backend}.json"
+    direct_output = tmp_path / f"direct-{backend}.json"
+    mounted_output = tmp_path / f"mounted-{backend}.json"
     runner = CliRunner()
 
-    legacy = runner.invoke(
+    direct = runner.invoke(
         assessment_app,
-        ["scan", backend, "--target", SECRET_TARGET, "--output", str(legacy_output)],
+        ["scan", backend, "--target", SECRET_TARGET, "--output", str(direct_output)],
     )
-    successor = runner.invoke(
+    mounted = runner.invoke(
         migration_app,
         [
             "assess",
@@ -142,13 +142,13 @@ def test_footprint_artifact_and_redaction_are_byte_identical(
             "--target",
             SECRET_TARGET,
             "--output",
-            str(successor_output),
+            str(mounted_output),
         ],
     )
 
-    assert legacy.exit_code == successor.exit_code == 0
-    assert successor_output.read_bytes() == legacy_output.read_bytes()
-    artifact_text = successor_output.read_text(encoding="utf-8")
+    assert direct.exit_code == mounted.exit_code == 0
+    assert mounted_output.read_bytes() == direct_output.read_bytes()
+    artifact_text = mounted_output.read_text(encoding="utf-8")
     for secret in (
         "alice:superpass",
         "superpass",
@@ -171,15 +171,15 @@ def test_access_artifact_is_byte_and_shape_identical(tmp_path: Path) -> None:
             run=lambda options: ScanResult(footprint=deepcopy(artifact)),
         )
     )
-    legacy_output = tmp_path / "legacy-access.json"
-    successor_output = tmp_path / "successor-access.json"
+    direct_output = tmp_path / "direct-access.json"
+    mounted_output = tmp_path / "mounted-access.json"
     runner = CliRunner()
 
-    legacy = runner.invoke(
+    direct = runner.invoke(
         assessment_app,
-        ["scan", "rbac", "--target", SECRET_TARGET, "--output", str(legacy_output)],
+        ["scan", "rbac", "--target", SECRET_TARGET, "--output", str(direct_output)],
     )
-    successor = runner.invoke(
+    mounted = runner.invoke(
         migration_app,
         [
             "assess",
@@ -188,24 +188,24 @@ def test_access_artifact_is_byte_and_shape_identical(tmp_path: Path) -> None:
             "--target",
             SECRET_TARGET,
             "--output",
-            str(successor_output),
+            str(mounted_output),
         ],
     )
 
-    assert legacy.exit_code == successor.exit_code == 0
-    assert successor_output.read_bytes() == legacy_output.read_bytes()
-    assert json.loads(successor_output.read_text(encoding="utf-8")) == artifact
-    assert "superpass" not in successor_output.read_text(encoding="utf-8")
+    assert direct.exit_code == mounted.exit_code == 0
+    assert mounted_output.read_bytes() == direct_output.read_bytes()
+    assert json.loads(mounted_output.read_text(encoding="utf-8")) == artifact
+    assert "superpass" not in mounted_output.read_text(encoding="utf-8")
 
 
 def test_schema_show_is_byte_identical() -> None:
     runner = CliRunner()
 
-    legacy = runner.invoke(assessment_app, ["schema", "show"])
-    successor = runner.invoke(migration_app, ["assess", "schema", "show"])
+    direct = runner.invoke(assessment_app, ["schema", "show"])
+    mounted = runner.invoke(migration_app, ["assess", "schema", "show"])
 
-    assert legacy.exit_code == successor.exit_code == 0
-    assert successor.stdout_bytes == legacy.stdout_bytes
+    assert direct.exit_code == mounted.exit_code == 0
+    assert mounted.stdout_bytes == direct.stdout_bytes
 
 
 @pytest.mark.parametrize(("filename", "digest"), SCHEMA_HASHES.items())
@@ -264,6 +264,14 @@ def test_unified_module_invocation_runs_assessment() -> None:
     assert result.returncode == 0
     assert result.stdout.startswith("honua-migrate ")
     assert result.stderr == ""
+
+
+def test_programmatic_assessment_entry_point_reads_process_arguments(monkeypatch, capsys) -> None:
+    from honua_migrate.assessment.cli import main
+
+    monkeypatch.setattr(sys, "argv", ["assessment-caller", "--version"])
+    assert main() == 0
+    assert capsys.readouterr().out.startswith("honua-migrate ")
 
 def test_transition_document_describes_current_entry_points() -> None:
     text = (REPO_ROOT / "docs" / "assessment-transition.md").read_text(

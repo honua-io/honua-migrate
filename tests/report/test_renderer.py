@@ -8,7 +8,7 @@ from pathlib import Path
 from honua_migrate.assessment.report import RenderOptions, render
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SAMPLE_FOOTPRINT = REPO_ROOT / "docs" / "samples" / "esri-footprint.sample.json"
+SAMPLE_FOOTPRINT = REPO_ROOT / "docs" / "samples" / "assessment-footprint.sample.json"
 SAMPLE_REPORT = REPO_ROOT / "docs" / "samples" / "readiness-report.sample.md"
 
 

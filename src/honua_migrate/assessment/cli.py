@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+
 from .app import cli_app
 
 
@@ -10,7 +12,8 @@ def main(argv: list[str] | None = None) -> int:
 
     from honua_migrate.cli import main as migration_main
 
-    return migration_main(["assess", *(argv or [])])
+    arguments = sys.argv[1:] if argv is None else argv
+    return migration_main(["assess", *arguments])
 
 
 __all__ = ["cli_app", "main"]

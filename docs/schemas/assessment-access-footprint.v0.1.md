@@ -50,7 +50,7 @@ access policies (see the mapping transform below).
 |----------------------|----------|-------------------------------|-------------|
 | `schemaVersion`      | yes      | const `"v0.1"`                | Contract major.minor carried in-band. |
 | `generatedAt`        | yes      | RFC3339 UTC                   | When the scan finished. |
-| `tool`               | yes      | `{ name, version }`           | Scanner provenance (`name` const `honua-migrate assess`). |
+| `tool`               | yes      | `{ name, version }`           | Scanner provenance (`name` const `honua-esri-assess`). |
 | `source`             | yes      | `{ kind, locator, capturedAt }` | `kind` is `arcgis-online` or `arcgis-server`. |
 | `users`              | yes      | `User[]`                      | Identity principals. |
 | `roles`              | yes      | `Role[]`                      | Roles + granted privileges. |

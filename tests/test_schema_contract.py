@@ -5,14 +5,26 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from honua_migrate.assessment.diagnostics import DIAGNOSTIC_CODES, SEVERITY_LEVELS, Diagnostic
 from honua_migrate.assessment.footprint import SCHEMA_VERSION, TOOL_NAME, build_footprint
+from honua_migrate.assessment.footprint.access import TOOL_NAME as ACCESS_TOOL_NAME
 
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schemas" / "esri-footprint-v0.1.json"
 
 
 def _schema() -> dict:
     return json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("filename", [
+    "esri-footprint-v0.1.json", "esri-footprint-v0.2.json",
+    "esri-access-footprint-v0.1.json", "esri-access-footprint-v0.2.json",
+])
+def test_saved_schema_producer_matches_both_emitters(filename: str) -> None:
+    schema = json.loads((SCHEMA_PATH.parent / filename).read_text())
+    assert schema["$defs"]["ToolProvenance"]["properties"]["name"]["const"] == TOOL_NAME == ACCESS_TOOL_NAME
 
 
 def test_schema_header_matches_documented_handoff_contract() -> None:

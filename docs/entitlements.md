@@ -15,7 +15,7 @@ observations only reach downstream consumers when a `scan` handler
 attaches them to the emitted footprint.
 
 > **Status.** The interim standalone
-> `honua-migrate assess entitlements` subcommand has been retired alongside the
+> standalone `entitlements` subcommand has been retired alongside the
 > CLI consolidation in [E9](../README.md#command-line-usage). The Python
 > collectors below remain the supported interim surface until scanner
 > integration lands; the CLI usage examples in earlier revisions of this
@@ -51,7 +51,7 @@ Server collector:
 | Per-service SOEs/SOIs | `/admin/services/{folder}/{name}.{type}` |
 
 When invoked from Python, the Server collector expects the source server root,
-for example `https://gis.example.com`.
+for example `https://gis.example.com/arcgis`.
 
 ## Collector knobs
 
@@ -91,7 +91,7 @@ The collectors produce a JSON-serializable fragment:
         ],
         "serviceExtensions": [
           {
-            "serviceUrl": "https://gis.example.com/rest/services/World/MapServer",
+            "serviceUrl": "https://gis.example.com/arcgis/rest/services/World/MapServer",
             "soes": ["FeatureServer", "WMSServer"],
             "sois": ["AuthSOI"]
           }

@@ -35,7 +35,7 @@ from ._safe import credential_free_url, redact_params, safe_url
 from .auth import AnonymousCredential, Credential
 
 _DEFAULT_USER_AGENT = (
-    f"honua-migrate/{__version__} "
+    f"honua-esri-assess/{__version__} "
     "(+https://github.com/honua-io/honua-migrate)"
 )
 _DEFAULT_TIMEOUT = 30.0
@@ -310,19 +310,19 @@ class ServerClient:
         # The source may return HTTP 200 with an embedded error envelope.
         if isinstance(body, dict) and isinstance(body.get("error"), dict):
             err = body["error"]
-            source_code = err.get("code") if isinstance(err.get("code"), int) else None
+            source_error_code = err.get("code") if isinstance(err.get("code"), int) else None
             raw_message = err.get("message") if isinstance(err.get("message"), str) else None
             message = sanitize_message(raw_message, fallback="The source server returned an error")
-            ctx = {"url": safe, "esriCode": source_code}
-            if source_code in _AUTH_ERROR_CODES or source_code == 401:
+            ctx = {"url": safe, "esriCode": source_error_code}
+            if source_error_code in _AUTH_ERROR_CODES or source_error_code == 401:
                 raise ServerAuthError(message, context=ctx)
-            if source_code == 403:
+            if source_error_code == 403:
                 raise ServerForbiddenError(message, context=ctx)
-            if source_code == 404:
+            if source_error_code == 404:
                 raise ServerNotFoundError(message, context=ctx)
-            if source_code == 429:
+            if source_error_code == 429:
                 raise ServerRateLimitedError(message, context=ctx)
-            raise ServerApiError(message, source_code=source_code, context=ctx)
+            raise ServerApiError(message, source_error_code=source_error_code, context=ctx)
 
         if not isinstance(body, dict):
             raise ServerApiError(

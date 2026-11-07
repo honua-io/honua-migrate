@@ -12,6 +12,11 @@ The `honua-migrate assess` command and `honua_migrate.assessment` import package
 ship inside the `honua-migrate` distribution. They are not a second PyPI project
 or release component.
 
+The assessment namespace and standalone entry points change in the next
+breaking release. Follow the [assessment command guide](docs/assessment-transition.md)
+to update commands, imports, output paths, and the local crash-dump option.
+Saved artifact contracts and source HTTP User-Agent identifiers stay unchanged.
+
 ## Release sequence
 
 1. Merge conventional commits to `trunk`.
@@ -60,8 +65,8 @@ Before the environment-protected upload job can start, the workflow requires:
 - wheel `RECORD` verification plus distribution name/version, repository URL,
   Python version, license expression, console entry point, required content,
   unsafe path, private-key, and assessment no-telemetry validation;
-- isolated wheel and sdist installs with `pip check`, both console commands,
-  both module invocations, the canonical typed-package marker, the complete
+- isolated wheel and sdist installs with `pip check`, the console command,
+  the unified module invocation, the canonical typed-package marker, the complete
   fixture-backed smoke suite, and an
   installed `scan -> AssessmentFootprint.json -> report` workflow; and
 - exact PyPI filename/hash parity when a version already exists; and

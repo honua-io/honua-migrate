@@ -39,7 +39,7 @@ LOGGER = logging.getLogger(__name__)
 DEFAULT_OUTPUT = Path("AssessmentFootprint.json")
 DEFAULT_ACCESS_OUTPUT = Path("-")
 STDOUT_SENTINEL = Path("-")
-DEFAULT_USER_AGENT = f"honua-migrate/{__version__}"
+DEFAULT_USER_AGENT = f"honua-esri-assess/{__version__}"
 
 
 class LogFormat(StrEnum):

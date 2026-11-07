@@ -138,7 +138,7 @@ class RequestsHttpClient:
         self,
         *,
         token: str | None = None,
-        user_agent: str = "honua-migrate",
+        user_agent: str = "honua-esri-assess",
         default_timeout: float = 30.0,
     ) -> None:
         self._token = token

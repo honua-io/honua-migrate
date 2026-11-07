@@ -156,7 +156,7 @@ Every `AssessmentFootprint.json` emitted by this tool:
 - **Identifies itself.** Top-level metadata, present on every footprint:
   - `schemaVersion` — major.minor of the contract, carried in-band as a
     literal (at v0.1, `"v0.1"`). Full SemVer is in the schema's `$id`.
-  - `tool` — object with `name` (always `"honua-migrate assess"`) and
+  - `tool` — object with `name` (always `"honua-esri-assess"`) and
     `version` (the installed CLI build, as a SemVer string).
   - `generatedAt` — RFC3339 UTC timestamp of emission.
   - `source` — object identifying the Esri system kind: `kind` is one of

@@ -44,7 +44,7 @@ You can deliver value at Tier 1 with **no credentials at all**. Tier 2 is opt-in
 
 | Input | Example | Used by |
 |-------|---------|---------|
-| Source **server** base URL | `https://gis.example.com` | `scan server --target …` — appends `/rest/info`, `/rest/services` (Tier 1) and, for the authorized tier, `/admin/...` |
+| Source **server** base URL | `https://gis.example.com/arcgis` | `scan server --target …` — appends `/rest/info`, `/rest/services` (Tier 1) and, for the authorized tier, `/admin/...` |
 | **Portal** Sharing REST URL | `https://gis.example.com/portal/sharing/rest` | `scan agol --target …` — the scanner appends `portals/self`, `search`, `content/items/<id>` directly |
 | FileGDB / workspace path | `/data/parcels.gdb` | `scan filegdb` / `scan filegdb-workspace` (local filesystem, no network) |
 
@@ -69,6 +69,9 @@ username/password handling.
 ## Endpoints the scanner reads
 
 All read-only `GET`, `f=json`.
+
+Server endpoint suffixes below are relative to the supplied server base, which
+is `https://gis.example.com/arcgis` in the example above.
 
 ### Tier 1 — public REST surface (no credentials required)
 

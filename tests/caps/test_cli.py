@@ -11,7 +11,7 @@ import responses
 from honua_migrate.assessment import cli
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SAMPLE = REPO_ROOT / "docs" / "samples" / "esri-footprint.sample.json"
+SAMPLE = REPO_ROOT / "docs" / "samples" / "assessment-footprint.sample.json"
 UTILITY_NETWORK = REPO_ROOT / "tests" / "fixtures" / "esri-footprint-utility-network.json"
 
 

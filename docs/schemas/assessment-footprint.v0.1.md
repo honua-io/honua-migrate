@@ -9,7 +9,7 @@ tags: [schema, footprint, v0.1]
 
 - Schema id: `https://schemas.honua.io/esri-footprint/v0.1.0/esri-footprint.json`
 - Schema file: [`schemas/esri-footprint-v0.1.json`](../../schemas/esri-footprint-v0.1.json)
-- Canonical sample: [`docs/samples/assessment-footprint.sample.json`](../samples/esri-footprint.sample.json)
+- Canonical sample: [`docs/samples/assessment-footprint.sample.json`](../samples/assessment-footprint.sample.json)
 - JSON Schema dialect: draft-2020-12
 
 ## Purpose
@@ -114,7 +114,7 @@ record under an `arcgis-online` source) is a schema validation failure.
 
 | Field     | Required | Type                          | Description                                                       |
 |-----------|----------|-------------------------------|-------------------------------------------------------------------|
-| `name`    | yes      | const `"honua-migrate assess"`   | Only `honua-migrate assess` is part of the contract at v0.1.         |
+| `name`    | yes      | const `"honua-esri-assess"`   | Only `honua-esri-assess` is part of the contract at v0.1.         |
 | `version` | yes      | SemVer string                 | Scanner build that produced this artifact (e.g. `"0.1.0"`).       |
 
 ### Source
@@ -258,8 +258,7 @@ cross-run hash stability, are producer behaviors rather than schema-enforced
 constraints — consumers that require validator-enforced parity must layer a
 custom conformance check on top of the schema. The `pyogrio`/GDAL workspace
 scanner exposed by the `honua_migrate.assessment.filegdb.scan_filegdb_workspace`
-library function accepts a `path_hash_salt` argument (or
-`HONUA_MIGRATE_ASSESSMENT_PATH_HASH_SALT`) for stable hashes across runs; otherwise
+library function accepts `FileGdbScanOptions(path_hash_salt=...)` for stable hashes across runs; otherwise
 it uses a per-run random salt and the hash is only stable within that
 artifact. The raw workspace path is never part of the artifact.
 `featureClassCount` is the number of `filegdb-feature-class` inventory
@@ -446,7 +445,7 @@ Expected FileGDB diagnostic cases at v0.1:
 ## Canonical sample
 
 The canonical sample footprint lives at
-[`docs/samples/assessment-footprint.sample.json`](../samples/esri-footprint.sample.json)
+[`docs/samples/assessment-footprint.sample.json`](../samples/assessment-footprint.sample.json)
 and is exercised by `tests/test_esri_footprint_schema.py`.
 
 The sample readiness report generated from that footprint lives at

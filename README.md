@@ -168,8 +168,8 @@ It emits:
 assess-registry capability the footprint triggers ends up in `honua-caps.json`
 one of two ways: mapped into `capabilities`, or listed in `unmapped` with a
 `reason` of `"unmapped"` (known capability, no capability-key mapping yet) or
-`"not-supported"` (a source-platform limitation such as Utility Network, Parcel
-Fabric, or LRS — there is no Honua equivalent, by design).
+`"not-supported"` (a source-specific capability such as Utility Network, Parcel
+Fabric, or LRS that Honua does not implement).
 
 ### Draft crosswalk (temporary)
 

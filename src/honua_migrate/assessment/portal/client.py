@@ -121,7 +121,7 @@ class PortalClient:
         timeout: float = 30.0,
         retry_policy: RetryPolicy | None = None,
         session: requests.Session | None = None,
-        user_agent: str = "honua-migrate/0.0.0",
+        user_agent: str = "honua-esri-assess/0.0.0",
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self.urls = normalize_portal_url(target)
@@ -236,22 +236,22 @@ class PortalClient:
         if not isinstance(error, dict):
             return None
 
-        source_code = _coerce_int(error.get("code"))
+        source_error_code = _coerce_int(error.get("code"))
         raw_message = str(error.get("message") or "The source portal returned an error.")
         message = _sanitize_message(self.credential.redact(raw_message))
         context: dict[str, Any] = {"url": safe_url}
         if status_code is not None:
             context["status"] = status_code
-        if source_code is not None:
-            context["esriCode"] = source_code
+        if source_error_code is not None:
+            context["esriCode"] = source_error_code
 
-        if status_code == 401 or source_code in {498, 499}:
+        if status_code == 401 or source_error_code in {498, 499}:
             return PortalAuthError("The source portal rejected the provided credential.", context=context)
         if status_code == 403:
             return PortalForbiddenError(message or "The source portal denied access.", context=context)
         if status_code == 404:
             return PortalNotFoundError(message or "The source portal resource was not found.", context=context)
-        if status_code == 429 or source_code == 429:
+        if status_code == 429 or source_error_code == 429:
             return PortalRateLimitedError("The source portal rate limited the scan.", context=context)
         return PortalApiError(message, context=context)
 

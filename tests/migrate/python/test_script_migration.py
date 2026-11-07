@@ -18,7 +18,7 @@ from honua_migrate.code.python import (
 from honua_migrate.code.python.script import ScriptProcessExecution, ScriptProcessTranslation
 
 
-def test_scan_desktop_mapping_family_uses_neutral_label() -> None:
+def test_scan_desktop_mapping_family_keeps_persisted_family_id() -> None:
     report = scan_script_source('import arcpy\narcpy.mp.Open("map")')
 
     assert report.calls[0].family == "arcgis-pro"

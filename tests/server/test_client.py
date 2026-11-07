@@ -192,7 +192,7 @@ def test_esri_error_envelope_unknown_raises_api_error() -> None:
     client = ServerClient("https://gis.example.com/arcgis")
     with pytest.raises(ServerApiError) as exc_info:
         client.get_services_root()
-    assert exc_info.value.source_code == 5000
+    assert exc_info.value.source_error_code == 5000
 
 
 @responses.activate
