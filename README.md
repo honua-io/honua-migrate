@@ -12,7 +12,7 @@
 
 An Apache-2.0 migration command-line suite whose **read-only assessment
 surface** inventories an organization's Esri
-footprint — hosted GIS portal, GeoServices REST server / Enterprise, and FileGDB workspaces —
+footprint — ArcGIS Online, ArcGIS Server / Enterprise, and FileGDB workspaces —
 and produces a versioned `EsriFootprint.json` artifact plus human-readable
 Markdown reports: a readiness report, a per-shop-profile migratability
 verdict, and a crosswalk from that footprint to Honua capability keys. It
@@ -81,7 +81,7 @@ cd honua-migrate
 python3 -m pip install .
 ```
 
-Scan an hosted GIS portal org (anonymous scans work too — just omit the token):
+Scan an ArcGIS Online org (anonymous scans work too — just omit the token):
 
 ```bash
 export AGOL_TOKEN="..."   # optional, pre-existing token
@@ -116,8 +116,8 @@ available. Every assessment `scan` subcommand is read-only against the target.
 
 | Command | What it does |
 |---------|--------------|
-| `scan agol` | Inventory an hosted GIS portal / Portal org via the Portal Sharing REST API. |
-| `scan server` | Walk an GeoServices REST server REST catalog (folders, services, layer detail). |
+| `scan agol` | Inventory an ArcGIS Online / Portal org via the Portal Sharing REST API. |
+| `scan server` | Walk an ArcGIS Server REST catalog (folders, services, layer detail). |
 | `scan filegdb` | Read a local FileGDB inventory descriptor (`_inventory.json`); no network. |
 | `scan filegdb-workspace` | Read-only `pyogrio`/GDAL metadata scan of a local `.gdb` directory (requires the `filegdb` extra). |
 | `scan rbac` | Export identity/RBAC posture (users, roles, groups, per-service permissions) to the sibling `EsriAccessFootprint.json`. |
@@ -217,11 +217,11 @@ mapping nothing.
 
 | Source | Target (`--target`) | Notes |
 |--------|---------------------|-------|
-| hosted GIS portal / Portal | Sharing REST base, e.g. `https://yourorg.maps.arcgis.com/sharing/rest` | The scanner appends `portals/self`, `search`, `community/groups`, `content/items/<id>` to this base; a higher-level portal URL yields `partial-coverage` diagnostics instead of an inventory. |
-| GeoServices REST server | `https://host`, `https://host/arcgis`, `…/arcgis/rest`, or `…/arcgis/rest/services` — canonicalized internally | Deep layer probes run for `MapServer`/`FeatureServer`/`ImageServer`/`SceneServer`/`StreamServer`; other service types are recorded from the catalog walk. Add `--admin-usage` (admin token required) to also read `/admin/usagereports` and `/admin/data/items` for usage-ranked ordering and datastore binding modes — it degrades to a diagnostic if denied. |
+| ArcGIS Online / Portal | Sharing REST base, e.g. `https://yourorg.maps.arcgis.com/sharing/rest` | The scanner appends `portals/self`, `search`, `community/groups`, `content/items/<id>` to this base; a higher-level portal URL yields `partial-coverage` diagnostics instead of an inventory. |
+| ArcGIS Server | `https://host`, `https://host/arcgis`, `…/arcgis/rest`, or `…/arcgis/rest/services` — canonicalized internally | Deep layer probes run for `MapServer`/`FeatureServer`/`ImageServer`/`SceneServer`/`StreamServer`; other service types are recorded from the catalog walk. Add `--admin-usage` (admin token required) to also read `/admin/usagereports` and `/admin/data/items` for usage-ranked ordering and datastore binding modes — it degrades to a diagnostic if denied. |
 | FileGDB (descriptor) | Directory containing `_inventory.json`, or the descriptor file itself | Local filesystem only. |
 | FileGDB (workspace) | A local `.gdb` directory | Uses optional `pyogrio`/GDAL read-only metadata calls (`pip install ".[filegdb]"`). Without the extra, the command still exits 0 and records a `partial-coverage` diagnostic. Also available as the `honua_esri_assess.filegdb.scan_filegdb_workspace` library function. |
-| RBAC / access | Portal Sharing REST base (`--kind portal`, default) or GeoServices REST server admin URL (`--kind server`) | Writes `EsriAccessFootprint.json` (defaults to stdout). |
+| RBAC / access | Portal Sharing REST base (`--kind portal`, default) or ArcGIS Server admin URL (`--kind server`) | Writes `EsriAccessFootprint.json` (defaults to stdout). |
 
 Transient upstream failures (`429`, `502`, `503`, `504`) are retried with
 capped exponential backoff honoring `Retry-After`; per-endpoint failures

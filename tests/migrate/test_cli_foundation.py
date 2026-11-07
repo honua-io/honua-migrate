@@ -67,6 +67,13 @@ def test_service_cli_uses_geoservices_rest_route() -> None:
 
     assert result.exit_code == 0
     assert "discover" in result.output
+    service_help = CliRunner().invoke(cli_app, ["services", "--help"])
+    assert service_help.exit_code == 0
+    assert "geoservices-rest" in service_help.output
+    assert "arcgis" not in service_help.output
+    retired_route = CliRunner().invoke(cli_app, ["services", "arcgis", "--help"])
+    assert retired_route.exit_code == 2
+    assert "No such command" in retired_route.output
 
 
 def test_python_module_entry_point_displays_help() -> None:

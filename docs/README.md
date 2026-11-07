@@ -7,7 +7,7 @@ tags: [migration, esri, navigation]
 ---
 # Honua migration documentation
 
-`honua-migrate` assesses an existing GIS estate and plans a migration off it.
+`honua-migrate` assesses an existing Esri estate and plans a migration off it.
 The assessment is **read-only**: it inspects, records and reports, and never
 writes to the system it is pointed at.
 

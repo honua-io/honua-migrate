@@ -27,7 +27,7 @@ The entitlement collectors only issue HTTP GET requests. Tokens, when supplied,
 are sent to Esri endpoints only. No entitlement path posts telemetry or calls a
 Honua-operated service.
 
-Portal / hosted GIS portal collector:
+Portal / ArcGIS Online collector:
 
 | Purpose | Endpoint path |
 | --- | --- |
@@ -40,7 +40,7 @@ When invoked from Python, the Portal collector expects a portal base URL,
 for example `https://www.arcgis.com` or `https://example.maps.arcgis.com`. It
 is not the `/sharing/rest` base used by `scan agol`.
 
-GeoServices REST server collector:
+ArcGIS Server collector:
 
 | Purpose | Endpoint path |
 | --- | --- |
@@ -50,7 +50,7 @@ GeoServices REST server collector:
 | Service discovery for SOE/SOI checks | `/admin/services` and `/admin/services/{folder}` |
 | Per-service SOEs/SOIs | `/admin/services/{folder}/{name}.{type}` |
 
-When invoked from Python, the Server collector expects the GeoServices REST server
+When invoked from Python, the Server collector expects the ArcGIS Server
 root, for example `https://gis.example.com/arcgis`.
 
 ## Collector knobs

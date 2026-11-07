@@ -39,8 +39,8 @@ access policies (see the mapping transform below).
 
 | Target          | Endpoints |
 |-----------------|-----------|
-| hosted GIS portal / Enterprise Portal | `/sharing/rest/portals/self`, `/sharing/rest/portals/self/users`, `/sharing/rest/portals/self/roles`, `/sharing/rest/portals/self/roles/<id>/privileges`, `/sharing/rest/community/groups` |
-| GeoServices REST server admin | `/arcgis/admin/security/roles/getRoles`, `/arcgis/admin/security/users/getUsers`, `/arcgis/admin/services/<svc>/permissions` |
+| ArcGIS Online / Enterprise Portal | `/sharing/rest/portals/self`, `/sharing/rest/portals/self/users`, `/sharing/rest/portals/self/roles`, `/sharing/rest/portals/self/roles/<id>/privileges`, `/sharing/rest/community/groups` |
+| ArcGIS Server admin | `/arcgis/admin/security/roles/getRoles`, `/arcgis/admin/security/users/getUsers`, `/arcgis/admin/services/<svc>/permissions` |
 
 ## Top-level shape
 
