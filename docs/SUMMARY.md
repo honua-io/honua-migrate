@@ -19,7 +19,7 @@
 
 ## Reference
 
-* [ArcGIS existing-app handoff](contracts/arcgis-existing-app-handoff.md)
+* [GeoServices REST existing-app handoff](contracts/geoservices-rest-existing-app-handoff.md)
 * [Migration artifact contracts](contracts/migration-contracts.md)
 * [License entitlement enumeration](entitlements.md)
 * [The 2026.1 JavaScript migration cohort](js-migration-cohort-2026.1.md)
