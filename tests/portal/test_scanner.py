@@ -4,7 +4,7 @@ from typing import Any, Callable
 
 import responses
 
-from honua_esri_assess.portal import (
+from honua_migrate.assessment.portal import (
     AnonymousCredential,
     PortalClient,
     PortalScanner,

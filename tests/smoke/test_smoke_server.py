@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from honua_esri_assess.cli import main as cli_main
-from honua_esri_assess.diagnostics import DIAGNOSTIC_CODES
+from honua_migrate.assessment.cli import main as cli_main
+from honua_migrate.assessment.diagnostics import DIAGNOSTIC_CODES
 
 
 def test_server_happy_scan(

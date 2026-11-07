@@ -6,7 +6,7 @@ tags: [permissions, least-privilege, security]
 ---
 # Prerequisites & least-privilege access
 
-This page tells a prospective customer exactly **what access `honua-esri-assess`
+This page tells a prospective customer exactly **what access `honua-migrate assess`
 needs to run, and the minimum privileges to grant**. It is written for the
 security/IT reviewer who has to approve pointing a tool at a production ArcGIS
 deployment.

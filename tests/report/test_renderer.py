@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from honua_esri_assess.report import RenderOptions, render
+from honua_migrate.assessment.report import RenderOptions, render
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_FOOTPRINT = REPO_ROOT / "docs" / "samples" / "esri-footprint.sample.json"

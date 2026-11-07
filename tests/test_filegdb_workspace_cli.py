@@ -16,9 +16,9 @@ from typing import Any, Mapping
 import pytest
 from jsonschema import Draft202012Validator
 
-from honua_esri_assess.commands.common import ScanOptions
-from honua_esri_assess.commands.scan_handlers import filegdb_workspace
-from honua_esri_assess.filegdb import FileGdbLayer
+from honua_migrate.assessment.commands.common import ScanOptions
+from honua_migrate.assessment.commands.scan_handlers import filegdb_workspace
+from honua_migrate.assessment.filegdb import FileGdbLayer
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = REPO_ROOT / "schemas" / "esri-footprint-v0.2.json"
@@ -38,7 +38,7 @@ def _options(target: Path, output: Path) -> ScanOptions:
         log_format="text",
         log_level="info",
         no_network_telemetry_confirm=False,
-        user_agent="honua-esri-assess/test",
+        user_agent="honua-migrate assess/test",
         max_retries=3,
         timeout=30.0,
         validate=False,
@@ -131,7 +131,7 @@ def test_handler_surfaces_missing_dependency_as_diagnostic(tmp_path: Path) -> No
 
     class MissingDependencyReader:
         def list_layers(self, workspace: Path) -> list[FileGdbLayer]:
-            from honua_esri_assess.filegdb import FileGdbReaderUnavailable
+            from honua_migrate.assessment.filegdb import FileGdbReaderUnavailable
 
             raise FileGdbReaderUnavailable("pyogrio missing")
 

@@ -114,7 +114,7 @@ record under an `arcgis-online` source) is a schema validation failure.
 
 | Field     | Required | Type                          | Description                                                       |
 |-----------|----------|-------------------------------|-------------------------------------------------------------------|
-| `name`    | yes      | const `"honua-esri-assess"`   | Only `honua-esri-assess` is part of the contract at v0.1.         |
+| `name`    | yes      | const `"honua-migrate assess"`   | Only `honua-migrate assess` is part of the contract at v0.1.         |
 | `version` | yes      | SemVer string                 | Scanner build that produced this artifact (e.g. `"0.1.0"`).       |
 
 ### Source
@@ -208,7 +208,7 @@ Optional scalar fields such as `tier`, `subscriptionType`, `productName`,
 endpoint does not expose them. Portal credit balances are never emitted; the
 contract reduces that signal to `premiumContent.creditsEnabled` when available.
 
-The Python entitlement collectors (`honua_esri_assess.entitlements`) emit
+The Python entitlement collectors (`honua_migrate.assessment.entitlements`) emit
 `{ target, licensing, diagnostics }`, where `licensing` contains the same
 nested facet fragment documented here. That JSON fragment is a validation and
 integration surface only — the standalone `entitlements` CLI was retired in
@@ -257,9 +257,9 @@ within-artifact parity between `source.locator` and `filegdb.pathHash`, and
 cross-run hash stability, are producer behaviors rather than schema-enforced
 constraints — consumers that require validator-enforced parity must layer a
 custom conformance check on top of the schema. The `pyogrio`/GDAL workspace
-scanner exposed by the `honua_esri_assess.filegdb.scan_filegdb_workspace`
+scanner exposed by the `honua_migrate.assessment.filegdb.scan_filegdb_workspace`
 library function accepts a `path_hash_salt` argument (or
-`HONUA_ESRI_ASSESS_PATH_HASH_SALT`) for stable hashes across runs; otherwise
+`HONUA_MIGRATE_ASSESSMENT_PATH_HASH_SALT`) for stable hashes across runs; otherwise
 it uses a per-run random salt and the hash is only stable within that
 artifact. The raw workspace path is never part of the artifact.
 `featureClassCount` is the number of `filegdb-feature-class` inventory
@@ -291,7 +291,7 @@ dependency edges across types are deliberately out of scope at v0.1 (see
 | `extent`       | no       | [`Extent`](#extent)               | Item extent when published by the portal.                             |
 | `dependencies` | no       | string[]                          | Portal item ids this item references (e.g. webmap → services).        |
 
-Current AGOL producer behavior: `honua-esri-assess scan agol` emits one
+Current AGOL producer behavior: `honua-migrate assess scan agol` emits one
 `portal-item` record per readable item returned by Portal Sharing `search`.
 The emitter normalizes missing `owner`, `title`, `type`, and `modified` values
 to schema-safe fallbacks rather than leaking raw exceptions. Dependency
@@ -323,7 +323,7 @@ AGOL service or layer records to the artifact.
 
 Current FileGDB scanner behavior:
 
-- The `honua_esri_assess.filegdb.scan_filegdb_workspace` library function lists
+- The `honua_migrate.assessment.filegdb.scan_filegdb_workspace` library function lists
   layers with the optional `pyogrio`/GDAL backend and reads per-layer metadata
   through read-only calls.
 - The `scan filegdb --target ...` CLI surface remains the fixture-backed

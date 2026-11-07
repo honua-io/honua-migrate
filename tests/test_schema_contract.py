@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from honua_esri_assess.diagnostics import DIAGNOSTIC_CODES, SEVERITY_LEVELS, Diagnostic
-from honua_esri_assess.footprint import SCHEMA_VERSION, TOOL_NAME, build_footprint
+from honua_migrate.assessment.diagnostics import DIAGNOSTIC_CODES, SEVERITY_LEVELS, Diagnostic
+from honua_migrate.assessment.footprint import SCHEMA_VERSION, TOOL_NAME, build_footprint
 
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schemas" / "esri-footprint-v0.1.json"
 

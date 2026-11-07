@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from honua_esri_assess.cli import main as cli_main
+from honua_migrate.assessment.cli import main as cli_main
 
 
 def _required_headings() -> list[str]:

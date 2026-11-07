@@ -15,7 +15,7 @@ observations only reach downstream consumers when a `scan` handler
 attaches them to the emitted footprint.
 
 > **Status.** The interim standalone
-> `honua-esri-assess entitlements` subcommand has been retired alongside the
+> `honua-migrate assess entitlements` subcommand has been retired alongside the
 > CLI consolidation in [E9](../README.md#command-line-usage). The Python
 > collectors below remain the supported interim surface until scanner
 > integration lands; the CLI usage examples in earlier revisions of this
@@ -142,16 +142,16 @@ tokens to prospects.
 
 ## Developer integration
 
-The public Python surface is `honua_esri_assess.entitlements`:
+The public Python surface is `honua_migrate.assessment.entitlements`:
 
 ```python
-from honua_esri_assess.entitlements import (
+from honua_migrate.assessment.entitlements import (
     LicensingFacet,
     PortalEntitlementsCollector,
     RequestsHttpClient,
     ServerEntitlementsCollector,
 )
-from honua_esri_assess.footprint import licensing_facet_to_dict
+from honua_migrate.assessment.footprint import licensing_facet_to_dict
 
 client = RequestsHttpClient(token=token)
 portal_result = PortalEntitlementsCollector(
@@ -165,5 +165,5 @@ fragment = licensing_facet_to_dict(
 
 Collector diagnostics use the same v0.1 diagnostic vocabulary as the footprint
 schema. The wire-shape conversion lives in
-`honua_esri_assess.footprint.licensing_facet_to_dict`, so the dataclasses can
+`honua_migrate.assessment.footprint.licensing_facet_to_dict`, so the dataclasses can
 stay Pythonic while the emitted fragment stays camelCase and schema-aligned.

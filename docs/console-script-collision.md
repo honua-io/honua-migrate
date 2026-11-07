@@ -59,8 +59,7 @@ On Windows, the interpreter is
 `honua-migrate` executable in a co-installed 0.x SDK environment; use
 `python -m honua_migrate` so launcher installation order cannot select the
 legacy SDK CLI. A normal `pipx install honua-migrate` remains isolated and
-owns both the canonical `honua-migrate` command and the
-`honua-esri-assess` compatibility command.
+owns the canonical `honua-migrate` command and its `assess` command group.
 
 The collision can be considered resolved only after a released `honua-sdk`
 version removes its `[project.scripts].honua-migrate` entry while retaining

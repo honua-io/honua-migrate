@@ -5,7 +5,7 @@ from typing import Any, Callable
 
 import responses
 
-from honua_esri_assess.cli import main
+from honua_migrate.assessment.cli import main
 
 
 @responses.activate

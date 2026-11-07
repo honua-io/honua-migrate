@@ -4,10 +4,10 @@ from typing import Any, Callable
 
 import responses
 
-from honua_esri_assess import __version__
-from honua_esri_assess.footprint.schema import validate_footprint
-from honua_esri_assess.footprint.v0_1 import to_footprint_v0_1
-from honua_esri_assess.portal import AnonymousCredential, PortalClient, PortalScanner
+from honua_migrate.assessment import __version__
+from honua_migrate.assessment.footprint.schema import validate_footprint
+from honua_migrate.assessment.footprint.v0_1 import to_footprint_v0_1
+from honua_migrate.assessment.portal import AnonymousCredential, PortalClient, PortalScanner
 
 
 def _register_content_type_scan(

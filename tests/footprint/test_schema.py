@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from pytest import MonkeyPatch
 
-from honua_esri_assess.footprint import schema as schema_module
+from honua_migrate.assessment.footprint import schema as schema_module
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -39,7 +39,7 @@ def test_validate_footprint_uses_documented_minor_schema_name(
 
 def test_packaged_schema_resource_matches_published_schema() -> None:
     packaged = (
-        resources.files("honua_esri_assess")
+        resources.files("honua_migrate.assessment")
         .joinpath("schemas")
         .joinpath("esri-footprint-v0.1.json")
     )

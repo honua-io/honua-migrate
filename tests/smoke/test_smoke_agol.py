@@ -9,8 +9,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from honua_esri_assess.cli import main as cli_main
-from honua_esri_assess.diagnostics import DIAGNOSTIC_CODES
+from honua_migrate.assessment.cli import main as cli_main
+from honua_migrate.assessment.diagnostics import DIAGNOSTIC_CODES
 
 UNSAFE_DIAGNOSTIC_PATTERNS = (
     re.compile(r"Traceback \(most recent call"),
@@ -83,19 +83,14 @@ def test_agol_happy_scan(
         _assert_diagnostic_is_prospect_safe(line)
 
 
-def test_agol_console_script_installed() -> None:
-    """One subprocess invocation catches packaging regressions of the entry point.
+def test_assessment_command_installed() -> None:
+    """Verify the unified installed command exposes assessment."""
 
-    Prefers the installed ``honua-esri-assess`` console script (the surface
-    prospects run from a shell); falls back to ``python -m honua_esri_assess``
-    when the entry point has not been linked onto PATH (uninstalled checkouts).
-    """
-
-    console_script = Path(sys.prefix) / "bin" / "honua-esri-assess"
+    console_script = Path(sys.prefix) / "bin" / "honua-migrate"
     cmd = (
-        [str(console_script), "--version"]
+        [str(console_script), "assess", "--version"]
         if console_script.exists()
-        else [sys.executable, "-m", "honua_esri_assess", "--version"]
+        else [sys.executable, "-m", "honua_migrate", "assess", "--version"]
     )
     env = os.environ.copy()
     repo_root = Path(__file__).resolve().parents[2]

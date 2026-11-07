@@ -50,7 +50,7 @@ access policies (see the mapping transform below).
 |----------------------|----------|-------------------------------|-------------|
 | `schemaVersion`      | yes      | const `"v0.1"`                | Contract major.minor carried in-band. |
 | `generatedAt`        | yes      | RFC3339 UTC                   | When the scan finished. |
-| `tool`               | yes      | `{ name, version }`           | Scanner provenance (`name` const `honua-esri-assess`). |
+| `tool`               | yes      | `{ name, version }`           | Scanner provenance (`name` const `honua-migrate assess`). |
 | `source`             | yes      | `{ kind, locator, capturedAt }` | `kind` is `arcgis-online` or `arcgis-server`. |
 | `users`              | yes      | `User[]`                      | Identity principals. |
 | `roles`              | yes      | `Role[]`                      | Roles + granted privileges. |
@@ -69,7 +69,7 @@ See the JSON Schema for per-object field tables (`User`, `Role`, `Group`,
 
 ## Auth-mapping transform
 
-`honua_esri_assess.footprint.access_mapping.map_to_honua_rbac` is a pure
+`honua_migrate.assessment.footprint.access_mapping.map_to_honua_rbac` is a pure
 function over an access footprint that emits the typed mapping target
 migration planning consumes:
 

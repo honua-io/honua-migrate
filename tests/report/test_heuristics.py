@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from honua_esri_assess.report.heuristics import (
+from honua_migrate.assessment.report.heuristics import (
     manual_review_items,
     recommended_order,
     score_complexity,

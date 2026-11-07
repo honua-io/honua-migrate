@@ -10,9 +10,9 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from honua_esri_assess.app import cli_app
-from honua_esri_assess.commands.scan_handlers import HANDLERS
-from honua_esri_assess.commands.scan_handlers import rbac as rbac_handler
+from honua_migrate.assessment.app import cli_app
+from honua_migrate.assessment.commands.scan_handlers import HANDLERS
+from honua_migrate.assessment.commands.scan_handlers import rbac as rbac_handler
 
 from .conftest import StubHttpClient, respond, respond_fixture
 

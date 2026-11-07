@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from honua_esri_assess.diagnostics import Diagnostic, PortalSchemaError
-from honua_esri_assess.footprint import access as access_module
-from honua_esri_assess.footprint.access import (
+from honua_migrate.assessment.diagnostics import Diagnostic, PortalSchemaError
+from honua_migrate.assessment.footprint import access as access_module
+from honua_migrate.assessment.footprint.access import (
     AccessFootprint,
     AccessGroup,
     AccessRole,
@@ -34,7 +34,8 @@ CANONICAL = REPO_ROOT / "schemas" / "esri-access-footprint-v0.2.json"
 PACKAGE = (
     REPO_ROOT
     / "src"
-    / "honua_esri_assess"
+    / "honua_migrate"
+    / "assessment"
     / "schemas"
     / "esri-access-footprint-v0.2.json"
 )
@@ -91,7 +92,7 @@ def _full_footprint() -> AccessFootprint:
 @pytest.mark.parametrize("filename", ACCESS_SCHEMA_FILENAMES)
 def test_packaged_schema_matches_canonical(filename: str) -> None:
     canonical = REPO_ROOT / "schemas" / filename
-    packaged = REPO_ROOT / "src" / "honua_esri_assess" / "schemas" / filename
+    packaged = REPO_ROOT / "src" / "honua_migrate" / "assessment" / "schemas" / filename
     assert packaged.exists(), f"package-data copy of {filename} is missing"
     assert json.loads(packaged.read_text(encoding="utf-8")) == json.loads(
         canonical.read_text(encoding="utf-8")

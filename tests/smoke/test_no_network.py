@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from honua_esri_assess.cli import main as cli_main
+from honua_migrate.assessment.cli import main as cli_main
 
 
 @pytest.fixture

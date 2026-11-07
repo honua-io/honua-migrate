@@ -4,11 +4,7 @@
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/honua-io/honua-migrate/badge)](https://scorecard.dev/viewer/?uri=github.com/honua-io/honua-migrate)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-> **Command transition:** `honua-migrate assess` is now the primary assessment
-> surface. The `honua-esri-assess` command, module invocation, Python imports,
-> and artifact contracts remain compatible through the documented transition
-> window, with removal no earlier than `honua-migrate` 1.2. See the
-> [assessment transition policy](docs/assessment-transition.md).
+> **Command:** Assessment runs through `honua-migrate assess`. See the [assessment guide](docs/assessment-transition.md) for current invocation and import paths.
 
 An Apache-2.0 migration command-line suite whose **read-only assessment
 surface** inventories an organization's Esri
@@ -70,7 +66,6 @@ Install the application in an isolated environment:
 ```bash
 pipx install honua-migrate
 honua-migrate assess --help
-honua-esri-assess --help  # supported compatibility command
 ```
 
 For development against an unreleased source checkout:
@@ -109,10 +104,10 @@ honua-migrate assess schema validate EsriFootprint.json
 
 ## Commands
 
-Run `honua-migrate --help` for the complete migration command tree, or
-`honua-migrate assess --help` for assessment options. The compatibility forms
-`honua-esri-assess --help` and `python -m honua_esri_assess --help` remain
-available. Every assessment `scan` subcommand is read-only against the target.
+Run `honua-migrate --help` for the complete migration command tree or
+`honua-migrate assess --help` for assessment options. The assessment package is
+available to Python consumers as `honua_migrate.assessment`. Every assessment
+`scan` subcommand is read-only against the target.
 
 | Command | What it does |
 |---------|--------------|
@@ -137,7 +132,7 @@ instead of rendering warnings.
 ## Capability crosswalk (`caps`)
 
 `caps` maps the same deterministic capability detection the `verdict` engine
-uses (`honua_esri_assess.verdict.registry` — portal item types, server
+uses (`honua_migrate.assessment.verdict.registry` — portal item types, server
 `serviceType`s, and per-service capability tokens already in
 `EsriFootprint.json`) onto **Honua capability keys**, via a versioned
 crosswalk document:
@@ -179,7 +174,7 @@ Fabric, or LRS — there is no Honua equivalent, by design).
 ### Draft crosswalk (temporary)
 
 The crosswalk `caps` ships with today
-(`src/honua_esri_assess/data/honua-crosswalk.fixture.json`) is a **draft
+(`src/honua_migrate/assessment/data/honua-crosswalk.fixture.json`) is a **draft
 placeholder**, not the canonical mapping. The canonical
 `capability-keys.v1.json` artifact — with the reconciled
 `esri-assess-registry → capability` crosswalk — is produced by honua-server
@@ -209,7 +204,7 @@ honua-migrate assess caps --input EsriFootprint.json \
 ```
 
 The crosswalk document is validated at load: an `esri-assess-registry` key
-that does not exist in `honua_esri_assess.verdict.registry.CAPABILITY_REGISTRY`
+that does not exist in `honua_migrate.assessment.verdict.registry.CAPABILITY_REGISTRY`
 fails loudly (`report.crosswalk.invalid`, exit code `5`) rather than silently
 mapping nothing.
 
@@ -220,7 +215,7 @@ mapping nothing.
 | ArcGIS Online / Portal | Sharing REST base, e.g. `https://yourorg.maps.arcgis.com/sharing/rest` | The scanner appends `portals/self`, `search`, `community/groups`, `content/items/<id>` to this base; a higher-level portal URL yields `partial-coverage` diagnostics instead of an inventory. |
 | ArcGIS Server | `https://host`, `https://host/arcgis`, `…/arcgis/rest`, or `…/arcgis/rest/services` — canonicalized internally | Deep layer probes run for `MapServer`/`FeatureServer`/`ImageServer`/`SceneServer`/`StreamServer`; other service types are recorded from the catalog walk. Add `--admin-usage` (admin token required) to also read `/admin/usagereports` and `/admin/data/items` for usage-ranked ordering and datastore binding modes — it degrades to a diagnostic if denied. |
 | FileGDB (descriptor) | Directory containing `_inventory.json`, or the descriptor file itself | Local filesystem only. |
-| FileGDB (workspace) | A local `.gdb` directory | Uses optional `pyogrio`/GDAL read-only metadata calls (`pip install ".[filegdb]"`). Without the extra, the command still exits 0 and records a `partial-coverage` diagnostic. Also available as the `honua_esri_assess.filegdb.scan_filegdb_workspace` library function. |
+| FileGDB (workspace) | A local `.gdb` directory | Uses optional `pyogrio`/GDAL read-only metadata calls (`pip install ".[filegdb]"`). Without the extra, the command still exits 0 and records a `partial-coverage` diagnostic. Also available as the `honua_migrate.assessment.filegdb.scan_filegdb_workspace` library function. |
 | RBAC / access | Portal Sharing REST base (`--kind portal`, default) or ArcGIS Server admin URL (`--kind server`) | Writes `EsriAccessFootprint.json` (defaults to stdout). |
 
 Transient upstream failures (`429`, `502`, `503`, `504`) are retried with
@@ -410,8 +405,8 @@ are not the Python GP run outcomes above.
 
 Local stderr logs can be formatted as text or JSON with `--log-format`; both
 stay on the machine running the command. Crash dumps are off by default —
-setting `HONUA_ESRI_ASSESS_CRASH_DUMPS=1` allows a local, redacted diagnostic
-file under `~/.cache/honua-esri-assess/crashes/` after an internal error.
+setting `HONUA_MIGRATE_ASSESSMENT_CRASH_DUMPS=1` allows a local, redacted diagnostic
+file under `~/.cache/honua-migrate/assessment/crashes/` after an internal error.
 `--no-network-telemetry-confirm` is an audit-friendly acknowledgement flag; it
 is not an opt-in and changes no behavior.
 
@@ -431,7 +426,7 @@ dedicated no-network tests block outbound sockets while scans run. See
 fixture layout and refresh protocol. Additional developer docs:
 [scan handler interface](docs/handler-interface.md) and the read-only
 [entitlement enumeration library](docs/entitlements.md)
-(`honua_esri_assess.entitlements`).
+(`honua_migrate.assessment.entitlements`).
 
 Esri IP & licensing posture (clean-room formats via GDAL/community readers, no
 rehosting of licensed data, no embedded proprietary assets) is documented in

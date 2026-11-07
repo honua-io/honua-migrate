@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from honua_esri_assess.cli import main as cli_main
+from honua_migrate.assessment.cli import main as cli_main
 
 FIXTURE_GDB = Path(__file__).parent / "fixtures" / "filegdb" / "happy" / "sample.gdb"
 

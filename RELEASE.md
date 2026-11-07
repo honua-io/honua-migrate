@@ -8,9 +8,9 @@ the component tag family:
 honua-migrate-v<semver>
 ```
 
-The `honua-esri-assess` command and `honua_esri_assess` import package remain
-inside the same distribution as compatibility surfaces. They are not a second
-PyPI project or release component.
+The `honua-migrate assess` command and `honua_migrate.assessment` import package
+ship inside the `honua-migrate` distribution. They are not a second PyPI project
+or release component.
 
 ## Release sequence
 

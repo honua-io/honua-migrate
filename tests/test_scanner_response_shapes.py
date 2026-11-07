@@ -13,11 +13,11 @@ corrupted the artifact:
 
 from __future__ import annotations
 
-from honua_esri_assess.diagnostics import Diagnostic
-from honua_esri_assess.entitlements.http import HttpResponse
-from honua_esri_assess.scanners import admin_rbac
-from honua_esri_assess.scanners.admin_usage import _coerce_error_code, _interpret
-from honua_esri_assess.scanners.agol import _modified_timestamp
+from honua_migrate.assessment.diagnostics import Diagnostic
+from honua_migrate.assessment.entitlements.http import HttpResponse
+from honua_migrate.assessment.scanners import admin_rbac
+from honua_migrate.assessment.scanners.admin_usage import _coerce_error_code, _interpret
+from honua_migrate.assessment.scanners.agol import _modified_timestamp
 
 
 # --- Issue #77.1: non-numeric error code must not raise -------------------

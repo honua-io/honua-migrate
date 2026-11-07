@@ -7,8 +7,8 @@ from urllib.parse import urlsplit
 
 import requests
 
-from honua_esri_assess.scanners import agol as agol_scanner
-from honua_esri_assess.scanners import server as server_scanner
+from honua_migrate.assessment.scanners import agol as agol_scanner
+from honua_migrate.assessment.scanners import server as server_scanner
 
 
 class _JsonResponse:

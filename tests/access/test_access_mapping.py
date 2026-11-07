@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from honua_esri_assess.footprint.access import (
+from honua_migrate.assessment.footprint.access import (
     AccessFootprint,
     AccessRole,
     ItemSharing,
     ServicePermission,
 )
-from honua_esri_assess.footprint.access_mapping import map_to_honua_rbac
-from honua_esri_assess.scanners.admin_rbac import scan_portal_rbac
+from honua_migrate.assessment.footprint.access_mapping import map_to_honua_rbac
+from honua_migrate.assessment.scanners.admin_rbac import scan_portal_rbac
 
 from .conftest import StubHttpClient, respond_fixture
 

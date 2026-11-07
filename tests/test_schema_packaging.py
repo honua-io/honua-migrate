@@ -4,7 +4,7 @@ The repository ships the EsriFootprint v0.1 contract in two locations:
 
 * The canonical, human-readable file at ``schemas/esri-footprint-v0.1.json``
   (the same path referenced by ``docs/schemas/*``).
-* A package-data copy at ``src/honua_esri_assess/schemas/esri-footprint-v0.1.json``
+* A package-data copy at ``src/honua_migrate/assessment/schemas/esri-footprint-v0.1.json``
   that the installed wheel exposes through :mod:`importlib.resources`.
 
 These tests fail loud if the two diverge or if the runtime loader cannot
@@ -19,8 +19,8 @@ from pathlib import Path
 
 import pytest
 
-from honua_esri_assess.diagnostics import PortalSchemaError
-from honua_esri_assess.footprint import schema as schema_module
+from honua_migrate.assessment.diagnostics import PortalSchemaError
+from honua_migrate.assessment.footprint import schema as schema_module
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -36,7 +36,7 @@ def _canonical(filename: str) -> Path:
 
 
 def _packaged(filename: str) -> Path:
-    return REPO_ROOT / "src" / "honua_esri_assess" / "schemas" / filename
+    return REPO_ROOT / "src" / "honua_migrate" / "assessment" / "schemas" / filename
 
 
 # Back-compat aliases retained for any external references.
@@ -58,7 +58,7 @@ def test_package_schema_matches_canonical(filename: str) -> None:
     bundled = json.loads(_packaged(filename).read_text(encoding="utf-8"))
     assert canonical == bundled, (
         f"schemas/{filename} and "
-        f"src/honua_esri_assess/schemas/{filename} have diverged. "
+        f"src/honua_migrate/assessment/schemas/{filename} have diverged. "
         "Update both copies in lock-step."
     )
 

@@ -19,7 +19,7 @@ Honua services, or any telemetry endpoint.
 
 ## Renderer contract
 
-`honua_esri_assess.report.render()` accepts a parsed footprint mapping and
+`honua_migrate.assessment.report.render()` accepts a parsed footprint mapping and
 returns deterministic Markdown.
 
 - The renderer performs no file, network, logging, or Esri-system I/O.
@@ -40,16 +40,16 @@ output.
 ## CLI usage
 
 ```bash
-honua-esri-assess report \
+honua-migrate assess report \
   --input EsriFootprint.json \
   --output readiness-report.md
 
-honua-esri-assess report \
+honua-migrate assess report \
   --input docs/samples/esri-footprint.sample.json \
   --output -
 
-honua-esri-assess report --input - --output -
-honua-esri-assess report --input EsriFootprint.json --strict
+honua-migrate assess report --input - --output -
+honua-migrate assess report --input EsriFootprint.json --strict
 ```
 
 | Flag | Required | Description |
@@ -74,7 +74,7 @@ write customer Esri systems or send network telemetry.
 ## Renderer API
 
 ```python
-from honua_esri_assess.report import RenderOptions, render
+from honua_migrate.assessment.report import RenderOptions, render
 
 markdown = render(footprint, options=RenderOptions(max_inventory_rows=500))
 ```

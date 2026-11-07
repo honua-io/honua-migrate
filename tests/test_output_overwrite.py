@@ -13,10 +13,10 @@ from pathlib import Path
 
 import pytest
 
-from honua_esri_assess.cli import main as cli_main
-from honua_esri_assess.commands.common import ScanOptions, ScanResult
-from honua_esri_assess.commands.scan_handlers import HANDLERS, ScanHandler, register
-from honua_esri_assess.output_io import OutputExistsError, atomic_write_text
+from honua_migrate.assessment.cli import main as cli_main
+from honua_migrate.assessment.commands.common import ScanOptions, ScanResult
+from honua_migrate.assessment.commands.scan_handlers import HANDLERS, ScanHandler, register
+from honua_migrate.assessment.output_io import OutputExistsError, atomic_write_text
 
 
 @pytest.fixture(autouse=True)
@@ -156,12 +156,12 @@ def test_ensure_overwrite_allowed_raises_only_when_unforced(tmp_path: Path) -> N
     existing.write_text("x", encoding="utf-8")
 
     with pytest.raises(OutputExistsError):
-        from honua_esri_assess.output_io import ensure_overwrite_allowed
+        from honua_migrate.assessment.output_io import ensure_overwrite_allowed
 
         ensure_overwrite_allowed(existing, force=False)
 
     # force=True and missing paths are both allowed.
-    from honua_esri_assess.output_io import ensure_overwrite_allowed
+    from honua_migrate.assessment.output_io import ensure_overwrite_allowed
 
     ensure_overwrite_allowed(existing, force=True)
     ensure_overwrite_allowed(tmp_path / "missing.json", force=False)

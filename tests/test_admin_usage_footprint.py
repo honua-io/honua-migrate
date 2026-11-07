@@ -16,7 +16,7 @@ from pathlib import Path
 import responses
 from typer.testing import CliRunner
 
-from honua_esri_assess.cli import cli_app
+from honua_migrate.assessment.cli import cli_app
 
 _FIXTURES = Path(__file__).resolve().parent / "fixtures"
 

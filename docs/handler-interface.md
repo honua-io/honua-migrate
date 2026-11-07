@@ -3,12 +3,12 @@
 E9 owns the CLI dispatch slots. Scanner tickets register backend handlers
 without changing the top-level command tree.
 
-Handlers live under `honua_esri_assess.commands.scan_handlers` and register a
+Handlers live under `honua_migrate.assessment.commands.scan_handlers` and register a
 `ScanHandler`:
 
 ```python
-from honua_esri_assess.commands.common import ScanOptions, ScanResult
-from honua_esri_assess.commands.scan_handlers import ScanHandler, register
+from honua_migrate.assessment.commands.common import ScanOptions, ScanResult
+from honua_migrate.assessment.commands.scan_handlers import ScanHandler, register
 
 
 def run(options: ScanOptions) -> ScanResult:
@@ -99,7 +99,7 @@ These CLI process-diagnostic codes are deliberately separate from the locked
 
 Raw tracebacks must never be printed in default mode. Token values, raw
 URLs with credentials, and on-prem paths must not appear in diagnostic
-messages or log lines. The `redact` helper in `honua_esri_assess.diagnostics`
+messages or log lines. The `redact` helper in `honua_migrate.assessment.diagnostics`
 strips common secret patterns from strings before they reach a crash dump.
 
 ## Telemetry and read-only stance
@@ -110,5 +110,5 @@ strips common secret patterns from strings before they reach a crash dump.
   or any third-party telemetry sink. Local stderr logs (text or JSON) are
   the only allowed reporting channel.
 - Crash dumps are off by default and only enabled when
-  `HONUA_ESRI_ASSESS_CRASH_DUMPS=1` is set; the CLI writes them locally
-  under `~/.cache/honua-esri-assess/crashes/` with redaction applied.
+  `HONUA_MIGRATE_ASSESSMENT_CRASH_DUMPS=1` is set; the CLI writes them locally
+  under `~/.cache/honua-migrate/assessment/crashes/` with redaction applied.
