@@ -6,8 +6,8 @@ import json
 import re
 from pathlib import Path
 
-from honua_esri_assess.cli import main as cli_main
-from honua_esri_assess.diagnostics import DIAGNOSTIC_CODES
+from honua_migrate.assessment.cli import main as cli_main
+from honua_migrate.assessment.diagnostics import DIAGNOSTIC_CODES
 
 TRACEBACK_RE = re.compile(r"Traceback \(most recent call")
 ABSOLUTE_PATH_RE = re.compile(r"(?<![A-Za-z0-9_/])(/home/|/Users/|C:\\)")
@@ -20,7 +20,7 @@ def test_server_diagnostics_scan(
     tmp_output_dir: Path,
     capsys,
 ) -> None:
-    output = tmp_output_dir / "EsriFootprint.json"
+    output = tmp_output_dir / "AssessmentFootprint.json"
     with mocked_routes("arcgis-server/diagnostics"):
         exit_code = cli_main(
             [

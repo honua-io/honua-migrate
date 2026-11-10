@@ -17,7 +17,7 @@ import pytest
 import responses
 
 from honua_migrate.cli import main
-from honua_migrate.services.arcgis import ArcGisClient
+from honua_migrate.services.geoservices_rest import GeoServicesClient
 from honua_migrate.services.target_readiness import preflight_target
 
 SOURCE_URL = "https://arcgis.test/rest/services/Parcels/FeatureServer"
@@ -152,7 +152,7 @@ def _plan(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> Path:
     code = _run(
         [
             "services",
-            "arcgis",
+            "geoservices-rest",
             "plan",
             SOURCE_URL,
             "--layer-id",
@@ -177,7 +177,7 @@ def test_preflight_command_is_read_only_for_a_licensing_disabled_ready_target(
     _stub_jobs()
     output = tmp_path / "preflight.json"
     code = _run(
-        ["services", "arcgis", "preflight", "--retries", "0", "--output", str(output)]
+        ["services", "geoservices-rest", "preflight", "--retries", "0", "--output", str(output)]
     )
     report, out, err = _report(capsys)
     assert code == 0, err
@@ -211,7 +211,7 @@ def test_enabled_license_outcomes_follow_server_availability_not_edition(
         status=200,
     )
     _stub_jobs()
-    code = _run(["services", "arcgis", "preflight", "--retries", "0"])
+    code = _run(["services", "geoservices-rest", "preflight", "--retries", "0"])
     report, out, err = _report(capsys)
     assert code == 0, err
     assert report["outcome"] == "ready"
@@ -232,7 +232,7 @@ def test_enabled_license_outcomes_follow_server_availability_not_edition(
         status=200,
     )
     _stub_jobs()
-    code = _run(["services", "arcgis", "preflight", "--retries", "0"])
+    code = _run(["services", "geoservices-rest", "preflight", "--retries", "0"])
     report, out, err = _report(capsys)
     assert code != 0
     assert report["outcome"] == "unavailable-capability"
@@ -257,7 +257,7 @@ def test_enabled_license_outcomes_follow_server_availability_not_edition(
         status=200,
     )
     _stub_jobs()
-    code = _run(["services", "arcgis", "preflight", "--retries", "0"])
+    code = _run(["services", "geoservices-rest", "preflight", "--retries", "0"])
     report, out, err = _report(capsys)
     assert code != 0
     assert report["outcome"] == "unavailable-capability"
@@ -288,7 +288,7 @@ def test_capability_declaration_overrides_an_edition_shaped_entitlement(
         status=200,
     )
     _stub_jobs()
-    code = _run(["services", "arcgis", "preflight", "--retries", "0"])
+    code = _run(["services", "geoservices-rest", "preflight", "--retries", "0"])
     report, _out, err = _report(capsys)
     assert code != 0, err
     assert report["outcome"] == "unavailable-capability"
@@ -319,7 +319,7 @@ def test_manifest_auth_statuses(
         json={"title": "denied", "status": status, "code": "auth-problem", "detail": API_KEY},
         status=status,
     )
-    code = _run(["services", "arcgis", "preflight", "--retries", "0"])
+    code = _run(["services", "geoservices-rest", "preflight", "--retries", "0"])
     report, out, err = _report(capsys)
     assert code != 0
     assert report["outcome"] == outcome
@@ -341,7 +341,7 @@ def test_unauthenticated_scope_does_not_probe_import_or_start(
         json=_ready_manifest(authenticated=False),
         status=200,
     )
-    code = _run(["services", "arcgis", "preflight", "--retries", "0"])
+    code = _run(["services", "geoservices-rest", "preflight", "--retries", "0"])
     report, out, err = _report(capsys)
     assert code != 0
     assert report["outcome"] == "unauthenticated"
@@ -357,7 +357,7 @@ def test_authenticated_forbidden_on_import_api(
     _env(monkeypatch)
     responses.add(responses.GET, MANIFEST, json=_ready_manifest(), status=200)
     _stub_jobs(403)
-    code = _run(["services", "arcgis", "preflight", "--retries", "0"])
+    code = _run(["services", "geoservices-rest", "preflight", "--retries", "0"])
     report, out, err = _report(capsys)
     assert code != 0
     assert report["outcome"] == "forbidden"
@@ -378,7 +378,7 @@ def test_incompatible_manifest_or_api_version(
         status=200,
     )
     _stub_jobs()
-    code = _run(["services", "arcgis", "preflight", "--retries", "0"])
+    code = _run(["services", "geoservices-rest", "preflight", "--retries", "0"])
     report, _out, err = _report(capsys)
     assert code != 0, err
     assert report["outcome"] == "incompatible-version"
@@ -391,7 +391,7 @@ def test_incompatible_manifest_or_api_version(
         status=200,
     )
     _stub_jobs()
-    code = _run(["services", "arcgis", "preflight", "--retries", "0"])
+    code = _run(["services", "geoservices-rest", "preflight", "--retries", "0"])
     report, _out, err = _report(capsys)
     assert code != 0
     assert report["outcome"] == "incompatible-version"
@@ -415,7 +415,7 @@ def test_missing_capability_declaration_is_unknown_not_ready(
         status=200,
     )
     _stub_jobs()
-    code = _run(["services", "arcgis", "preflight", "--retries", "0"])
+    code = _run(["services", "geoservices-rest", "preflight", "--retries", "0"])
     report, out, err = _report(capsys)
     assert code != 0
     assert report["outcome"] == "unknown"
@@ -441,7 +441,7 @@ def test_payment_required_preserves_problem_code_without_secrets(
         },
         status=402,
     )
-    code = _run(["services", "arcgis", "preflight", "--retries", "0"])
+    code = _run(["services", "geoservices-rest", "preflight", "--retries", "0"])
     report, out, err = _report(capsys)
     assert code != 0
     assert report["outcome"] == "unavailable-capability"
@@ -461,7 +461,7 @@ def test_redirect_is_not_followed(
         status=302,
         headers={"Location": "https://evil.test/collect?sig=deadbeef"},
     )
-    code = _run(["services", "arcgis", "preflight", "--retries", "0"])
+    code = _run(["services", "geoservices-rest", "preflight", "--retries", "0"])
     report, out, err = _report(capsys)
     assert code != 0
     assert report["outcome"] == "unknown"
@@ -479,7 +479,7 @@ def test_unreachable_closed_port(
     probe.close()
     _env(monkeypatch, HONUA_URL=f"http://127.0.0.1:{port}")
     started = time.monotonic()
-    code = _run(["services", "arcgis", "preflight", "--retries", "0", "--timeout-seconds", "1"])
+    code = _run(["services", "geoservices-rest", "preflight", "--retries", "0", "--timeout-seconds", "1"])
     assert time.monotonic() - started < 8
     report, out, err = _report(capsys)
     assert code != 0
@@ -511,7 +511,7 @@ def test_preflight_timeout_is_bounded(
     started = time.monotonic()
     try:
         code = _run(
-            ["services", "arcgis", "preflight", "--retries", "0", "--timeout-seconds", "1"]
+            ["services", "geoservices-rest", "preflight", "--retries", "0", "--timeout-seconds", "1"]
         )
     finally:
         released.set()
@@ -550,7 +550,7 @@ def test_apply_does_not_queue_when_preflight_is_not_ready(
     code = _run(
         [
             "services",
-            "arcgis",
+            "geoservices-rest",
             "apply",
             str(plan),
             "--yes",
@@ -595,12 +595,12 @@ def test_apply_rechecks_and_refuses_a_capability_that_is_no_longer_ready(
     responses.add_callback(responses.GET, MANIFEST, manifest)
     responses.add(responses.GET, JOBS, json={}, status=200)
     responses.add(responses.GET, JOBS, json={}, status=200)
-    preflight = _run(["services", "arcgis", "preflight", "--retries", "0"])
+    preflight = _run(["services", "geoservices-rest", "preflight", "--retries", "0"])
     ready, _out, err = _report(capsys)
     assert preflight == 0, err
     assert ready["outcome"] == "ready"
 
-    code = _run(["services", "arcgis", "apply", str(plan), "--yes", "--retries", "0"])
+    code = _run(["services", "geoservices-rest", "apply", str(plan), "--yes", "--retries", "0"])
     report, out, err = _report(capsys)
     assert code != 0
     assert report["outcome"] == "unavailable-capability"
@@ -617,7 +617,7 @@ def test_apply_rechecks_a_changed_target_and_principal(
     plan = _plan(tmp_path, capsys)
     responses.add(responses.GET, MANIFEST, json=_ready_manifest(), status=200)
     _stub_jobs()
-    code = _run(["services", "arcgis", "preflight", "--retries", "0"])
+    code = _run(["services", "geoservices-rest", "preflight", "--retries", "0"])
     ready, _out, err = _report(capsys)
     assert code == 0, err
     assert ready["outcome"] == "ready"
@@ -631,7 +631,7 @@ def test_apply_rechecks_a_changed_target_and_principal(
         status=200,
     )
     _env(monkeypatch, HONUA_URL="https://other.test", HONUA_API_KEY=OTHER_KEY)
-    code = _run(["services", "arcgis", "apply", str(plan), "--yes", "--retries", "0"])
+    code = _run(["services", "geoservices-rest", "apply", str(plan), "--yes", "--retries", "0"])
     report, out, err = _report(capsys)
     assert code != 0
     assert report["outcome"] == "unauthenticated"
@@ -657,12 +657,12 @@ def test_apply_refuses_when_permission_or_schema_changes(
 
     responses.add(responses.GET, MANIFEST, json=_ready_manifest(), status=200)
     responses.add_callback(responses.GET, JOBS, jobs)
-    code = _run(["services", "arcgis", "preflight", "--retries", "0"])
+    code = _run(["services", "geoservices-rest", "preflight", "--retries", "0"])
     ready, _out, err = _report(capsys)
     assert code == 0, err
     assert ready["outcome"] == "ready"
 
-    code = _run(["services", "arcgis", "apply", str(plan), "--yes", "--retries", "0"])
+    code = _run(["services", "geoservices-rest", "apply", str(plan), "--yes", "--retries", "0"])
     report, out, err = _report(capsys)
     assert code != 0
     assert report["outcome"] == "forbidden"
@@ -676,7 +676,7 @@ def test_apply_refuses_when_permission_or_schema_changes(
         status=200,
     )
     responses.add(responses.GET, JOBS, json={}, status=200)
-    code = _run(["services", "arcgis", "apply", str(plan), "--yes", "--retries", "0"])
+    code = _run(["services", "geoservices-rest", "apply", str(plan), "--yes", "--retries", "0"])
     report, _out, err = _report(capsys)
     assert code != 0
     assert report["outcome"] == "incompatible-version"
@@ -701,7 +701,7 @@ def test_apply_queues_only_after_a_fresh_ready_recheck(
     _stub_jobs()
     _stub_jobs()
     responses.add(responses.POST, START, json={"jobId": "job-1"}, status=202)
-    code = _run(["services", "arcgis", "preflight", "--retries", "0"])
+    code = _run(["services", "geoservices-rest", "preflight", "--retries", "0"])
     ready, _out, err = _report(capsys)
     assert code == 0, err
     assert ready["identity"]["deploymentRevision"] == "a" * 40
@@ -710,7 +710,7 @@ def test_apply_queues_only_after_a_fresh_ready_recheck(
     code = _run(
         [
             "services",
-            "arcgis",
+            "geoservices-rest",
             "apply",
             str(plan),
             "--yes",
@@ -744,7 +744,7 @@ def test_disabled_but_inactive_capability_is_not_treated_as_ready(
         status=200,
     )
     _stub_jobs()
-    code = _run(["services", "arcgis", "preflight", "--retries", "0"])
+    code = _run(["services", "geoservices-rest", "preflight", "--retries", "0"])
     report, out, err = _report(capsys)
     assert code != 0
     assert report["outcome"] == "unavailable-capability"
@@ -755,8 +755,8 @@ def test_disabled_but_inactive_capability_is_not_treated_as_ready(
     _assert_clean(out, err)
 
 
-def _client() -> ArcGisClient:
-    client = ArcGisClient("https://honua.test", API_KEY, 30, 0)
+def _client() -> GeoServicesClient:
+    client = GeoServicesClient("https://honua.test", API_KEY, 30, 0)
 
     def _start(_request: object) -> dict:
         raise AssertionError("client.start must not run during readiness")
@@ -795,7 +795,7 @@ def test_invalid_license_is_not_ready_while_entitlement_stays_active(
     code = _run(
         [
             "services",
-            "arcgis",
+            "geoservices-rest",
             "apply",
             str(plan),
             "--yes",

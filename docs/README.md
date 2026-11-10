@@ -3,11 +3,11 @@ type: index
 title: "Honua migration documentation"
 description: "Where to start depending on what you are doing: evaluating whether to migrate, getting approval to run an assessment, or consuming the artifacts one produces."
 resource: "https://pypi.org/project/honua-migrate/"
-tags: [migration, esri, navigation]
+tags: [migration, assessment, navigation]
 ---
 # Honua migration documentation
 
-`honua-migrate` assesses an existing Esri estate and plans a migration off it.
+`honua-migrate` assesses an existing source deployment and plans a migration off it.
 The assessment is **read-only**: it inspects, records and reports, and never
 writes to the system it is pointed at.
 
@@ -16,8 +16,8 @@ Pick the path that matches where you are.
 ## Evaluating whether to migrate
 
 Start with [what this repository owns](ownership-and-deprecation.md) for the
-scope. [The assess command transition](assessment-transition.md) covers the move
-from `honua-esri-assess` if you used the older tooling. If licensing is the question, the
+scope. [The assessment command guide](assessment-transition.md) shows the
+current command and Python import paths. If licensing is the question, the
 [Esri IP and licensing guardrails](compliance/esri-ip-and-licensing-guardrails.md)
 set out the rules the tooling is built to observe.
 
@@ -26,7 +26,7 @@ set out the rules the tooling is built to observe.
 [What access the assessment needs](operators/prerequisites-and-least-privilege.md)
 lists every permission and why each is required — written so a security reviewer
 can approve it without having to infer intent. Pair it with
-[Esri license entitlement enumeration](entitlements.md), which says exactly what
+[Source license entitlement enumeration](entitlements.md), which says exactly what
 is read and what is deliberately left alone.
 
 ## Running it
@@ -44,8 +44,8 @@ would rather see the shape than read about it. For machine consumers, the
 [assessment handoff contract](schemas/handoff-contract.md) summarises what is
 handed over, [migration artifact contracts](contracts/migration-contracts.md)
 covers the packaged JSON Schemas, and the footprint schemas are documented per
-version: [v0.1](schemas/esri-footprint.v0.1.md),
-[v0.2](schemas/esri-footprint.v0.2.md), and
-[access footprint v0.1](schemas/esri-access-footprint.v0.1.md).
+version: [v0.1](schemas/assessment-footprint.v0.1.md),
+[v0.2](schemas/assessment-footprint.v0.2.md), and
+[access footprint v0.1](schemas/assessment-access-footprint.v0.1.md).
 [Schema versioning policy](schemas/versioning.md) says what may change under you
 while the line is pre-1.0.

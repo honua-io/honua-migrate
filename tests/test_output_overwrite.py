@@ -13,10 +13,10 @@ from pathlib import Path
 
 import pytest
 
-from honua_esri_assess.cli import main as cli_main
-from honua_esri_assess.commands.common import ScanOptions, ScanResult
-from honua_esri_assess.commands.scan_handlers import HANDLERS, ScanHandler, register
-from honua_esri_assess.output_io import OutputExistsError, atomic_write_text
+from honua_migrate.assessment.cli import main as cli_main
+from honua_migrate.assessment.commands.common import ScanOptions, ScanResult
+from honua_migrate.assessment.commands.scan_handlers import HANDLERS, ScanHandler, register
+from honua_migrate.assessment.output_io import OutputExistsError, atomic_write_text
 
 
 @pytest.fixture(autouse=True)
@@ -88,7 +88,7 @@ def _run_scan(tmp_path: Path, output: Path, *force: str) -> int:
 
 def test_scan_refuses_to_overwrite_without_force(tmp_path: Path, capsys) -> None:
     _stub_filegdb()
-    output = tmp_path / "EsriFootprint.json"
+    output = tmp_path / "AssessmentFootprint.json"
     output.write_text("PRIOR ARTIFACT", encoding="utf-8")
 
     exit_code = _run_scan(tmp_path, output)
@@ -105,7 +105,7 @@ def test_scan_refuses_to_overwrite_without_force(tmp_path: Path, capsys) -> None
 
 def test_scan_overwrites_with_force(tmp_path: Path, capsys) -> None:
     _stub_filegdb()
-    output = tmp_path / "EsriFootprint.json"
+    output = tmp_path / "AssessmentFootprint.json"
     output.write_text("PRIOR ARTIFACT", encoding="utf-8")
 
     exit_code = _run_scan(tmp_path, output, "--force")
@@ -116,7 +116,7 @@ def test_scan_overwrites_with_force(tmp_path: Path, capsys) -> None:
 
 def test_scan_writes_fresh_output_without_force(tmp_path: Path) -> None:
     _stub_filegdb()
-    output = tmp_path / "nested" / "EsriFootprint.json"
+    output = tmp_path / "nested" / "AssessmentFootprint.json"
 
     exit_code = _run_scan(tmp_path, output)
 
@@ -128,7 +128,7 @@ def test_scan_writes_fresh_output_without_force(tmp_path: Path) -> None:
 
 
 def test_atomic_write_preserves_prior_file_on_failure(tmp_path: Path) -> None:
-    target = tmp_path / "EsriFootprint.json"
+    target = tmp_path / "AssessmentFootprint.json"
     target.write_text("PRIOR VALID", encoding="utf-8")
 
     # Drive a mid-write failure: a lone surrogate is not encodable as UTF-8, so
@@ -139,7 +139,7 @@ def test_atomic_write_preserves_prior_file_on_failure(tmp_path: Path) -> None:
 
     # The original file survives and no temp files are left behind.
     assert target.read_text(encoding="utf-8") == "PRIOR VALID"
-    leftovers = [p for p in tmp_path.iterdir() if p.name != "EsriFootprint.json"]
+    leftovers = [p for p in tmp_path.iterdir() if p.name != "AssessmentFootprint.json"]
     assert leftovers == []
 
 
@@ -156,12 +156,12 @@ def test_ensure_overwrite_allowed_raises_only_when_unforced(tmp_path: Path) -> N
     existing.write_text("x", encoding="utf-8")
 
     with pytest.raises(OutputExistsError):
-        from honua_esri_assess.output_io import ensure_overwrite_allowed
+        from honua_migrate.assessment.output_io import ensure_overwrite_allowed
 
         ensure_overwrite_allowed(existing, force=False)
 
     # force=True and missing paths are both allowed.
-    from honua_esri_assess.output_io import ensure_overwrite_allowed
+    from honua_migrate.assessment.output_io import ensure_overwrite_allowed
 
     ensure_overwrite_allowed(existing, force=True)
     ensure_overwrite_allowed(tmp_path / "missing.json", force=False)
@@ -176,7 +176,7 @@ def test_report_refuses_to_overwrite_without_force(tmp_path: Path, capsys) -> No
     footprint["counts"]["items"]["filegdb-feature-class"] = 0
     footprint["counts"]["featureClasses"] = 0
     footprint["filegdb"]["featureClassCount"] = 0
-    input_path = tmp_path / "EsriFootprint.json"
+    input_path = tmp_path / "AssessmentFootprint.json"
     input_path.write_text(json.dumps(footprint), encoding="utf-8")
     output = tmp_path / "report.md"
     output.write_text("PRIOR REPORT", encoding="utf-8")
@@ -203,7 +203,7 @@ def test_report_overwrites_with_force(tmp_path: Path) -> None:
     footprint["counts"]["items"]["filegdb-feature-class"] = 0
     footprint["counts"]["featureClasses"] = 0
     footprint["filegdb"]["featureClassCount"] = 0
-    input_path = tmp_path / "EsriFootprint.json"
+    input_path = tmp_path / "AssessmentFootprint.json"
     input_path.write_text(json.dumps(footprint), encoding="utf-8")
     output = tmp_path / "report.md"
     output.write_text("PRIOR REPORT", encoding="utf-8")
@@ -228,7 +228,7 @@ def test_report_overwrites_with_force(tmp_path: Path) -> None:
 
 def test_caps_refuses_to_overwrite_json_without_force(tmp_path: Path, capsys) -> None:
     footprint = _sample_footprint()
-    input_path = tmp_path / "EsriFootprint.json"
+    input_path = tmp_path / "AssessmentFootprint.json"
     input_path.write_text(json.dumps(footprint), encoding="utf-8")
     json_output = tmp_path / "honua-caps.json"
     json_output.write_text("PRIOR CAPS", encoding="utf-8")
@@ -253,7 +253,7 @@ def test_caps_refuses_to_overwrite_json_without_force(tmp_path: Path, capsys) ->
 
 def test_caps_overwrites_json_with_force(tmp_path: Path) -> None:
     footprint = _sample_footprint()
-    input_path = tmp_path / "EsriFootprint.json"
+    input_path = tmp_path / "AssessmentFootprint.json"
     input_path.write_text(json.dumps(footprint), encoding="utf-8")
     json_output = tmp_path / "honua-caps.json"
     json_output.write_text("PRIOR CAPS", encoding="utf-8")

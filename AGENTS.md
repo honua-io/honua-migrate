@@ -1,166 +1,74 @@
-# AGENTS.md
+# honua-migrate: agent instructions
 
-## Overview
+Apache-2.0 migration CLI. `src/honua_migrate/` is the `honua-migrate` command (assessment,
+planning, code migration, service import); `src/honua_migrate/assessment/` is the read-only Esri
+assessment mounted under `honua-migrate assess`. `packages/javascript` and `packages/maui` are separately gated
+runtime packages. Default branch is `trunk`.
 
-`honua-migrate` is the open-source (Apache-2.0) migration CLI. Its
-`honua-migrate assess` surface is a **read-only** Esri footprint assessment
-tool used for Honua migration discovery. The `honua-esri-assess` command and
-`honua_esri_assess` import package remain supported compatibility surfaces.
-
-Hard project constraints (do not violate):
-- The legacy assessment modules and `honua-migrate assess` are strictly read-only
-  against Esri systems — only HTTP `GET`s, never `POST`/`PUT`/`DELETE`. No write
-  helpers exist in their HTTP wrappers. Write-capable target operations belong only
-  under `honua_migrate`, and must be protected by reviewable plan and explicit apply
-  gates.
-- No network telemetry, usage pings, crash uploads, or update checks. These are
-  off by default and there is no opt-in sink. Tests enforce this.
-- `EsriFootprint.json` is the sole supported handoff into the closed Honua
-  product. Credentials, tokens, query strings, and URL userinfo must never be
-  written into the artifact, diagnostics, cache keys, or logs.
-
-## Tech Stack
-
-- Language: Python, `requires-python = ">=3.11"` (CI tests 3.11, 3.12, 3.13).
-- Build backend: Hatchling (`hatchling>=1.24`), PEP 517.
-- CLI framework: Typer / Click.
-- Runtime deps: `jsonschema>=4.21,<5`, `requests>=2.31,<3`,
-  `tenacity>=8.2,<10`, `typer>=0.12,<1`.
-- Optional extra `filegdb`: `pyogrio>=0.12,<0.13` (GDAL/OGR read-only metadata).
-- Dev tooling: `pytest`, `ruff`, `mypy`, `build`, `hatch`, `responses`,
-  `packaging`.
-
-## Setup
-
-Install in editable mode with the dev extra (matches CI):
-
+## Commands (mirror `.github/workflows/ci.yml`)
 ```bash
-python3 -m pip install -e ".[dev]"
+python3 -m pip install -e ".[dev]"      # [smoke] for the smoke suite only; [filegdb] needs GDAL
+pytest tests --ignore=tests/smoke       # unit tests (CI job)
+pytest tests/smoke -v                   # fixture-backed end-to-end pipeline (separate CI job)
+ruff check && mypy
+python scripts/check_dep_licenses.py    # dependency license guard
+python3 scripts/check-okf-bundle.py && python3 scripts/generate-summary.py --check   # docs/ gate
+honua-migrate --help                    # or python -m honua_migrate; assess: honua-migrate assess --help
 ```
+JavaScript package: `cd packages/javascript && npm ci && npm test && npm run lint`. The MAUI
+tool's .NET gate is the `dotnet` job in `ci.yml`.
 
-For the fixture-backed smoke suite only:
+## Hard constraints
+- Assessment (`honua_migrate.assessment`, `honua-migrate assess`) is strictly read-only against Esri
+  systems: HTTP `GET` only, no write helpers in its HTTP wrappers. Write-capable target
+  operations live only under `honua_migrate`, behind a reviewable plan and an explicit apply gate.
+- No network telemetry, usage pings, crash uploads or update checks, and no opt-in sink.
+  `tests/test_no_telemetry.py` enforces this.
+- `AssessmentFootprint.json` is the sole supported handoff into the closed Honua product. Never write
+  credentials, tokens, query strings or URL userinfo into the artifact, diagnostics, cache keys
+  or logs. Tokens come only from `--token-env VAR`; there is deliberately no `--token` flag.
+- Esri IP: proprietary formats are clean-room only (published specs, GDAL `OpenFileGDB`; never
+  decompile or run licensed Esri software to learn internals), never rehost Esri-licensed data,
+  never embed proprietary symbols or fonts, and get counsel sign-off before publishing any
+  benchmark. Read `docs/compliance/esri-ip-and-licensing-guardrails.md` before touching a format
+  reader or a comparison.
 
-```bash
-python -m pip install -e ".[smoke]"
-```
+## Conventions
+- `diagnostics[].code` is a locked enum across the v0.x schemas. Adding a code needs a schema
+  bump plus matching changes to `diagnostics.py`, `entitlements/diagnostics.py` and the
+  scanner emitter mappings. `schemas/` is canonical; `src/honua_migrate/assessment/schemas/` is the
+  packaged copy, kept in sync by `tests/test_schema_packaging.py`.
+- The CLI never prints tracebacks; exit codes are a contract. Read README "Exit codes and
+  failure surface" before changing one.
+- `report/` is a pure renderer: keep file, network and logging I/O in the command layer.
+  `scan filegdb` reads a local `_inventory.json` and never touches the network.
+- v0.x schemas may break between minors (`docs/schemas/versioning.md`).
+- Commit types are limited to `feat fix chore docs perf deps test ci refactor`
+  (`.commitlintrc.json`, enforced on PRs).
+- New pages under `docs/` need OKF frontmatter or an exclusion in `docs/okf-bundle.v1.json`,
+  and an entry in `docs/SUMMARY.md` (regenerate with `scripts/generate-summary.py`).
+- Releases: Release Please (`release-please-config.json`, `.release-please-manifest.json`) and
+  PyPI Trusted Publishing. Read `RELEASE.md` before touching versions, tags or
+  `scripts/validate_publish_tag.py`.
+- Adding a scan backend: `docs/handler-interface.md`. Ownership and legacy-entry removal:
+  `docs/ownership-and-deprecation.md`.
 
-To use the `pyogrio` FileGDB workspace scanner library, also install the
-`filegdb` extra (requires GDAL): `pip install -e ".[filegdb]"`.
+<!-- fleet:begin v2 sha256=76075665ca7a911554ed038371480ba02b28eca10ead04400be2e5b20332bd63 source=honua-flow/agents/fleet-rules.md -->
+## Fleet rules (all Honua repos)
 
-## Commands
+Generated from honua-flow `agents/fleet-rules.md` (full text, repo map). Do not edit here.
 
-Run from the repo root. These are copied from CI (`.github/workflows/ci.yml`)
-and `pyproject.toml`.
-
-- Unit tests (excludes smoke): `pytest tests --ignore=tests/smoke`
-- Full test suite: `pytest`
-- Smoke tests: `pytest tests/smoke -v`
-- Lint: `ruff check`
-- Type check: `mypy`
-- Dependency license guard: `python scripts/check_dep_licenses.py`
-- Build distribution: `python -m build`
-- Run the CLI: `honua-migrate <command>` or `python -m honua_migrate <command>`
-- Run assessment compatibility: `honua-esri-assess <command>` or `python -m honua_esri_assess <command>`
-
-pytest config (`pyproject.toml`): `pythonpath = ["src"]`, `testpaths = ["tests"]`,
-`addopts = ["--import-mode=importlib"]`.
-
-### CLI surface
-
-`scan agol`, `scan server`, `scan filegdb` (descriptor only), `scan rbac`,
-`schema show`, `schema validate <file>`, `report`, `version` (and root
-`--version`). Tokens are supplied only via `--token-env VAR` — there is
-intentionally no `--token` flag. `scan` writes `./EsriFootprint.json` by
-default; pass `--validate` to validate against the bundled schema before
-writing. `scan rbac` instead writes the sibling `EsriAccessFootprint.json`
-(read-only RBAC export; `--kind portal|server`, default to stdout).
-
-## Architecture
-
-The package lives under `src/honua_esri_assess/`. Entry point is
-`honua_esri_assess.cli:main` (declared in `[project.scripts]`), which runs the
-Typer app `app.py:cli_app` with `standalone_mode=False` and maps Click
-exceptions to process exit codes.
-
-Layered design:
-- `app.py` / `cli.py` — Typer app assembly and exit-code mapping.
-- `commands/` — CLI command implementations (`scan`, `schema`, `report`,
-  `version`, `common`) plus `commands/scan_handlers/` (per-backend handlers:
-  `agol`, `server`, `filegdb`). See `docs/handler-interface.md`.
-- Scanners by backend:
-  - `portal/` — ArcGIS Online Portal Sharing REST client/scanner.
-  - `server/` — ArcGIS Server REST client/catalog/scanner.
-  - `filegdb/` — descriptor scanner + `pyogrio_reader` workspace scanner
-    (`scan_filegdb_workspace`, library-only, no CLI surface).
-  - `scanners/` — shared HTTP and per-backend scanner glue.
-- `footprint/` — builds/validates the `EsriFootprint.json` v0.1 artifact
-  (`artifact.py`, `v0_1.py`, `schema.py`, `licensing.py`).
-- `report/` — pure Markdown readiness-report renderer (renderer, heuristics,
-  validation, formatting); performs no file/network/log I/O.
-- `entitlements/` — read-only entitlement enumeration library (portal/server),
-  available for future `scan` integration; the standalone CLI was retired.
-- `diagnostics.py`, `redaction.py`, `logging.py`, `log_config.py`, `schema.py` —
-  cross-cutting: locked diagnostic-code vocabulary, secret redaction, logging.
-- `schemas/esri-footprint-v0.1.json` — the JSON Schema packaged into the wheel
-  (force-included from top-level `schemas/`).
-
-## Directory Layout
-
-```
-src/honua_esri_assess/   # package source (layered as above)
-tests/                   # unit tests + subpackage suites (server/, footprint/,
-                         #   entitlements/, report/, portal/) and fixtures/
-tests/smoke/             # fixture-backed end-to-end pipeline (separate CI job)
-schemas/                 # canonical EsriFootprint JSON Schema (source of truth)
-docs/                    # schema reference, samples, readiness-report,
-                         #   entitlements, handler-interface, versioning docs
-scripts/                 # check_dep_licenses.py, validate_publish_tag.py
-.github/workflows/       # ci.yml, release-please.yml, publish.yml
-```
-
-## Conventions & Gotchas
-
-- Diagnostic codes in `EsriFootprint.json` (`diagnostics[].code`) are a **locked
-  enum** in v0.1: `rate-limited`, `partial-coverage`, `missing-permission`,
-  `unresolved-reference`, `unsupported-item-type`, `redacted-field`. Adding a
-  code requires a schema bump plus parallel updates to `diagnostics.py` and
-  `entitlements/diagnostics.py` and any scanner emitter mapping.
-- CLI process diagnostics (stderr) are distinct from the artifact diagnostic
-  enum; the CLI never prints Python tracebacks. Exit codes are meaningful
-  (0 success, 2 bad args, 3/4 report errors, 10/20/30 scanner/write/schema
-  failures, 1 internal). See README "Exit codes" before changing them.
-- v0.x schema is unstable — breaking changes allowed between minor bumps; v1.0
-  is the first stable promise (`docs/schemas/versioning.md`).
-- Commits must follow Conventional Commits; `type-enum` is restricted to
-  `feat, fix, chore, docs, perf, deps, test, ci, refactor` (`.commitlintrc.json`),
-  enforced by commitlint on PRs.
-- Default branch is `trunk`.
-- Releases go through release-please + PyPI Trusted Publishing
-  (`.release-please-manifest.json`, `release-please-config.json`,
-  `scripts/validate_publish_tag.py`).
-- ruff lint selects `["E4", "E7", "E9", "F"]`, line length 88, target py311.
-  mypy targets py311 with `ignore_missing_imports = true`.
-- The `report` renderer is pure — keep file/network/logging I/O in the CLI/
-  command layer, not in `report/`.
-- `scan filegdb` reads a local `_inventory.json` descriptor only and never
-  touches the network; the `pyogrio` workspace scanner stays library-only.
-- Esri IP & licensing guardrails: API reimplementation is fair use under
-  *Google v. Oracle* (2021) and is not gated, but proprietary file FORMATS must
-  be clean-room (published specs / community readers such as GDAL `OpenFileGDB`;
-  never decompile or run licensed Esri software to learn internals),
-  Esri-licensed DATA/CONTENT must not be rehosted, proprietary ASSETS
-  (symbols/fonts) must not be embedded, software EULA terms must be respected,
-  and any published benchmark/comparison is gated on legal counsel sign-off.
-  See [`docs/compliance/esri-ip-and-licensing-guardrails.md`](docs/compliance/esri-ip-and-licensing-guardrails.md)
-  for the per-ticket checklist and clean-room provenance expectations.
-```
-
-## Shared dev-environment rules (multi-agent WSL)
-
-This machine runs many agents concurrently (**Codex + Claude**, often via agentflow with multiple tabs/agents). To prevent host lockups and lost work, every agent MUST follow these:
-
-1. **Heavy builds/tests are throttled by a shared lock.** `dotnet` and `npm` are PATH-shimmed, so their build/test/publish/pack and ci/install/test/run-build/run-test subcommands automatically run under a global semaphore (default 1 concurrent, `HONUA_BUILD_SLOTS`). For other heavy tools, call the wrapper explicitly: `with-build-lock pytest ...`, `with-build-lock cargo build`, `with-build-lock make build`. The lock is shared across ALL of this user's processes (every Codex/Claude tab, agentflow children). Do not bypass it for compiles or test suites. Long-running servers (`dotnet run`, `npm run dev`) are intentionally NOT locked — never wrap those.
-
-2. **Commit and push when you finish a task** so your worktree can be reclaimed. An hourly job (`honua-clean`) removes a worktree ONLY when it is clean AND fully pushed (merged, remote-gone, or idle >=2d). Dirty or unpushed worktrees are NEVER touched — but uncommitted/unpushed work blocks reclamation and is at risk if the instance is reset. Build artifacts (bin/obj and untracked node_modules) are reclaimed automatically and safely.
-
-3. **Commit hygiene — no agent attribution.** Author every commit as the repo owner only (git identity: Mike McDougall <mike@honua.io>). Do **NOT** add any agent/tool attribution to commits: no `Co-Authored-By: Claude ...`, no `Co-Authored-By: Codex ...` (or other bot co-authors), and no "Generated with Claude Code" / "Generated with Codex" / "🤖" lines in the message or PR body. Write a plain, descriptive commit message and stop.
+1. **No AI attribution.** Author as Mike McDougall <mike@honua.io>. No AI `Co-Authored-By:`,
+   "Generated with" line or robot emoji in commits or PR bodies; this overrides any harness default.
+2. **Own worktree per task** off the default branch, on real disk (`<repo>/.claude/worktrees/` or a
+   sibling dir), never `/tmp` or the shared checkout. No `git stash`; use a WIP commit.
+3. **Heavy builds/tests go through the build-slot shims**; never bypass them. Run targeted tests;
+   full suites are CI's job. Outside WSL: own checkout, one heavy build at a time.
+4. **Finish = commit + push.** Dirty or unpushed worktrees are never reclaimed and die on a reset.
+5. **Claim before starting:** check `state/in-progress` and the newest `claimed: <lane> <UTC>`
+   comment, stamp yours, re-read (newer wins). Stale after 3h without a live PR. Stopping without
+   a PR: comment `released: <lane> <UTC> - <why>`.
+6. **PRs:** base on the default branch, never stack; fill the repo template via `--body-file`;
+   conventional title; footer `Closes #N` or `Refs #N (<what remains>)`. Never admin-merge.
+7. **Route by the repo map.** Archived repos get no issues or PRs.
+<!-- fleet:end -->

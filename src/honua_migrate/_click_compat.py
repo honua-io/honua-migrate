@@ -1,23 +1,8 @@
-"""Locate Click's exception classes across Typer's shifting vendored layout.
+"""Resolve Click exception classes used by the unified command tree.
 
-Typer >=0.13 vendors its own copy of Click under ``typer._click``. Exceptions
-raised while the Typer app parses arguments are instances of those vendored
-classes, which are *not* subclasses of the standalone ``click`` package's
-exceptions, so an entry point that maps exceptions to exit codes has to catch
-both hierarchies.
-
-Where each class lives has moved between Typer releases: ``Exit`` was exported
-from ``typer._click.exceptions`` and is now only ``typer.exceptions.Exit`` (a
-``RuntimeError``, not a ``ClickException``), as of Typer 0.27.2. Looking every
-name up independently, across every module that might hold it, means one
-relocated class no longer costs us the others - which is what happened when a
-single ``try`` block resolved ``Exit`` and ``ClickException`` together and the
-``AttributeError`` on ``Exit`` silently dropped the vendored ``ClickException``,
-letting ``BadParameter`` escape ``main()`` as an unhandled traceback.
-
-Both entry points share this module, and it lives here rather than in
-``honua_esri_assess`` because importing that package emits the legacy-surface
-deprecation warning - which the successor CLI must not print.
+Typer can vendor Click, so argument errors may belong to a different hierarchy
+than standalone Click. Resolve each class independently because Exit and
+ClickException can be exported from different modules.
 """
 
 from __future__ import annotations

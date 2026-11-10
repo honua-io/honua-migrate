@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-SRC_ROOT = Path(__file__).resolve().parents[1] / "src" / "honua_esri_assess"
+SRC_ROOT = Path(__file__).resolve().parents[1] / "src" / "honua_migrate" / "assessment"
 
 _FORBIDDEN_HOSTS = re.compile(
     r"https?://[a-z0-9.\-]*(honua\.io|honua-sdk|telemetry|analytics)",
@@ -20,7 +20,7 @@ _FORBIDDEN_HOSTS = re.compile(
 # a *shareable catalog URL* pointing at honua.io as plain output data -- it is
 # printed/written to the artifact, never fetched. No HTTP client in this
 # codebase is ever pointed at this constant; see
-# ``honua_esri_assess.caps.renderer.CATALOG_BASE_URL`` and
+# ``honua_migrate.assessment.caps.renderer.CATALOG_BASE_URL`` and
 # ``tests/caps/test_cli.py::test_caps_never_fetches_network_by_default``,
 # which asserts the default ``caps`` run makes zero network calls.
 _ALLOWED_PHONE_HOME_REFERENCES: frozenset[tuple[str, str]] = frozenset(

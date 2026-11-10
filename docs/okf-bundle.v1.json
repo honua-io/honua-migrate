@@ -24,7 +24,7 @@
     },
     {
       "path": "docs/handler-interface.md",
-      "why": "The CLI dispatch extension point: how scanner tickets register backend handlers under honua_esri_assess.commands.scan_handlers without changing the command tree. An internal architecture contract for contributors adding handlers, not something a user of the CLI calls."
+      "why": "The CLI dispatch extension point: how scanner tickets register backend handlers under honua_migrate.assessment.commands.scan_handlers without changing the command tree. An internal architecture contract for contributors adding handlers, not something a user of the CLI calls."
     },
     {
       "path": "docs/samples/readiness-report.sample.md",

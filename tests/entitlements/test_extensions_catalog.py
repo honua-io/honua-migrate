@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from honua_esri_assess.entitlements.extensions import (
+from honua_migrate.assessment.entitlements.extensions import (
     extension_catalog,
     resolve_extension,
 )

@@ -7,31 +7,33 @@ tags: [reports, readiness]
 # Markdown readiness report
 
 The readiness report is the human-readable companion to
-`EsriFootprint.json`. It helps a prospect review inventory, rough migration
+`AssessmentFootprint.json`. It helps a prospect review inventory, rough migration
 complexity, manual-review flags, suggested sequencing, and diagnostics before
 the footprint is handed to Honua.
 
-It is **not** a second handoff contract. `EsriFootprint.json` remains the sole
+It is **not** a second handoff contract. `AssessmentFootprint.json` remains the sole
 machine-readable contract the migration commands consume. The
 report is read-only by construction: it is rendered from an already captured
-footprint and does not contact ArcGIS Online, ArcGIS Server, FileGDB paths,
-Honua services, or any telemetry endpoint.
+footprint and does not contact source systems, FileGDB paths, Honua services,
+or any telemetry endpoint.
 
 ## Renderer contract
 
-`honua_esri_assess.report.render()` accepts a parsed footprint mapping and
+`honua_migrate.assessment.report.render()` accepts a parsed footprint mapping and
 returns deterministic Markdown.
 
-- The renderer performs no file, network, logging, or Esri-system I/O.
+- The renderer performs no file, network, logging, or source-system I/O.
 - The renderer does not validate or mutate the input footprint.
 - The CLI owns JSON parsing, optional schema validation, input/output paths,
   logging, and prospect-safe error handling.
 - The report wording, heading layout, and heuristic thresholds are not schema
   versioned. Changes to those surfaces do not change `schemaVersion`.
+- The report title and source labels use neutral terminology. Consumers that
+  match rendered Markdown text should update their matching rules.
 
 The committed sample report is generated from the canonical footprint:
 
-- Footprint: [`docs/samples/esri-footprint.sample.json`](./samples/esri-footprint.sample.json)
+- Footprint: [`docs/samples/assessment-footprint.sample.json`](./samples/assessment-footprint.sample.json)
 - Report: [`docs/samples/readiness-report.sample.md`](./samples/readiness-report.sample.md)
 
 The test suite compares the sample report byte-for-byte with freshly rendered
@@ -40,21 +42,21 @@ output.
 ## CLI usage
 
 ```bash
-honua-esri-assess report \
-  --input EsriFootprint.json \
+honua-migrate assess report \
+  --input AssessmentFootprint.json \
   --output readiness-report.md
 
-honua-esri-assess report \
-  --input docs/samples/esri-footprint.sample.json \
+honua-migrate assess report \
+  --input docs/samples/assessment-footprint.sample.json \
   --output -
 
-honua-esri-assess report --input - --output -
-honua-esri-assess report --input EsriFootprint.json --strict
+honua-migrate assess report --input - --output -
+honua-migrate assess report --input AssessmentFootprint.json --strict
 ```
 
 | Flag | Required | Description |
 | --- | --- | --- |
-| `--input` | yes | Path to `EsriFootprint.json`, or `-` to read JSON from stdin. |
+| `--input` | yes | Path to `AssessmentFootprint.json`, or `-` to read JSON from stdin. |
 | `--output` | no | Markdown output path, or `-` for stdout. Defaults to stdout. |
 | `--strict` | no | Exit with a typed schema error when v0.1 validation fails. |
 
@@ -69,12 +71,12 @@ is also rendered as a schema warning. `--strict` fails invalid footprints and
 also fails with a typed schema error when validation cannot run.
 
 The stderr surface remains typed and sanitized. The report command does not
-write customer Esri systems or send network telemetry.
+write customer source systems or send network telemetry.
 
 ## Renderer API
 
 ```python
-from honua_esri_assess.report import RenderOptions, render
+from honua_migrate.assessment.report import RenderOptions, render
 
 markdown = render(footprint, options=RenderOptions(max_inventory_rows=500))
 ```
@@ -137,7 +139,7 @@ themselves.
 | `unknown-item-type` | A portal item type is `Other`, `Unknown`, `Unsupported`, or `Unsupported Item Type`. |
 | `missing-spatial-reference` | A FileGDB feature class has no `wkid`, `latestWkid`, or `wkt` in its spatial reference. |
 | `legacy-spatial-reference` | A FileGDB feature class uses a v0.1 watchlist WKID: `26711`, `32040`, or `102671`. |
-| `unsupported-service-type` | An ArcGIS Server service type is outside `FeatureServer`, `ImageServer`, `MapServer`, or `VectorTileServer`. |
+| `unsupported-service-type` | A source service type is outside `FeatureServer`, `ImageServer`, `MapServer`, or `VectorTileServer`. |
 
 ## Migration ordering
 
@@ -147,23 +149,23 @@ passes; it does not add write or migration semantics to the footprint.
 | Order | Group | Matching items |
 | ---: | --- | --- |
 | 1 | FileGDB feature classes | `filegdb-feature-class` |
-| 2 | ArcGIS Server feature services | `server-service` with `serviceType: "FeatureServer"` |
-| 3 | ArcGIS Server map and image services | `server-service` with `serviceType: "MapServer"` or `"ImageServer"` |
-| 4 | AGOL hosted feature services | `portal-item` with `type: "Feature Service"` |
-| 5 | AGOL hosted tile and vector tile services | `portal-item` with `type: "Tile Service"` or `"Vector Tile Service"` |
-| 6 | AGOL web maps | `portal-item` with `type: "Web Map"` |
-| 7 | AGOL web apps, dashboards, and experiences | `portal-item` with `type: "Dashboard"`, `"Experience"`, or `"Web Mapping Application"` |
-| 8 | AGOL notebooks, solutions, workforce, survey, and insights | Portal items in the specialized manual-review set. |
+| 2 | GeoServices REST server feature services | `server-service` with `serviceType: "FeatureServer"` |
+| 3 | GeoServices REST server map and image services | `server-service` with `serviceType: "MapServer"` or `"ImageServer"` |
+| 4 | Portal hosted feature services | `portal-item` with `type: "Feature Service"` |
+| 5 | Portal hosted tile and vector tile services | `portal-item` with `type: "Tile Service"` or `"Vector Tile Service"` |
+| 6 | Portal web maps | `portal-item` with `type: "Web Map"` |
+| 7 | Portal web apps, dashboards, and experiences | `portal-item` with `type: "Dashboard"`, `"Experience"`, or `"Web Mapping Application"` |
+| 8 | Portal notebooks, solutions, workforce, survey, and insights | Portal items in the specialized manual-review set. |
 | 9 | Other or unknown item types | Any remaining inventory item. |
 
 ## Samples and tests
 
 - Canonical footprint:
-  [`docs/samples/esri-footprint.sample.json`](./samples/esri-footprint.sample.json)
+  [`docs/samples/assessment-footprint.sample.json`](./samples/assessment-footprint.sample.json)
 - Sample report:
   [`docs/samples/readiness-report.sample.md`](./samples/readiness-report.sample.md)
 - Schema reference:
-  [`docs/schemas/esri-footprint.v0.1.md`](./schemas/esri-footprint.v0.1.md)
+  [`docs/schemas/assessment-footprint.v0.1.md`](./schemas/assessment-footprint.v0.1.md)
 - Handoff contract:
   [`docs/schemas/handoff-contract.md`](./schemas/handoff-contract.md)
 

@@ -7,18 +7,18 @@ from pathlib import Path
 
 import pytest
 
-from honua_esri_assess.caps.crosswalk import load_bundled_crosswalk
-from honua_esri_assess.caps.mapper import evaluate
-from honua_esri_assess.caps.renderer import (
+from honua_migrate.assessment.caps.crosswalk import load_bundled_crosswalk
+from honua_migrate.assessment.caps.mapper import evaluate
+from honua_migrate.assessment.caps.renderer import (
     CATALOG_BASE_URL,
     build_url,
     render_markdown,
     to_json_dict,
 )
-from honua_esri_assess.diagnostics import ReportRenderError
+from honua_migrate.assessment.diagnostics import ReportRenderError
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SAMPLE = REPO_ROOT / "docs" / "samples" / "esri-footprint.sample.json"
+SAMPLE = REPO_ROOT / "docs" / "samples" / "assessment-footprint.sample.json"
 UTILITY_NETWORK = REPO_ROOT / "tests" / "fixtures" / "esri-footprint-utility-network.json"
 
 

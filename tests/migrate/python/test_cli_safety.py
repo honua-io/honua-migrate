@@ -178,7 +178,7 @@ def test_atomic_write_failure_preserves_existing_output(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
-    import honua_esri_assess.output_io
+    import honua_migrate.assessment.output_io
 
     output = tmp_path / "scan.json"
     output.write_text("original", encoding="utf-8")
@@ -187,7 +187,7 @@ def test_atomic_write_failure_preserves_existing_output(
         del source, destination
         raise OSError("simulated replace failure")
 
-    monkeypatch.setattr(honua_esri_assess.output_io.os, "replace", fail_replace)
+    monkeypatch.setattr(honua_migrate.assessment.output_io.os, "replace", fail_replace)
     result = module_main(
         [
             "scan",

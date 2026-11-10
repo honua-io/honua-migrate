@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-ASSESSMENT_SOURCE = REPO_ROOT / "src" / "honua_esri_assess"
+ASSESSMENT_SOURCE = REPO_ROOT / "src" / "honua_migrate" / "assessment"
 WRITE_METHODS = {"post", "put", "patch", "delete", "request", "send"}
 
 

@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from honua_esri_assess.diagnostics import Diagnostic
-from honua_esri_assess.footprint.schema import validate_footprint
-from honua_esri_assess.footprint.v0_1 import to_footprint_v0_1
-from honua_esri_assess.portal.models import GroupRecord, ItemRecord, OrgInfo, PortalScanResult
+from honua_migrate.assessment.diagnostics import Diagnostic
+from honua_migrate.assessment.footprint.schema import validate_footprint
+from honua_migrate.assessment.footprint.v0_1 import to_footprint_v0_1
+from honua_migrate.assessment.portal.models import GroupRecord, ItemRecord, OrgInfo, PortalScanResult
 
 
 def test_footprint_shape_validates_and_redacts_urls() -> None:

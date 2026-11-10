@@ -26,7 +26,7 @@ def test_project_metadata_declares_release_contract() -> None:
     assert project["license"] == "Apache-2.0"
     assert project["requires-python"] == ">=3.11"
     assert project["scripts"]["honua-migrate"] == "honua_migrate.cli:main"
-    assert project["scripts"]["honua-esri-assess"] == "honua_esri_assess.cli:main"
+    assert set(project["scripts"]) == {"honua-migrate"}
     assert set(project["urls"].values()) == {
         "https://github.com/honua-io/honua-migrate",
         "https://github.com/honua-io/honua-migrate/issues",
@@ -48,7 +48,6 @@ def test_build_backend_and_hatch_targets_are_configured() -> None:
     assert pyproject["build-system"]["build-backend"] == "hatchling.build"
     assert pyproject["tool"]["hatch"]["build"]["reproducible"] is True
     assert pyproject["tool"]["hatch"]["build"]["targets"]["wheel"]["packages"] == [
-        "src/honua_esri_assess",
         "src/honua_migrate",
     ]
 
@@ -60,7 +59,6 @@ def test_runtime_dependencies_are_pinned_with_lower_bounds() -> None:
     assert "typer>=0.12,<1" in dependencies
     assert "jsonschema>=4.21,<5" in dependencies
     assert "requests>=2.31,<3" in dependencies
-    assert "tenacity>=8.2,<10" in dependencies
     all_requirements = dependencies | {
         requirement
         for requirements in project["optional-dependencies"].values()
@@ -98,10 +96,7 @@ def test_release_please_config_uses_component_tags() -> None:
     assert package["tag-separator"] == "-"
     assert package["include-component-in-tag"] is True
     assert package["bump-minor-pre-major"] is True
-    assert package["extra-files"] == [
-        "src/honua_migrate/__init__.py",
-        "src/honua_esri_assess/__init__.py",
-    ]
+    assert package["extra-files"] == ["src/honua_migrate/__init__.py"]
     # Component packages release on their own; keep their commits out of the
     # Python changelog and version bump.
     assert package["exclude-paths"] == ["packages/javascript", "packages/maui"]
@@ -172,9 +167,7 @@ def test_publish_workflow_publishes_only_from_validated_release_tags() -> None:
     assert "validate_python_dist.py" in workflow
     assert "--compare" in workflow
     assert "honua-migrate\" assess --help" in workflow
-    assert "honua-esri-assess\" --help" in workflow
     assert workflow.count("-m honua_migrate assess --help") >= 2
-    assert workflow.count("-m honua_esri_assess --help") >= 2
     assert workflow.count("joinpath('py.typed').is_file()") == 2
     assert "skip-existing" not in workflow
     assert "password:" not in workflow
@@ -267,7 +260,7 @@ def test_publish_tag_validator_rejects_untagged_non_dry_run(
 
     version = _pyproject()["project"]["version"]
     assert module.main([f"honua-migrate-v{version}"]) == 0
-    assert module.main([f"honua-esri-assess-v{version}"]) == 1
+    assert module.main([f"invalid-release-tag-v{version}"]) == 1
     assert module.main(["main"]) == 1
     assert module.main([]) == 1
     assert module.main(["--allow-untagged"]) == 0

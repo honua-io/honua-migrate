@@ -12,6 +12,7 @@ import typer
 from ..contracts import (
     EXIT_APPLY_REFUSED,
     EXIT_INPUT_ERROR,
+    EXIT_PARTIAL,
     EXIT_UNAVAILABLE,
     MigrationError,
 )
@@ -148,10 +149,16 @@ def reconcile_compare_command(
     target: Path = typer.Option(..., "--target", help="Target snapshot JSON."),
     output: Path = typer.Option(..., "--output", help="New result artifact path."),
 ) -> None:
-    """Compare portable source and target snapshots for a run."""
+    """Compare portable source and target snapshots for a run.
+
+    A matched comparison exits 0. Any other status, including mismatched and
+    partial, exits EXIT_PARTIAL after the result artifact is written.
+    """
 
     result = reconcile_run(run_path, source, target, output)
     typer.echo(json.dumps({"run_id": result["run_id"], "status": result["status"]}))
+    if result["status"] != "matched":
+        raise typer.Exit(EXIT_PARTIAL)
 
 
 __all__ = [

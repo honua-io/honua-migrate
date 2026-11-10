@@ -7,16 +7,16 @@ from typing import Any, Callable
 
 import responses
 
-from honua_esri_assess.footprint.schema import validate_footprint
-from honua_esri_assess.footprint.v0_1 import to_footprint_v0_1
-from honua_esri_assess.portal import PortalClient, TokenCredential
-from honua_esri_assess.portal.models import (
+from honua_migrate.assessment.footprint.schema import validate_footprint
+from honua_migrate.assessment.footprint.v0_1 import to_footprint_v0_1
+from honua_migrate.assessment.portal import PortalClient, TokenCredential
+from honua_migrate.assessment.portal.models import (
     FederatedServer,
     FederationInfo,
     OrgInfo,
     PortalScanResult,
 )
-from honua_esri_assess.portal.scanner import PortalScanner
+from honua_migrate.assessment.portal.scanner import PortalScanner
 
 BASE = "https://demo.maps.arcgis.com/sharing/rest"
 

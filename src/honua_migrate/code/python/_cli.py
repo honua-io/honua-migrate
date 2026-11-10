@@ -1,4 +1,4 @@
-"""Command-line entrypoint for the ArcPy -> Honua GP migration codemod.
+"""Command-line entrypoint for the Honua GP migration codemod.
 
 Secondary module entry point (the canonical CLI is
 ``honua-migrate code python``)::
@@ -8,7 +8,7 @@ Secondary module entry point (the canonical CLI is
     python -m honua_migrate.code.python run script.py --server https://example.test
 
 The ``scan``, ``translate``, ``pyt``, ``atbx``, and ``gpservice`` commands work
-offline (no ArcGIS or network). Their success is not target execution. ``run``
+offline (no source desktop application or network). Their success is not target execution. ``run``
 submits a fully supported straight-line plan and exits 0 only after every
 required job reaches a successful terminal state and every declared output
 checks out. Asynchronous jobs are polled for at most 120 seconds. ``--yes``
@@ -19,14 +19,19 @@ from __future__ import annotations
 
 import argparse
 import ast
+import base64
 import json
+import math
+import os
+import re
 import sys
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from honua_esri_assess.output_io import (
+from honua_migrate.assessment.output_io import (
     OutputExistsError,
     atomic_write_text,
     ensure_overwrite_allowed,
@@ -44,25 +49,25 @@ from honua_migrate.contracts import (
     plan_digest,
 )
 
-from .arcpy import (
+from .script import (
     JOB_STATUS_DISMISSED,
     JOB_STATUS_SUCCESSFUL,
-    ArcPyCall,
-    ArcPyJobError,
-    ArcPyJobTimeoutError,
-    ArcPyJobTransportError,
-    ArcPyMigrationPlan,
-    ArcPyProcessExecution,
-    ArcPyProcessRunner,
-    ArcPyProcessTranslation,
+    ScriptCall,
+    ScriptJobError,
+    ScriptJobTimeoutError,
+    ScriptJobTransportError,
+    ScriptMigrationPlan,
+    ScriptProcessExecution,
+    ScriptProcessRunner,
+    ScriptProcessTranslation,
     _call_argument,
     _job_status,
     _lookup_spec,
     _normalize_status,
     build_parity_evidence,
-    scan_arcpy_file,
-    scan_arcpy_source,
-    translate_arcpy_report,
+    scan_script_file,
+    scan_script_source,
+    translate_script_report,
 )
 from .modelbuilder import (
     UnsupportedModelFormatError,
@@ -87,6 +92,21 @@ _BINARY_TOOLBOX_SUFFIXES = {".tbx"}
 _POLL_INTERVAL_SECONDS = 1.0
 _MAX_POLLS = 120
 _RUN_SCHEMA = "honua.migration.python.gp-run/v1"
+_ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+_GEOMETRY_BUFFER = "geometry.buffer"
+_BUFFER_INPUT_KEYS = frozenset({"input_features", "distance", "srid"})
+_GEOJSON_TYPES = frozenset(
+    {
+        "Point",
+        "LineString",
+        "Polygon",
+        "MultiPoint",
+        "MultiLineString",
+        "MultiPolygon",
+        "GeometryCollection",
+    }
+)
+_MIN_WKB_BYTES = 21
 _BLOCKING_SCOPES = (
     ast.If,
     ast.For,
@@ -183,7 +203,7 @@ def _cmd_scan(args: argparse.Namespace) -> int:
     failure = _preflight_outputs(args.output, force=args.force)
     if failure is not None:
         return failure
-    report = scan_arcpy_file(args.path)
+    report = scan_script_file(args.path)
     failure = _emit(report.to_dict(), out=args.output, force=args.force)
     if failure is not None:
         return failure
@@ -201,11 +221,11 @@ def _cmd_translate(args: argparse.Namespace) -> int:
     )
     if failure is not None:
         return failure
-    report = scan_arcpy_file(args.path)
+    report = scan_script_file(args.path)
     if report.syntax_error is not None:
         print(f"syntax error: {report.syntax_error}", file=sys.stderr)
         return EXIT_BAD_ARGUMENTS
-    plan = translate_arcpy_report(report)
+    plan = translate_script_report(report)
     evidence = build_parity_evidence(plan)
     if args.evidence is not None:
         failure = _emit(evidence, out=args.evidence, force=args.force)
@@ -291,23 +311,23 @@ def _expression_names(expression: str) -> set[str]:
     return {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
 
 
-def _call_values(call: ArcPyCall) -> list[Any]:
+def _call_values(call: ScriptCall) -> list[Any]:
     return [*call.args, *call.kwargs.values(), *call.expanded_kwargs]
 
 
-def _missing_required(call: ArcPyCall) -> str | None:
+def _missing_required(call: ScriptCall) -> str | None:
     spec = _lookup_spec(call.family, call.tool)
     if spec is None:
         return None
     for index, arg in enumerate(spec.args):
         if arg.kind not in {"input", "output"}:
             continue
-        if _call_argument(call, index, arg.arcpy_name) is None:
-            return arg.arcpy_name
+        if _call_argument(call, index, arg.source_name) is None:
+            return arg.source_name
     return None
 
 
-def _produced_names(call: ArcPyCall) -> set[str]:
+def _produced_names(call: ScriptCall) -> set[str]:
     names = set(call.assignment_targets)
     spec = _lookup_spec(call.family, call.tool)
     if spec is None:
@@ -315,7 +335,7 @@ def _produced_names(call: ArcPyCall) -> set[str]:
     for index, arg in enumerate(spec.args):
         if arg.kind != "output":
             continue
-        value = _call_argument(call, index, arg.arcpy_name)
+        value = _call_argument(call, index, arg.source_name)
         if isinstance(value, str) and value.isidentifier():
             names.add(value)
     return names
@@ -346,7 +366,7 @@ def _blocked_call_locations(source: str) -> set[tuple[int, int]]:
     return blocked
 
 
-def _static_refusal(plan: ArcPyMigrationPlan, source: str) -> dict[str, Any] | None:
+def _static_refusal(plan: ScriptMigrationPlan, source: str) -> dict[str, Any] | None:
     """Return a pre-dispatch refusal, or None when every call may be executed."""
 
     if plan.report.syntax_error is not None:
@@ -411,7 +431,7 @@ def _static_refusal(plan: ArcPyMigrationPlan, source: str) -> dict[str, Any] | N
             "reason": "no-runnable-steps",
             "exit_code": EXIT_PARTIAL,
             "guidance": (
-                "no translatable ArcPy calls to execute. Nothing was submitted."
+                "no translatable geoprocessing calls to execute. Nothing was submitted."
             ),
         }
     if not translatable:
@@ -420,7 +440,7 @@ def _static_refusal(plan: ArcPyMigrationPlan, source: str) -> dict[str, Any] | N
                 "outcome": "unsupported",
                 "reason": "unsupported-calls",
                 "exit_code": EXIT_PARTIAL,
-                "guidance": "Every ArcPy call is unsupported. Nothing was submitted.",
+                "guidance": "Every geoprocessing call is unsupported. Nothing was submitted.",
             }
         if all(call.status == "manual-review" for call in calls):
             return {
@@ -428,7 +448,7 @@ def _static_refusal(plan: ArcPyMigrationPlan, source: str) -> dict[str, Any] | N
                 "reason": "manual-review-only",
                 "exit_code": EXIT_PARTIAL,
                 "guidance": (
-                    "no translatable ArcPy calls to execute. Nothing was submitted."
+                    "no translatable geoprocessing calls to execute. Nothing was submitted."
                 ),
             }
         return _partial_plan_refusal()
@@ -448,7 +468,7 @@ def _partial_plan_refusal() -> dict[str, Any]:
     }
 
 
-def _plan_id(script_name: str, plan: ArcPyMigrationPlan) -> str:
+def _plan_id(script_name: str, plan: ScriptMigrationPlan) -> str:
     return plan_digest(
         {
             "script": script_name,
@@ -465,7 +485,7 @@ def _plan_id(script_name: str, plan: ArcPyMigrationPlan) -> str:
     )
 
 
-def _skipped_calls(plan: ArcPyMigrationPlan) -> list[dict[str, Any]]:
+def _skipped_calls(plan: ScriptMigrationPlan) -> list[dict[str, Any]]:
     return [
         {
             "qualifiedName": call.qualified_name,
@@ -479,7 +499,7 @@ def _skipped_calls(plan: ArcPyMigrationPlan) -> list[dict[str, Any]]:
 
 def _run_document(
     args: argparse.Namespace,
-    plan: ArcPyMigrationPlan,
+    plan: ScriptMigrationPlan,
     *,
     script_name: str,
     outcome: str,
@@ -517,7 +537,7 @@ def _run_document(
 
 def _finish_run(
     args: argparse.Namespace,
-    plan: ArcPyMigrationPlan,
+    plan: ScriptMigrationPlan,
     *,
     script_name: str,
     outcome: str,
@@ -548,7 +568,7 @@ def _finish_run(
     return exit_code
 
 
-def _terminal_success(execution: ArcPyProcessExecution) -> bool:
+def _terminal_success(execution: ScriptProcessExecution) -> bool:
     """True only for an explicit successful terminal status.
 
     A missing status is not success. ``accepted`` is only submission.
@@ -581,7 +601,39 @@ def _checked_reference(declared: Any, actual: Any) -> str | None:
     return None
 
 
-def _output_checks(execution: ArcPyProcessExecution) -> tuple[bool, list[dict[str, Any]]]:
+def _geometry_kind(value: Any) -> str | None:
+    """Return a GeoJSON type name, without copying coordinates."""
+
+    if not isinstance(value, Mapping):
+        return None
+    kind = value.get("type")
+    if not isinstance(kind, str):
+        return None
+    if kind == "Feature":
+        geometry = _geometry_kind(value.get("geometry"))
+        return "Feature" if geometry not in (None, "Feature") else None
+    if kind not in _GEOJSON_TYPES:
+        return None
+    if kind == "GeometryCollection":
+        return kind if isinstance(value.get("geometries"), list) else None
+    return kind if "coordinates" in value else None
+
+
+def _inline_geometry_reference(actual: Any) -> str | None:
+    """Name an inline geometry result without storing its coordinates."""
+
+    candidate = actual
+    if isinstance(actual, Mapping) and "value" in actual:
+        candidate = actual.get("value")
+    kind = _geometry_kind(candidate)
+    if kind is None:
+        return None
+    if kind == "Feature":
+        return "inline:Feature"
+    return f"inline:{kind}"
+
+
+def _output_checks(execution: ScriptProcessExecution) -> tuple[bool, list[dict[str, Any]]]:
     declared = execution.translation.payload.get("outputs")
     if not isinstance(declared, Mapping) or not declared:
         return True, []
@@ -596,7 +648,12 @@ def _output_checks(execution: ArcPyProcessExecution) -> tuple[bool, list[dict[st
     checks: list[dict[str, Any]] = []
     verified_all = True
     for name, declared_value in declared.items():
-        reference = _checked_reference(declared_value, produced.get(name))
+        if name in produced:
+            reference = _checked_reference(declared_value, produced.get(name))
+        elif len(declared) == 1:
+            reference = _inline_geometry_reference(produced.get("outputFeatureLayer"))
+        else:
+            reference = None
         verified = reference is not None
         verified_all = verified_all and verified
         checks.append({"name": str(name), "verified": verified, "reference": reference})
@@ -604,7 +661,7 @@ def _output_checks(execution: ArcPyProcessExecution) -> tuple[bool, list[dict[st
 
 
 def _job_record(
-    translation: ArcPyProcessTranslation,
+    translation: ScriptProcessTranslation,
     *,
     job_id: str | None,
     status: str | None,
@@ -629,9 +686,134 @@ def _sdk_unavailable_guidance() -> str:
     )
 
 
+def _is_unauthenticated(exc: BaseException) -> bool:
+    return getattr(exc, "status_code", None) in (401, 403)
+
+
+def _as_wkb_text(value: str) -> str | None:
+    if not value or value != value.strip():
+        return None
+    try:
+        decoded = base64.b64decode(value, validate=True)
+    except (ValueError, TypeError):
+        return None
+    if len(decoded) < _MIN_WKB_BYTES or decoded[0] not in (0, 1):
+        return None
+    return value
+
+
+def _as_wkb(value: Any) -> dict[str, Any] | str | None:
+    if isinstance(value, str):
+        return _as_wkb_text(value)
+    if isinstance(value, Mapping) and _geometry_kind(value) is not None:
+        return {str(key): item for key, item in value.items()}
+    return None
+
+
+def _as_distance(value: Any) -> int | float | None:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if value <= 0:
+        return None
+    return value
+
+
+def _as_srid(value: Any) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        return None
+    return value
+
+
+def _geometry_buffer_inputs(payload: Mapping[str, Any]) -> dict[str, Any] | None:
+    inputs = payload.get("inputs")
+    if not isinstance(inputs, Mapping) or set(inputs) - _BUFFER_INPUT_KEYS:
+        return None
+    wkb = _as_wkb(inputs.get("input_features"))
+    distance = _as_distance(inputs.get("distance"))
+    srid = _as_srid(inputs.get("srid"))
+    if wkb is None or distance is None or srid is None:
+        return None
+    return {"wkb": wkb, "srid": srid, "distance": distance}
+
+
+def _server_translation(
+    translation: ScriptProcessTranslation,
+) -> ScriptProcessTranslation | None:
+    """Adapt one step to the published geometry.buffer job, or refuse it."""
+
+    if translation.job_process_id != _GEOMETRY_BUFFER:
+        return None
+    inputs = _geometry_buffer_inputs(translation.payload)
+    outputs = translation.payload.get("outputs")
+    if inputs is None or not isinstance(outputs, Mapping) or not outputs:
+        return None
+    payload: dict[str, Any] = {
+        "inputs": inputs,
+        "outputs": {str(key): value for key, value in outputs.items()},
+    }
+    metadata = translation.payload.get("metadata")
+    if isinstance(metadata, Mapping):
+        payload["metadata"] = {str(key): value for key, value in metadata.items()}
+    return replace(translation, process_id=_GEOMETRY_BUFFER, payload=payload)
+
+
+def _status_document(job: Any) -> dict[str, Any]:
+    if isinstance(job, Mapping):
+        return dict(job)
+    document: dict[str, Any] = {}
+    job_id = getattr(job, "job_id", None)
+    status = getattr(job, "status", None)
+    if isinstance(job_id, str) and job_id:
+        document["jobID"] = job_id
+    if isinstance(status, str) and status:
+        document["status"] = status
+    inline = getattr(job, "inline_results", None)
+    if isinstance(inline, Mapping) and inline:
+        document["outputs"] = dict(inline)
+    return document
+
+
+class _ServerGeoprocessing:
+    """Adapt ``HonuaClient.geoprocessing()`` to the process runner.
+
+    The body is inputs only. Declared output names stay on the translation so
+    verification can see them, and they are not sent to the server. Polling
+    uses ``job``; ``wait`` is not used because it dismisses a timed-out job.
+    """
+
+    def __init__(self, geoprocessing: Any) -> None:
+        self._geoprocessing = geoprocessing
+
+    def execute(self, process_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
+        inputs = payload.get("inputs") if isinstance(payload, Mapping) else None
+        if not isinstance(inputs, Mapping):
+            raise ScriptJobError(None, "failed", {})
+        job = self._geoprocessing.submit_geometry(
+            process_id,
+            dict(inputs),
+            respond_async=True,
+        )
+        return _status_document(job)
+
+    def job(self, job_id: str) -> dict[str, Any]:
+        return _status_document(self._geoprocessing.job(job_id))
+
+    def job_results(self, job_id: str) -> Any:
+        return self._geoprocessing.results(job_id)
+
+
+def _server_geoprocessing(client: Any) -> Any | None:
+    factory = getattr(client, "geoprocessing", None)
+    if not callable(factory):
+        return None
+    return factory()
+
+
 def _execute_plan(
     args: argparse.Namespace,
-    plan: ArcPyMigrationPlan,
+    plan: ScriptMigrationPlan,
     *,
     script_name: str,
 ) -> int:
@@ -651,18 +833,67 @@ def _execute_plan(
     jobs: list[dict[str, Any]] = []
     output_checks: list[dict[str, Any]] = []
     dispatch_count = 0
+    api_key: str | None = None
+    env_name = getattr(args, "api_key_env", None)
+    if isinstance(env_name, str):
+        api_key = os.environ.get(env_name, "")
+        if not api_key.strip():
+            return _finish_run(
+                args,
+                plan,
+                script_name=script_name,
+                outcome="unavailable",
+                reason="unauthenticated",
+                guidance=(
+                    "The API key environment variable is unset or empty. "
+                    "Nothing was submitted."
+                ),
+                exit_code=EXIT_UNAVAILABLE,
+            )
+    client_kwargs: dict[str, Any] = {}
+    if api_key is not None:
+        client_kwargs["api_key"] = api_key
     # One attempt per step. A lost or unfinished response is not posted again.
-    with HonuaClient(args.server) as client:
-        runner = ArcPyProcessRunner(
-            client,
-            poll_interval=_POLL_INTERVAL_SECONDS,
-            max_polls=_MAX_POLLS,
-        )
-        for translation in plan.translations:
+    with HonuaClient(args.server, **client_kwargs) as client:
+        geoprocessing = _server_geoprocessing(client)
+        if geoprocessing is not None:
+            adapted: list[ScriptProcessTranslation] = []
+            for translation in plan.translations:
+                mapped = _server_translation(translation)
+                if mapped is None:
+                    return _finish_run(
+                        args,
+                        plan,
+                        script_name=script_name,
+                        outcome="incomplete",
+                        reason="not-executable",
+                        guidance=(
+                            "The plan is not executable on this server. "
+                            "geometry.buffer accepts a GeoJSON geometry or "
+                            "base64 WKB, an integer srid, and a positive "
+                            "numeric distance. Nothing was submitted."
+                        ),
+                        exit_code=EXIT_UNSUPPORTED_INPUT,
+                    )
+                adapted.append(mapped)
+            runner = ScriptProcessRunner(
+                _ServerGeoprocessing(geoprocessing),
+                poll_interval=_POLL_INTERVAL_SECONDS,
+                max_polls=_MAX_POLLS,
+            )
+            steps: Sequence[ScriptProcessTranslation] = tuple(adapted)
+        else:
+            runner = ScriptProcessRunner(
+                client,
+                poll_interval=_POLL_INTERVAL_SECONDS,
+                max_polls=_MAX_POLLS,
+            )
+            steps = plan.translations
+        for translation in steps:
             dispatch_count += 1
             try:
                 execution = runner.execute_async(translation)
-            except ArcPyJobTimeoutError as exc:
+            except ScriptJobTimeoutError as exc:
                 job_id = _public_job_id(exc.job_id)
                 jobs.append(
                     _job_record(
@@ -690,7 +921,7 @@ def _execute_plan(
                     output_checks=output_checks,
                     dispatch_count=dispatch_count,
                 )
-            except ArcPyJobError as exc:
+            except ScriptJobError as exc:
                 job_id = _public_job_id(exc.job_id)
                 cancelled = _normalize_status(exc.status) == JOB_STATUS_DISMISSED
                 jobs.append(
@@ -732,7 +963,7 @@ def _execute_plan(
                     output_checks=output_checks,
                     dispatch_count=dispatch_count,
                 )
-            except ArcPyJobTransportError as exc:
+            except ScriptJobTransportError as exc:
                 # Submission succeeded; polling or the results download did not.
                 # Keep the sanitized id and do not treat the run as success.
                 job_id = _public_job_id(exc.job_id)
@@ -761,7 +992,31 @@ def _execute_plan(
                     output_checks=output_checks,
                     dispatch_count=dispatch_count,
                 )
-            except Exception:
+            except Exception as exc:
+                if _is_unauthenticated(exc):
+                    jobs.append(
+                        _job_record(
+                            translation,
+                            job_id=None,
+                            status=None,
+                            succeeded=False,
+                        )
+                    )
+                    return _finish_run(
+                        args,
+                        plan,
+                        script_name=script_name,
+                        outcome="unavailable",
+                        reason="unauthenticated",
+                        guidance=(
+                            "The server refused the credential before a job id "
+                            "was returned. It was not retried."
+                        ),
+                        exit_code=EXIT_UNAVAILABLE,
+                        jobs=jobs,
+                        output_checks=output_checks,
+                        dispatch_count=max(dispatch_count - 1, 0),
+                    )
                 jobs.append(
                     _job_record(
                         translation,
@@ -864,6 +1119,12 @@ def _cmd_run(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return EXIT_SAFETY_REFUSAL
+    env_name = getattr(args, "api_key_env", None)
+    if env_name is not None and (
+        not isinstance(env_name, str) or _ENV_NAME.fullmatch(env_name) is None
+    ):
+        print("invalid --api-key-env name", file=sys.stderr)
+        return EXIT_BAD_ARGUMENTS
     failure = _preflight_outputs(args.output, force=args.force)
     if failure is not None:
         return failure
@@ -878,8 +1139,8 @@ def _cmd_run(args: argparse.Namespace) -> int:
         print("could not read the input script", file=sys.stderr)
         return EXIT_BAD_ARGUMENTS
 
-    plan = translate_arcpy_report(
-        scan_arcpy_source(source, filename=script_name)
+    plan = translate_script_report(
+        scan_script_source(source, filename=script_name)
     )
     refusal = _static_refusal(plan, source)
     if refusal is not None:
@@ -1010,8 +1271,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    scan = sub.add_parser("scan", help="Classify ArcPy calls in a Python script (offline).")
-    scan.add_argument("path", type=Path, help="Path to an arcpy .py script.")
+    scan = sub.add_parser("scan", help="Classify geoprocessing calls in a Python script (offline).")
+    scan.add_argument("path", type=Path, help="Path to a Python script.")
     scan.add_argument("--output", type=Path, default=None, help="Write JSON report to this path (default: stdout).")
     scan.add_argument("--force", action="store_true", help="Replace existing output files.")
     scan.set_defaults(func=_cmd_scan)
@@ -1020,7 +1281,7 @@ def build_parser() -> argparse.ArgumentParser:
         "translate",
         help="Emit OGC Processes payloads + a parity-evidence coverage report (offline).",
     )
-    translate.add_argument("path", type=Path, help="Path to an arcpy .py script.")
+    translate.add_argument("path", type=Path, help="Path to a Python script.")
     translate.add_argument(
         "--output",
         type=Path,
@@ -1043,7 +1304,7 @@ def build_parser() -> argparse.ArgumentParser:
             "required job succeeds and declared outputs are verified."
         ),
     )
-    run.add_argument("path", type=Path, help="Path to an arcpy .py script.")
+    run.add_argument("path", type=Path, help="Path to a Python script.")
     run.add_argument("--server", required=True, help="Honua server base URL.")
     run.add_argument("--output", type=Path, default=None, help="Write execution results JSON here (default: stdout).")
     run.add_argument("--dry-run", action="store_true", help="Emit payloads without contacting the server.")
@@ -1058,6 +1319,14 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     run.add_argument("--force", action="store_true", help="Replace existing output files.")
+    run.add_argument(
+        "--api-key-env",
+        default=None,
+        help=(
+            "Environment variable that holds the Honua API key. "
+            "The key is not a command argument."
+        ),
+    )
     run.set_defaults(func=_cmd_run)
 
     pyt = sub.add_parser("pyt", help="Parse a .pyt Python toolbox and classify its tools' GP calls.")
@@ -1079,7 +1348,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     gpservice = sub.add_parser(
         "gpservice",
-        help="Parse an ArcGIS REST GPServer service-definition JSON and classify its tasks (offline).",
+        help="Parse a GeoServices REST GPServer service-definition JSON and classify its tasks (offline).",
     )
     gpservice.add_argument("path", type=Path, help="Path to a GPServer service-definition JSON (.../GPServer?f=json).")
     gpservice.add_argument("--url", default=None, help="Original service URL to record in the report.")

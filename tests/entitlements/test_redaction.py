@@ -6,12 +6,12 @@ import logging
 
 import pytest
 
-from honua_esri_assess.entitlements.diagnostics import (
+from honua_migrate.assessment.entitlements.diagnostics import (
     EntitlementsApiError,
     EntitlementsConnectionError,
 )
-from honua_esri_assess.entitlements.http import safe_url
-from honua_esri_assess.entitlements.server import ServerEntitlementsCollector
+from honua_migrate.assessment.entitlements.http import safe_url
+from honua_migrate.assessment.entitlements.server import ServerEntitlementsCollector
 
 from .conftest import StubHttpClient, respond
 
@@ -61,7 +61,7 @@ def test_collector_error_messages_redact_admin_token(caplog: pytest.LogCaptureFi
     client = StubHttpClient(handlers=handlers)
     collector = ServerEntitlementsCollector("https://example.com/arcgis", client)
 
-    caplog.set_level(logging.DEBUG, logger="honua_esri_assess")
+    caplog.set_level(logging.DEBUG, logger="honua_migrate.assessment")
     with pytest.raises(EntitlementsApiError) as ctx:
         collector.collect()
 

@@ -6,9 +6,9 @@ import json
 from typing import Any
 from urllib.parse import urlsplit
 
-from honua_esri_assess.entitlements.http import HttpResponse
-from honua_esri_assess.footprint.access import build_access_footprint
-from honua_esri_assess.scanners.admin_rbac import scan_portal_rbac, scan_server_rbac
+from honua_migrate.assessment.entitlements.http import HttpResponse
+from honua_migrate.assessment.footprint.access import build_access_footprint
+from honua_migrate.assessment.scanners.admin_rbac import scan_portal_rbac, scan_server_rbac
 
 from .conftest import StubHttpClient, load_fixture
 
@@ -66,7 +66,7 @@ def test_scanner_uses_raw_target_but_artifact_is_credential_free() -> None:
 
 
 def test_service_permission_url_strips_embedded_credentials() -> None:
-    from honua_esri_assess.scanners.admin_rbac import model_service_permission
+    from honua_migrate.assessment.scanners.admin_rbac import model_service_permission
 
     perm = model_service_permission(
         "https://svc:secret@host.local/server/rest/services/X/FeatureServer?token=topsecret-token",

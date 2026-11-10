@@ -97,7 +97,6 @@ def _source_version(path: Path) -> str:
 def validate_python_source_versions(expected: str) -> None:
     for path in (
         Path("src/honua_migrate/__init__.py"),
-        Path("src/honua_esri_assess/__init__.py"),
     ):
         actual = _source_version(path)
         if actual != expected:

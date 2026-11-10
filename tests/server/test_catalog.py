@@ -2,7 +2,7 @@
 
 import pytest
 
-from honua_esri_assess.server.catalog import (
+from honua_migrate.assessment.server.catalog import (
     SERVICE_TYPE_TO_KIND,
     UNKNOWN_KIND,
     classify_geometry,
