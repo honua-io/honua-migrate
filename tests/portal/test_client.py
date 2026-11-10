@@ -4,9 +4,9 @@ from typing import Any, Callable
 
 import pytest
 
-from honua_esri_assess.diagnostics import PortalAuthError
-from honua_esri_assess.portal import PortalClient, RetryPolicy, TokenCredential
-from honua_esri_assess.portal.client import normalize_portal_url, redact_url
+from honua_migrate.assessment.diagnostics import PortalAuthError
+from honua_migrate.assessment.portal import PortalClient, RetryPolicy, TokenCredential
+from honua_migrate.assessment.portal.client import normalize_portal_url, redact_url
 
 
 class FakeResponse:
@@ -114,7 +114,7 @@ def test_client_exposes_no_write_helpers() -> None:
 
 
 def test_normalize_portal_url_rejects_bad_port() -> None:
-    from honua_esri_assess.diagnostics import PortalApiError
+    from honua_migrate.assessment.diagnostics import PortalApiError
 
     with pytest.raises(PortalApiError) as exc_info:
         normalize_portal_url("https://demo.maps.arcgis.com:bad/sharing/rest")
@@ -137,7 +137,7 @@ def test_get_json_translates_url_value_error_to_portal_connection_error() -> Non
         def get(self, *_args: Any, **_kwargs: Any) -> Any:  # noqa: ANN401
             raise ValueError("invalid port")
 
-    from honua_esri_assess.diagnostics import PortalConnectionError
+    from honua_migrate.assessment.diagnostics import PortalConnectionError
 
     client = PortalClient(
         "https://demo.maps.arcgis.com",

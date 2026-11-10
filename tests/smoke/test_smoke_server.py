@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from honua_esri_assess.cli import main as cli_main
-from honua_esri_assess.diagnostics import DIAGNOSTIC_CODES
+from honua_migrate.assessment.cli import main as cli_main
+from honua_migrate.assessment.diagnostics import DIAGNOSTIC_CODES
 
 
 def test_server_happy_scan(
@@ -15,7 +15,7 @@ def test_server_happy_scan(
     expected_counts,
     tmp_output_dir: Path,
 ) -> None:
-    output = tmp_output_dir / "EsriFootprint.json"
+    output = tmp_output_dir / "AssessmentFootprint.json"
     with mocked_routes("arcgis-server/happy"):
         exit_code = cli_main(
             [

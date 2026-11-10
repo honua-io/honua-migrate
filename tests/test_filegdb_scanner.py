@@ -9,7 +9,7 @@ from typing import Any, Mapping
 
 from jsonschema import Draft202012Validator, FormatChecker
 
-from honua_esri_assess.filegdb import (
+from honua_migrate.assessment.filegdb import (
     FileGdbLayer,
     FileGdbReaderUnavailable,
     FileGdbScanOptions,

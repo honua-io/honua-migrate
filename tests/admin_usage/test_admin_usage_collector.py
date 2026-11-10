@@ -8,11 +8,11 @@ from typing import Any, Mapping
 
 import pytest
 
-from honua_esri_assess.entitlements.diagnostics import (
+from honua_migrate.assessment.entitlements.diagnostics import (
     EntitlementsRateLimitedError,
 )
-from honua_esri_assess.entitlements.http import HttpResponse
-from honua_esri_assess.scanners.admin_usage import (
+from honua_migrate.assessment.entitlements.http import HttpResponse
+from honua_migrate.assessment.scanners.admin_usage import (
     AdminUsageCollector,
     AdminUsageResult,
 )

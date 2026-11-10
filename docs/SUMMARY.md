@@ -6,7 +6,7 @@
 
 ## Guides
 
-* [Assess before you migrate](assessment-transition.md)
+* [Assessment command](assessment-transition.md)
 * [When honua-migrate and honua-sdk collide](console-script-collision.md)
 * [Verify a migrated app against imported services](imported-app-browser-verification.md)
 * [What access the assessment needs](operators/prerequisites-and-least-privilege.md)
@@ -19,13 +19,13 @@
 
 ## Reference
 
-* [ArcGIS existing-app handoff](contracts/arcgis-existing-app-handoff.md)
+* [GeoServices REST existing-app handoff](contracts/geoservices-rest-existing-app-handoff.md)
 * [Migration artifact contracts](contracts/migration-contracts.md)
-* [Esri license entitlement enumeration](entitlements.md)
+* [License entitlement enumeration](entitlements.md)
 * [The 2026.1 JavaScript migration cohort](js-migration-cohort-2026.1.md)
 * [The readiness report](readiness-report.md)
-* [esri-access-footprint v0.1 schema](schemas/esri-access-footprint.v0.1.md)
-* [esri-footprint v0.1 schema](schemas/esri-footprint.v0.1.md)
-* [esri-footprint v0.2 schema](schemas/esri-footprint.v0.2.md)
+* [Assessment access footprint v0.1 schema](schemas/assessment-access-footprint.v0.1.md)
+* [Assessment footprint v0.1 schema](schemas/assessment-footprint.v0.1.md)
+* [Assessment footprint v0.2 schema](schemas/assessment-footprint.v0.2.md)
 * [Assessment handoff contract](schemas/handoff-contract.md)
 * [Schema versioning policy](schemas/versioning.md)

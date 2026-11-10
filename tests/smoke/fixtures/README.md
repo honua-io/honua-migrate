@@ -23,10 +23,10 @@ fixture-file mappings. The smoke `conftest.py` loads it into the `responses`
 registry and asserts there were **no unmatched requests** at teardown — any
 drift in scanner URL construction will surface as a hard test failure rather
 than a silent skip. The FileGDB corpus is filesystem-only. Real FileGDB scans
-should call the `honua_esri_assess.filegdb.scan_filegdb_workspace` library
+should call the `honua_migrate.assessment.filegdb.scan_filegdb_workspace` library
 function with the optional `pyogrio`/GDAL metadata backend against a real
 `.gdb` directory; the synthetic fixture files here are only test scaffolding
-and are not part of the `EsriFootprint.json` handoff contract. The smoke suite
+and are not part of the `AssessmentFootprint.json` handoff contract. The smoke suite
 exercises the `scan filegdb --target ...` descriptor CLI path so fixture tests
 stay dependency-light.
 

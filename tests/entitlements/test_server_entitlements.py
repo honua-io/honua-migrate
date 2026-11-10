@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from honua_esri_assess.entitlements.diagnostics import (
+from honua_migrate.assessment.entitlements.diagnostics import (
     EntitlementsConnectionError,
     EntitlementsRateLimitedError,
 )
-from honua_esri_assess.entitlements.server import (
+from honua_migrate.assessment.entitlements.server import (
     ServerEntitlementsCollector,
     ServiceRef,
 )

@@ -6,7 +6,7 @@ import io
 import json
 from pathlib import Path
 
-from honua_esri_assess import cli
+from honua_migrate.assessment import cli
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE = REPO_ROOT / "tests" / "fixtures" / "esri-footprint-sample.json"

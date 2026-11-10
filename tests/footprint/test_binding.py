@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from honua_esri_assess.footprint.binding import (
+from honua_migrate.assessment.footprint.binding import (
     DatastoreRegistration,
     binding_mode_for_connection,
     build_binding_plan,

@@ -5,7 +5,7 @@ description: "The prospect-facing summary of what an assessment hands over: whic
 resource: "https://github.com/honua-io/honua-migrate/tree/trunk/schemas"
 tags: [handoff, contracts, artifacts]
 ---
-# Handoff Contract: `EsriFootprint.json`
+# Handoff Contract: `AssessmentFootprint.json`
 
 This document is the short, prospect-facing summary of what an assessment
 hands over to the rest of the migration.
@@ -13,19 +13,19 @@ hands over to the rest of the migration.
 For semver rules, deprecation policy, and full producer/consumer contracts,
 see [versioning.md](./versioning.md). The published JSON Schema body for the
 current `0.1.x` line lives in
-[`docs/schemas/esri-footprint.v0.1.md`](./esri-footprint.v0.1.md)
+[`docs/schemas/assessment-footprint.v0.1.md`](./assessment-footprint.v0.1.md)
 (schema file: [`schemas/esri-footprint-v0.1.json`](../../schemas/esri-footprint-v0.1.json),
-canonical sample: [`docs/samples/esri-footprint.sample.json`](../samples/esri-footprint.sample.json)).
+canonical sample: [`docs/samples/assessment-footprint.sample.json`](../samples/assessment-footprint.sample.json)).
 
 ## The sole handoff
 
-`EsriFootprint.json` is the **only** supported handoff out of an assessment.
+`AssessmentFootprint.json` is the **only** supported handoff out of an assessment.
 
 - No side-channel data exchange. Consumers do not call the
-  customer's Esri systems on their own, does not consume scanner logs, and does
+  customer's source systems on their own, do not consume scanner logs, and do
   not read CLI exit codes as a signal.
 - No alternate entitlement handoff. The Python entitlement collectors
-  (`honua_esri_assess.entitlements`) emit a facet-compatible JSON fragment for
+  (`honua_migrate.assessment.entitlements`) emit a facet-compatible JSON fragment for
   validation and prospective scanner integration, but no consumer ingests
   that fragment directly. The standalone `entitlements` CLI was
   retired in E9.
@@ -36,16 +36,16 @@ canonical sample: [`docs/samples/esri-footprint.sample.json`](../samples/esri-fo
   session IDs.
 
 If a future deliverable needs to flow from the assessment to its consumers,
-it either lands inside `EsriFootprint.json` (with a schema bump) or
+it either lands inside `AssessmentFootprint.json` (with a schema bump) or
 it does not flow. There is no "small exception."
 
-The Markdown readiness report produced by `honua-esri-assess report` is a
+The Markdown readiness report produced by `honua-migrate assess report` is a
 human-readable derivative of the footprint. It is not a closed-product input and
 does not extend the handoff contract.
 
 ## What each side declares
 
-**Producer (`honua-esri-assess`)** writes a top-level header on every emit:
+**Producer (`honua-migrate assess`)** writes a top-level header on every emit:
 
 ```json
 {
@@ -60,16 +60,16 @@ At v0.1 the in-band `schemaVersion` is the literal major.minor `"v0.1"`;
 the full SemVer for the schema build lives in the schema's `$id`. The
 producer also writes a single matching facet (`portal`, `server`, or
 `filegdb`) based on `source.kind`; sibling facets are schema-rejected
-(see [Discriminator rules](./esri-footprint.v0.1.md#discriminator-rules)).
+(see [Discriminator rules](./assessment-footprint.v0.1.md#discriminator-rules)).
 For Portal and Server footprints, the matching facet may include an optional
 `licensing` block with read-only entitlement observations. Missing licensing
 means the producer did not include entitlement enumeration in that footprint;
 empty required arrays inside a present licensing block mean nothing was
 observed or enumerable with the current credential.
 
-For ArcGIS Server scans in the v0.1 line, the producer records a
-credential-free services root in `source.locator` and writes the ArcGIS
-Server details in the matching `server` facet:
+For server scans in the v0.1 line, the producer records a
+credential-free services root in `source.locator` and writes the source
+server details in the matching `server` facet:
 
 ```json
 {
@@ -114,15 +114,15 @@ for the full state machine.
 
 Per release line, a consumer receives:
 
-1. A tagged release of `honua-esri-assess` with a `schemaVersion` matching
+1. A tagged `honua-migrate` release with a `schemaVersion` matching
    the release line (e.g., the `0.1.x` line emits `schemaVersion: "v0.1"`;
    patch lives in the schema `$id` and `tool.version`).
 2. The JSON Schema body for that line under
-   [`docs/schemas/`](./esri-footprint.v0.1.md) (published for v0.1).
+   [`docs/schemas/`](./assessment-footprint.v0.1.md) (published for v0.1).
 3. A `CHANGELOG.md` entry summarizing what changed, including any
    deprecations and their planned removal window.
 4. At least one canonical sample footprint under
-   [`docs/samples/`](../samples/esri-footprint.sample.json)
+   [`docs/samples/`](../samples/assessment-footprint.sample.json)
    that a consumer can use as a conformance check, plus fixture
    corpora and golden expectations under `tests/smoke/` for scanner-backed
    conformance checks. Scanner-specific unit fixtures may live under
@@ -139,18 +139,18 @@ A prospect or a consumer can verify a footprint locally:
    ([`schemas/esri-footprint-v0.1.json`](../../schemas/esri-footprint-v0.1.json)
    for the current `0.1.x` line), with `date-time` format assertions or
    equivalent RFC3339 checks enabled. The bundled CLI exposes this directly:
-   `honua-esri-assess schema validate EsriFootprint.json` exits `0` on a
+   `honua-migrate assess schema validate AssessmentFootprint.json` exits `0` on a
    conforming footprint and `30` with a typed `schema-validation-failed`
    stderr diagnostic otherwise.
 4. Inspect `diagnostics[]`. Treat `error`-severity entries as a failed
    scan; treat `warn`-severity entries as actionable but non-blocking.
    The v0.1 vocabulary is locked — see the
-   [v0.1 diagnostic code catalog](./esri-footprint.v0.1.md#diagnostic-code-catalog).
+   [v0.1 diagnostic code catalog](./assessment-footprint.v0.1.md#diagnostic-code-catalog).
 5. Confirm `tool.name == "honua-esri-assess"` and the `source.kind`
    matches the target system the customer expected to scan.
 
 No part of this verification requires contacting a Honua-operated service.
-The Markdown report generated by `honua-esri-assess report` is a derivative
+The Markdown report generated by `honua-migrate assess report` is a derivative
 human-readable view; it is not part of the handoff contract and is not
 ingested by a consumer.
 
@@ -162,7 +162,7 @@ containing `_inventory.json` or a descriptor file supplied directly — and emit
 the same v0.1 FileGDB artifact shape. The CLI never touches the network.
 
 The `pyogrio`/GDAL FileGDB workspace scanner is exposed as the
-`honua_esri_assess.filegdb.scan_filegdb_workspace` Python library function.
+`honua_migrate.assessment.filegdb.scan_filegdb_workspace` Python library function.
 It accepts `path_hash_salt` and `force_feature_count` options and returns the
 same v0.1 footprint shape. The workspace scanner is library-only in the
 current release; embedding it behind a CLI surface is a follow-on.
@@ -170,31 +170,30 @@ current release; embedding it behind a CLI surface is a follow-on.
 The emitted `source.kind` is `"filegdb"` and the only source-specific facet
 is `filegdb`; `portal` and `server` facets are schema-rejected. The raw
 workspace path is never published. `source.locator` and
-`filegdb.pathHash` carry the same salted `sha256:<64 hex>` value. Set
-`HONUA_ESRI_ASSESS_PATH_HASH_SALT` (or pass `path_hash_salt` to the library
-function) when stable path hashes are needed across runs; otherwise a
+`filegdb.pathHash` carry the same salted `sha256:<64 hex>` value. Pass
+`FileGdbScanOptions(path_hash_salt=...)` to the workspace scanner when stable path
+hashes are needed across runs; otherwise a
 per-run random salt is used.
 
 FileGDB inventory records use `kind == "filegdb-feature-class"` and include
-the reader's layer name, normalized Esri geometry type, spatial reference,
+the reader's layer name, normalized source geometry type, spatial reference,
 and any returned field or feature-count metadata. `filegdb.featureClassCount`,
 `counts.items["filegdb-feature-class"]`, and `counts.featureClasses` all
 count emitted FileGDB inventory records.
 
 ## Read-only stance
 
-The producer is read-only against the customer's Esri systems. This is a
+The producer is read-only against the customer's source systems. This is a
 constraint of the assessment tool itself, not just a property of the
 artifact:
 
-- No write APIs are called against ArcGIS Online, ArcGIS Server, or any
-  FileGDB.
+- No write APIs are called against the source portal, server, or any FileGDB.
 - The AGOL producer uses Portal Sharing REST `GET` calls only. It normalizes
   organization URLs and `/sharing/rest` URLs, then reads `portals/self`,
   `community/groups`, `search`, and `community/users` when token-authenticated.
   The AGOL CLI also supports a per-request `--timeout`; that timeout only limits
   local waiting and does not change the handoff artifact shape.
-- Pre-existing AGOL tokens are passed as query-string credentials to Esri only;
+- Pre-existing portal tokens are passed as query-string credentials only to the source system;
   they are redacted from diagnostics, logs, and the emitted footprint.
 - No field in the artifact records or implies a write.
 - Consumers are expected to honor the same read-only stance on
@@ -208,7 +207,7 @@ or the footprint. If the CLI cannot produce or save the artifact, it exits
 nonzero with a prospect-safe typed diagnostic on stderr. The
 artifact diagnostic shape is fixed by the[versioning policy](./versioning.md#diagnostics-surface); the vocabulary is
 closed per release line. At v0.1 the catalog is locked to six codes; see the
-[v0.1 diagnostic code catalog](./esri-footprint.v0.1.md#diagnostic-code-catalog).
+[v0.1 diagnostic code catalog](./assessment-footprint.v0.1.md#diagnostic-code-catalog).
 
 For the FileGDB workspace library function, missing optional reader
 dependencies, invalid workspaces, layer-listing failures, and per-layer
@@ -218,10 +217,10 @@ CLI process-level stderr diagnostics (`scanner-error`, `output-write-failed`,
 `schema-validation-failed`, `report.input.*`, `report.schema.invalid`,
 `report.render.internal`, `internal-error`) are **not** part of the schema enum.
 They describe local CLI process state and never appear inside
-`EsriFootprint.json`. A consumer reads the artifact and ignores CLI
+`AssessmentFootprint.json`. A consumer reads the artifact and ignores CLI
 stderr.
 
-`honua-esri-assess schema validate EsriFootprint.json` is the supported local
+`honua-migrate assess schema validate AssessmentFootprint.json` is the supported local
 validation command for prospects and for a consumer's ingest path. It
 prints `valid: <path>` on success and exits with a typed process diagnostic on
 schema or JSON-read failure.
@@ -229,17 +228,17 @@ schema or JSON-read failure.
 ## Readiness report
 
 The Markdown readiness report is a human-facing companion to
-`EsriFootprint.json`, not a second machine handoff contract. It is generated
+`AssessmentFootprint.json`, not a second machine handoff contract. It is generated
 from a parsed footprint and summarizes header metadata, schema warnings,
 service inventory, layer counts, complexity, manual-review items, migration
-ordering, and diagnostics without contacting Esri systems.
+ordering, and diagnostics without contacting source systems.
 
-The renderer is a pure deterministic API: parsed `EsriFootprint.json` dict in,
+The renderer is a pure deterministic API: parsed `AssessmentFootprint.json` dict in,
 Markdown string out. File reads, file writes, schema validation, and
 stdout/stderr are owned by the CLI layer, not by
-`honua_esri_assess.report.render()`.
+`honua_migrate.assessment.report.render()`.
 
-`honua-esri-assess report` accepts `--input` as a path or `-` for stdin.
+`honua-migrate assess report` accepts `--input` as a path or `-` for stdin.
 `--output` defaults to stdout and accepts `-` for stdout. The CLI validates
 with the packaged v0.1 schema and runtime `jsonschema` dependency. By default,
 schema validation failures or validation-unavailable notices are rendered as a
@@ -253,7 +252,7 @@ The sample report is published at
 The renderer is deterministic, performs no I/O, and the test suite compares
 the committed sample report byte-for-byte with freshly rendered output.
 
-The `honua-esri-assess report` CLI handles JSON parsing, packaged v0.1 schema
+The `honua-migrate assess report` CLI handles JSON parsing, packaged v0.1 schema
 validation, stdin/stdout, file output, local logging, and typed prospect-safe
 errors. By default, validation issues are rendered into a `Schema Warnings`
 section and the command exits successfully; with `--strict`, invalid v0.1
@@ -264,10 +263,20 @@ CLI response contract and the v0.1 report heuristics:
 ## Pointers
 
 - Versioning policy: [versioning.md](./versioning.md)
-- Schema body for v0.1: [`docs/schemas/esri-footprint.v0.1.md`](./esri-footprint.v0.1.md)
+- Schema body for v0.1: [`docs/schemas/assessment-footprint.v0.1.md`](./assessment-footprint.v0.1.md)
 - Entitlement enumeration: [`../entitlements.md`](../entitlements.md)
 - JSON Schema file: [`schemas/esri-footprint-v0.1.json`](../../schemas/esri-footprint-v0.1.json)
-- Canonical sample: [`docs/samples/esri-footprint.sample.json`](../samples/esri-footprint.sample.json)
+- Canonical sample: [`docs/samples/assessment-footprint.sample.json`](../samples/assessment-footprint.sample.json)
 - Sample readiness report: [`docs/samples/readiness-report.sample.md`](../samples/readiness-report.sample.md)
 - Readiness report guide: [`docs/readiness-report.md`](../readiness-report.md)
 - Repository landing page: [`../../README.md`](../../README.md)
+
+## Stable saved identifiers
+
+The default output filenames are `AssessmentFootprint.json` and
+`AssessmentAccessFootprint.json`. Their JSON contracts retain the existing
+schema resource names, `$id` values, source-kind values, producer identity,
+diagnostic codes, geometry and field-type literals, and deterministic ID
+namespace. Python script evidence retains its versioned schema IDs and source
+metadata. These values identify saved artifacts and interoperable source APIs;
+changing Python import paths or command labels does not migrate persisted data.

@@ -40,8 +40,7 @@ those activities apply.
 
 ## Scope
 
-This repo (`honua-esri-assess`) is a read-only assessment scanner, so most of
-its surface is low-risk. The guardrails below are written for the broader Honua
+This repo's read-only assessment (`honua-migrate assess`) reads source metadata. The guardrails below are written for the broader Honua
 Esri-migration backlog (the tickets listed under "Applies to") and apply to any
 contribution in this repo that touches the exposure areas. Use them as the
 default posture; counsel decisions override them.

@@ -6,14 +6,14 @@ import json
 
 import pytest
 
-from honua_esri_assess.caps.crosswalk import (
+from honua_migrate.assessment.caps.crosswalk import (
     CrosswalkError,
     bundled_crosswalk_text,
     load_bundled_crosswalk,
     parse_crosswalk,
     parse_crosswalk_text,
 )
-from honua_esri_assess.verdict.registry import CAPABILITY_REGISTRY
+from honua_migrate.assessment.verdict.registry import CAPABILITY_REGISTRY
 
 _REGISTRY_KEYS = frozenset(entry.key for entry in CAPABILITY_REGISTRY)
 

@@ -1,0 +1,148 @@
+"""Markdown renderer for the migratability verdict.
+
+Renders a :class:`FootprintVerdict` to deterministic Markdown. Performs no file,
+network, or logging I/O; reading/writing and validation are handled by the CLI.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import Any
+
+from honua_migrate.assessment.diagnostics import ReportRenderError
+from honua_migrate.assessment.report.formatting import bullet_list, markdown_table, text
+
+from .engine import FootprintVerdict, MigrationStep, ProfileVerdict, evaluate
+
+_VERDICT_LABELS = {"go": "GO", "conditional": "CONDITIONAL", "no-go": "NO-GO"}
+
+
+def render(footprint: Mapping[str, Any]) -> str:
+    """Render an Assessment footprint v0.1 dictionary to a Markdown verdict report."""
+
+    if not isinstance(footprint, Mapping):
+        raise ReportRenderError("Verdict renderer expected a footprint object.")
+
+    result = evaluate(footprint)
+    parts = [
+        _render_header(footprint),
+        _render_summary(result),
+        _render_hard_lock_ins(result),
+        _render_migration_order(result),
+        _render_profiles(result),
+    ]
+    return "\n\n".join(part.rstrip() for part in parts if part.strip()) + "\n"
+
+
+def _render_header(footprint: Mapping[str, Any]) -> str:
+    source = footprint.get("source", {})
+    if not isinstance(source, Mapping):
+        source = {}
+    rows = [
+        ("Schema version", text(footprint.get("schemaVersion"))),
+        ("Generated at", text(footprint.get("generatedAt"))),
+        ("Source", text(source.get("kind"))),
+        ("Source locator", text(source.get("locator"))),
+    ]
+    return "# Honua Migratability Verdict\n\n" + markdown_table(("Field", "Value"), rows)
+
+
+def _render_summary(result: FootprintVerdict) -> str:
+    rows = [
+        (
+            verdict.profile,
+            _VERDICT_LABELS.get(verdict.verdict, verdict.verdict),
+            verdict.effort,
+            str(len(verdict.boundaries)),
+        )
+        for verdict in result.profiles
+    ]
+    return "## Verdict by Shop Profile\n\n" + markdown_table(
+        ("Shop profile", "Verdict", "Effort", "Boundaries"), rows
+    )
+
+
+def _render_hard_lock_ins(result: FootprintVerdict) -> str:
+    lines = ["## Hard Lock-ins (explicit non-goals)"]
+    if not result.hard_lock_ins:
+        lines.append("No hard lock-ins (Utility Network, Parcel Fabric, LRS) detected.")
+        return "\n\n".join(lines)
+    lines.append(
+        "These source capabilities are explicit non-goals and force a no-go / "
+        "federate-only verdict wherever they appear:"
+    )
+    lines.append(
+        bullet_list(
+            f"**{boundary.label}** - {boundary.detail}"
+            for boundary in result.hard_lock_ins
+        )
+    )
+    return "\n\n".join(lines)
+
+
+def _render_migration_order(result: FootprintVerdict) -> str:
+    lines = ["## Recommended Migration Order"]
+    if not result.migration_order:
+        lines.append(
+            "No usage ranking or dependency graph was available to sequence the "
+            "migration."
+        )
+        return "\n\n".join(lines)
+
+    usage_driven = result.signals.usage_ranked
+    if usage_driven:
+        lines.append(
+            "Sequenced by observed request volume (usage-ranked); the highest-used "
+            "services migrate first."
+        )
+    else:
+        lines.append(
+            "Sequenced from the dependency graph; every dependency migrates before "
+            "the items that reference it."
+        )
+    rows = [_migration_row(step, usage_driven) for step in result.migration_order]
+    headers = (
+        ("Rank", "Service", "Observed requests")
+        if usage_driven
+        else ("Rank", "Item")
+    )
+    lines.append(markdown_table(headers, rows))
+    return "\n\n".join(lines)
+
+
+def _migration_row(step: MigrationStep, usage_driven: bool) -> tuple[str, ...]:
+    if usage_driven:
+        requests = str(step.requests) if step.requests is not None else "-"
+        return (str(step.rank), step.identifier, requests)
+    return (str(step.rank), step.identifier)
+
+
+def _render_profiles(result: FootprintVerdict) -> str:
+    sections = ["## Profile Detail"]
+    for verdict in result.profiles:
+        sections.append(_render_profile(verdict))
+    return "\n\n".join(sections)
+
+
+def _render_profile(verdict: ProfileVerdict) -> str:
+    label = _VERDICT_LABELS.get(verdict.verdict, verdict.verdict)
+    lines = [
+        f"### {verdict.profile}",
+        f"**Verdict:** {label} | **Effort:** {verdict.effort}",
+    ]
+    if verdict.rationale:
+        lines.append(bullet_list(verdict.rationale))
+    if verdict.boundaries:
+        rows = [
+            (
+                boundary.label,
+                "hard lock-in" if boundary.hard_lock_in else boundary.tier,
+                boundary.detail,
+            )
+            for boundary in verdict.boundaries
+        ]
+        lines.append("**Named boundaries:**")
+        lines.append(markdown_table(("Boundary", "Type", "Detail"), rows))
+    else:
+        lines.append("**Named boundaries:** none.")
+    return "\n\n".join(lines)

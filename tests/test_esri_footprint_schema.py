@@ -1,4 +1,4 @@
-"""Smoke tests for the EsriFootprint v0.1 schema and its canonical sample."""
+"""Smoke tests for the Assessment footprint v0.1 schema and its canonical sample."""
 
 from __future__ import annotations
 
@@ -16,11 +16,12 @@ SCHEMA_PATH = REPO_ROOT / "schemas" / "esri-footprint-v0.1.json"
 PACKAGED_SCHEMA_PATH = (
     REPO_ROOT
     / "src"
-    / "honua_esri_assess"
+    / "honua_migrate"
+    / "assessment"
     / "schemas"
     / "esri-footprint-v0.1.json"
 )
-SAMPLE_PATH = REPO_ROOT / "docs" / "samples" / "esri-footprint.sample.json"
+SAMPLE_PATH = REPO_ROOT / "docs" / "samples" / "assessment-footprint.sample.json"
 
 LOCKED_DIAGNOSTIC_CODES_V01 = frozenset(
     {
