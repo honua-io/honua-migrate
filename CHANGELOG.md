@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.10.0](https://github.com/honua-io/honua-migrate/compare/honua-migrate-v0.9.1...honua-migrate-v0.10.0) (2026-11-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* consolidate assessment under neutral migration commands ([#254](https://github.com/honua-io/honua-migrate/issues/254))
+* use services geoservices-rest instead of services arcgis. The old route has no alias.
+
+### Bug Fixes
+
+* **deps:** bump the pip group across 1 directory with 5 updates ([#233](https://github.com/honua-io/honua-migrate/issues/233)) ([ecbfaa6](https://github.com/honua-io/honua-migrate/commit/ecbfaa648394aa533b9b235b4be69343b7a9ba58))
+* rename the service migration command to GeoServices REST ([#252](https://github.com/honua-io/honua-migrate/issues/252)) ([61487f0](https://github.com/honua-io/honua-migrate/commit/61487f04d0d1d074504d50ee74a9fe49fe49b9de))
+
+
+### Documentation
+
+* describe the ArcGIS JS fidelity checks directly ([#248](https://github.com/honua-io/honua-migrate/issues/248)) ([c3397d5](https://github.com/honua-io/honua-migrate/commit/c3397d576f085b14da9aa44b009e7e558bb7191d))
+* the server this CLI calls is FCL-1.0-ALv2, not ELv2 ([#234](https://github.com/honua-io/honua-migrate/issues/234)) ([323c5f8](https://github.com/honua-io/honua-migrate/commit/323c5f87286d965e7028c4b36221ed32418878bd))
+* use canonical GeoServices REST handoff command ([#255](https://github.com/honua-io/honua-migrate/issues/255)) ([0dec6ca](https://github.com/honua-io/honua-migrate/commit/0dec6ca10c23f288da335452a0d85aaab36ac7b2))
+
+
+### Code Refactoring
+
+* consolidate assessment under neutral migration commands ([#254](https://github.com/honua-io/honua-migrate/issues/254)) ([3af8098](https://github.com/honua-io/honua-migrate/commit/3af8098ce080bb93259e6af78a18f84cdf88bcfe))
+
 ## [0.9.1](https://github.com/honua-io/honua-migrate/compare/honua-migrate-v0.9.0...honua-migrate-v0.9.1) (2026-10-30)
 
 
