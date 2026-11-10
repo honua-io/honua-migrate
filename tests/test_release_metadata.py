@@ -6,6 +6,7 @@ import importlib.util
 import json
 import re
 import tomllib
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
@@ -81,7 +82,10 @@ def test_release_please_manifest_matches_project_version() -> None:
         )
     )
     assert manifest["packages/javascript"] == javascript_package["version"]
-    assert manifest["packages/maui"] == "0.0.0"
+    maui_project = ET.parse(
+        REPO_ROOT / "packages/maui/cli/Honua.Migrate.Maui.Cli.csproj"
+    )
+    assert manifest["packages/maui"] == maui_project.findtext("PropertyGroup/Version")
 
 
 def test_release_please_config_uses_component_tags() -> None:
