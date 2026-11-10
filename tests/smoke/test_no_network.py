@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from honua_esri_assess.cli import main as cli_main
+from honua_migrate.assessment.cli import main as cli_main
 
 
 @pytest.fixture
@@ -40,7 +40,7 @@ def test_agol_scan_opens_no_real_sockets(
     mocked_routes,
     tmp_output_dir: Path,
 ) -> None:
-    output = tmp_output_dir / "EsriFootprint.json"
+    output = tmp_output_dir / "AssessmentFootprint.json"
     with mocked_routes("agol/happy"):
         exit_code = cli_main(
             [
@@ -63,7 +63,7 @@ def test_filegdb_scan_opens_no_real_sockets(
     tmp_output_dir: Path,
 ) -> None:
     fixture = Path(__file__).parent / "fixtures" / "filegdb" / "happy" / "sample.gdb"
-    output = tmp_output_dir / "EsriFootprint.json"
+    output = tmp_output_dir / "AssessmentFootprint.json"
     exit_code = cli_main(
         [
             "scan",

@@ -1,4 +1,4 @@
-"""``EsriFootprint.json`` emitter shape and safety guarantees (v0.2)."""
+"""``AssessmentFootprint.json`` emitter shape and safety guarantees (v0.2)."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ import json
 
 import pytest
 
-from honua_esri_assess.footprint.v0_1 import SCHEMA_VERSION, to_footprint_v0_1
-from honua_esri_assess.server.models import (
+from honua_migrate.assessment.footprint.v0_1 import SCHEMA_VERSION, to_footprint_v0_1
+from honua_migrate.assessment.server.models import (
     FolderRecord,
     LayerRecord,
     LockInDetail,
@@ -357,7 +357,7 @@ def test_footprint_classifies_non_feature_map_services_with_capabilities() -> No
 def test_footprint_with_service_breadth_validates_against_schema() -> None:
     """The additive serviceKind/ogcCapabilities fields validate under v0.2."""
 
-    from honua_esri_assess.footprint.schema import validate_footprint
+    from honua_migrate.assessment.footprint.schema import validate_footprint
 
     result = ServerScanResult(
         info=ServerInfo(url="https://gis.example.com/arcgis/rest/services"),
@@ -390,8 +390,8 @@ def test_footprint_with_service_breadth_validates_against_schema() -> None:
 def test_footprint_emits_gpserver_cross_repo_handoff() -> None:
     """GP services surface a cross-repo migration handoff; others do not."""
 
-    from honua_esri_assess.footprint.schema import validate_footprint
-    from honua_esri_assess.footprint.v0_1 import GP_HANDOFF_NOTE, GP_HANDOFF_TARGET
+    from honua_migrate.assessment.footprint.schema import validate_footprint
+    from honua_migrate.assessment.footprint.v0_1 import GP_HANDOFF_NOTE, GP_HANDOFF_TARGET
 
     result = ServerScanResult(
         info=ServerInfo(url="https://gis.example.com/arcgis/rest/services"),
@@ -459,7 +459,7 @@ def test_footprint_emits_gpserver_cross_repo_handoff() -> None:
 
 
 def _layer_detail_result() -> ServerScanResult:
-    from honua_esri_assess.server.models import (
+    from honua_migrate.assessment.server.models import (
         AttributeRulesInfo,
         EditorTracking,
         FieldDetail,
@@ -580,7 +580,7 @@ def test_emitter_omits_layers_when_no_detail() -> None:
 
 
 def test_layer_detail_footprint_validates_against_schema() -> None:
-    from honua_esri_assess.footprint.schema import validate_footprint
+    from honua_migrate.assessment.footprint.schema import validate_footprint
 
     fp = to_footprint_v0_1(_layer_detail_result(), tool_version="0.0.0")
     assert validate_footprint(fp) is True
@@ -642,14 +642,14 @@ def test_footprint_emits_additive_lock_in_block_with_extent() -> None:
 
 
 def test_lock_in_footprint_validates_against_v02_schema() -> None:
-    from honua_esri_assess.footprint.schema import validate_footprint
+    from honua_migrate.assessment.footprint.schema import validate_footprint
 
     fp = to_footprint_v0_1(_lock_in_result(), tool_version="0.0.0")
     assert validate_footprint(fp) is True
 
 
 def _binding_plan() -> "object":
-    from honua_esri_assess.footprint.binding import (
+    from honua_migrate.assessment.footprint.binding import (
         DatastoreRegistration,
         build_binding_plan,
     )
@@ -707,7 +707,7 @@ def test_footprint_omits_binding_plan_when_admin_usage_not_collected() -> None:
 
 
 def test_footprint_omits_empty_binding_plan() -> None:
-    from honua_esri_assess.footprint.binding import build_binding_plan
+    from honua_migrate.assessment.footprint.binding import build_binding_plan
 
     fp = to_footprint_v0_1(
         _make_result(),
@@ -718,7 +718,7 @@ def test_footprint_omits_empty_binding_plan() -> None:
 
 
 def test_binding_plan_footprint_validates_against_v02_schema() -> None:
-    from honua_esri_assess.footprint.schema import validate_footprint
+    from honua_migrate.assessment.footprint.schema import validate_footprint
 
     fp = to_footprint_v0_1(
         _make_result(),

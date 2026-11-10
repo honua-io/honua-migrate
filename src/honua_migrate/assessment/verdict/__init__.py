@@ -1,0 +1,29 @@
+"""Per-shop-profile migratability verdict over AssessmentFootprint.json."""
+
+from __future__ import annotations
+
+from .engine import (
+    Boundary,
+    FootprintVerdict,
+    LockInExtent,
+    MigrationStep,
+    ProfileVerdict,
+    SignalSummary,
+    evaluate,
+)
+from .registry import CAPABILITY_REGISTRY, HARD_LOCK_IN_KEYS, SHOP_PROFILES
+from .renderer import render
+
+__all__ = [
+    "Boundary",
+    "CAPABILITY_REGISTRY",
+    "FootprintVerdict",
+    "HARD_LOCK_IN_KEYS",
+    "LockInExtent",
+    "MigrationStep",
+    "ProfileVerdict",
+    "SignalSummary",
+    "SHOP_PROFILES",
+    "evaluate",
+    "render",
+]

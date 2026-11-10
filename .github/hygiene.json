@@ -1,0 +1,24 @@
+{
+  "roots": [
+    ".commitlintrc.json",
+    ".github/",
+    ".gitignore",
+    ".release-please-manifest.json",
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md",
+    "RELEASE.md",
+    "docs/",
+    "fixtures/",
+    "packages/",
+    "pyproject.toml",
+    "release-please-config.json",
+    "requirements/",
+    "schemas/",
+    "scripts/",
+    "src/",
+    "tests/"
+  ],
+  "gate_inputs": {}
+}

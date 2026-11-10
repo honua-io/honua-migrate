@@ -58,9 +58,11 @@ def assert_artifact_safe(value: Any, *, path: str = "$") -> None:
             f"Artifact contains an unredacted authorization value at {path}.",
             exit_code=EXIT_VALIDATION_ERROR,
         )
-    if not value.lower().startswith(("http://", "https://")):
+    if "://" not in value:
         return
     parsed = urlsplit(value)
+    if not parsed.scheme:
+        return
     if parsed.username is not None or parsed.password is not None:
         raise MigrationError(
             f"Artifact contains URL userinfo at {path}.",

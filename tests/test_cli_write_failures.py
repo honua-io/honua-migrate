@@ -9,9 +9,9 @@ from pathlib import Path
 
 import pytest
 
-from honua_esri_assess.cli import main as cli_main
-from honua_esri_assess.commands.common import ScanOptions, ScanResult
-from honua_esri_assess.commands.scan_handlers import HANDLERS, ScanHandler, register
+from honua_migrate.assessment.cli import main as cli_main
+from honua_migrate.assessment.commands.common import ScanOptions, ScanResult
+from honua_migrate.assessment.commands.scan_handlers import HANDLERS, ScanHandler, register
 
 TRACEBACK_RE = re.compile(r"Traceback \(most recent call")
 ABSOLUTE_PATH_RE = re.compile(r"(?<![A-Za-z0-9_/])(/home/|/Users/|C:\\)")
@@ -116,7 +116,7 @@ def test_report_write_to_directory_emits_typed_diagnostic(
     footprint["counts"]["items"]["filegdb-feature-class"] = 0
     footprint["counts"]["featureClasses"] = 0
     footprint["filegdb"]["featureClassCount"] = 0
-    input_path = tmp_path / "EsriFootprint.json"
+    input_path = tmp_path / "AssessmentFootprint.json"
     input_path.write_text(json.dumps(footprint), encoding="utf-8")
     output_dir = tmp_path / "report-as-directory"
     output_dir.mkdir()

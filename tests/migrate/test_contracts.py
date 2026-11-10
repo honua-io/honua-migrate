@@ -125,6 +125,8 @@ def test_run_v1_config_extension_is_backward_compatible_and_object_only() -> Non
         {"url": "https://example.test/data?token=secret"},
         {"url": "https://example.test/data?f=json"},
         {"message": "Authorization: Bearer raw-token"},
+        {"dsn": "postgres://migrator:secret@db.internal:5432/honua"},
+        {"dsn": "postgres://db.internal/honua?sslmode=require"},
     ],
 )
 def test_artifact_safety_rejects_credentials_and_url_secrets(payload: object) -> None:

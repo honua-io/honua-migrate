@@ -19,13 +19,11 @@ Upgrade an existing pipx installation to the latest released version:
 pipx upgrade honua-migrate
 ```
 
-Verify the canonical command, the read-only assessment mount, and the legacy
-compatibility console command from the pipx application environment:
+Verify the canonical command and the read-only assessment mount:
 
 ```bash
 honua-migrate --help
 honua-migrate assess --help
-honua-esri-assess --help
 ```
 
 Module and import compatibility require an explicit Python environment rather
@@ -35,8 +33,7 @@ than pipx's application-only command surface:
 python3 -m venv .venv
 .venv/bin/python -m pip install "honua-migrate==<version>"
 .venv/bin/python -m honua_migrate assess --help
-.venv/bin/python -m honua_esri_assess --help
-.venv/bin/python -c "import honua_migrate, honua_esri_assess"
+.venv/bin/python -c "import honua_migrate, honua_migrate.assessment"
 ```
 
 On Windows, use `.venv\\Scripts\\python.exe` in place of
@@ -47,10 +44,10 @@ Run a local assessment workflow with your own FileGDB inventory descriptor:
 ```bash
 honua-migrate assess scan filegdb \
   --target ./sample.gdb \
-  --output EsriFootprint.json \
+  --output AssessmentFootprint.json \
   --validate
 honua-migrate assess report \
-  --input EsriFootprint.json \
+  --input AssessmentFootprint.json \
   --output readiness-report.md
 ```
 

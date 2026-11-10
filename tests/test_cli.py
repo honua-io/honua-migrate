@@ -14,15 +14,15 @@ import pytest
 import responses
 from typer.testing import CliRunner
 
-from honua_esri_assess import __version__
-from honua_esri_assess.app import cli_app
-from honua_esri_assess.commands.common import ScanOptions, ScanResult
-from honua_esri_assess.commands.scan_handlers import HANDLERS, ScanHandler, register
-from honua_esri_assess.commands.scan_handlers import agol as agol_handler
-from honua_esri_assess.commands.scan_handlers import server as server_handler
-from honua_esri_assess.diagnostics import DiagnosticError
-from honua_esri_assess.portal.models import OrgInfo, PortalScanResult
-from honua_esri_assess.server.models import ServerInfo, ServerScanResult
+from honua_migrate.assessment import __version__
+from honua_migrate.assessment.app import cli_app
+from honua_migrate.assessment.commands.common import ScanOptions, ScanResult
+from honua_migrate.assessment.commands.scan_handlers import HANDLERS, ScanHandler, register
+from honua_migrate.assessment.commands.scan_handlers import agol as agol_handler
+from honua_migrate.assessment.commands.scan_handlers import server as server_handler
+from honua_migrate.assessment.diagnostics import DiagnosticError
+from honua_migrate.assessment.portal.models import OrgInfo, PortalScanResult
+from honua_migrate.assessment.server.models import ServerInfo, ServerScanResult
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SAMPLE_PATH = REPO_ROOT / "tests" / "fixtures" / "esri-footprint-sample.json"
@@ -32,6 +32,17 @@ ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 def visible_cli_output(output: str) -> str:
     return ANSI_ESCAPE.sub("", output)
+
+
+def test_filegdb_scan_creates_default_assessment_filename(tmp_path, monkeypatch) -> None:
+    from honua_migrate.cli import main
+
+    fixture = REPO_ROOT / "tests/smoke/fixtures/filegdb/happy/sample.gdb"
+    monkeypatch.chdir(tmp_path)
+    assert main(["assess", "scan", "filegdb", "--target", str(fixture)]) == 0
+    artifact = json.loads((tmp_path / "AssessmentFootprint.json").read_text())
+    assert artifact["source"]["kind"] == "filegdb"
+    assert artifact["tool"]["name"] == "honua-esri-assess"
 
 
 @pytest.fixture
@@ -138,7 +149,7 @@ def test_token_env_logs_name_without_value(
             "--token-env",
             "AGOL_TOKEN",
             "--output",
-            str(tmp_path / "EsriFootprint.json"),
+            str(tmp_path / "AssessmentFootprint.json"),
         ],
         env={"AGOL_TOKEN": "super-secret-token"},
     )
@@ -231,7 +242,7 @@ def test_network_scan_options_reach_builtin_handlers_without_secret_leakage(
 
         monkeypatch.setattr(server_handler, "ServerClient", FakeServerClient)
         monkeypatch.setattr(server_handler, "ServerScanner", FakeServerScanner)
-    output = tmp_path / "EsriFootprint.json"
+    output = tmp_path / "AssessmentFootprint.json"
 
     result = runner.invoke(
         cli_app,
@@ -278,7 +289,7 @@ def test_server_handler_uses_canonical_contract_and_retries_once(
     runner: CliRunner,
     tmp_path: Path,
 ) -> None:
-    output = tmp_path / "EsriFootprint.json"
+    output = tmp_path / "AssessmentFootprint.json"
     responses.add(
         responses.GET,
         "https://fixture.local/server/rest/info",
@@ -364,8 +375,8 @@ def test_version_command_mentions_tool_and_schema_versions(runner: CliRunner) ->
     result = runner.invoke(cli_app, ["version"])
 
     assert result.exit_code == 0
-    assert f"honua-esri-assess {__version__}" in result.output
-    assert "EsriFootprint schema v0.2" in result.output
+    assert f"honua-migrate {__version__}" in result.output
+    assert "Assessment footprint schema v0.2" in result.output
 
 
 def test_root_version_option_mentions_tool_and_schema_versions(
@@ -374,8 +385,8 @@ def test_root_version_option_mentions_tool_and_schema_versions(
     result = runner.invoke(cli_app, ["--version"])
 
     assert result.exit_code == 0
-    assert f"honua-esri-assess {__version__}" in result.output
-    assert "EsriFootprint schema v0.2" in result.output
+    assert f"honua-migrate {__version__}" in result.output
+    assert "Assessment footprint schema v0.2" in result.output
 
 
 def test_schema_validate_accepts_canonical_sample(runner: CliRunner) -> None:
@@ -395,7 +406,7 @@ def test_registered_handler_success_writes_validated_footprint(
         return ScanResult(footprint=deepcopy(sample_footprint))
 
     register(ScanHandler(name="agol", run=run))
-    output = tmp_path / "EsriFootprint.json"
+    output = tmp_path / "AssessmentFootprint.json"
 
     result = runner.invoke(
         cli_app,
@@ -482,7 +493,7 @@ def test_unexpected_handler_error_returns_generic_exit_1(
     result = runner.invoke(
         cli_app,
         ["scan", "agol", "--target", "https://example.com"],
-        env={"HONUA_ESRI_ASSESS_CRASH_DUMPS": "0"},
+        env={"HONUA_MIGRATE_ASSESSMENT_CRASH_DUMPS": "0"},
     )
 
     combined_output = result.output + (result.stderr or "")
@@ -513,11 +524,11 @@ def test_crash_dump_redacts_url_credentials_and_session_ids(
         ["scan", "agol", "--target", "https://example.com"],
         env={
             "HOME": str(tmp_path),
-            "HONUA_ESRI_ASSESS_CRASH_DUMPS": "1",
+            "HONUA_MIGRATE_ASSESSMENT_CRASH_DUMPS": "1",
         },
     )
 
-    crash_dir = tmp_path / ".cache" / "honua-esri-assess" / "crashes"
+    crash_dir = tmp_path / ".cache" / "honua-migrate" / "assessment" / "crashes"
     crash_files = list(crash_dir.glob("crash-*.json"))
 
     assert result.exit_code == 1
@@ -537,5 +548,5 @@ def test_crash_dump_redacts_url_credentials_and_session_ids(
     combined_output = result.output + (result.stderr or "")
     assert str(crash_files[0]) not in combined_output
     assert str(tmp_path) not in combined_output
-    assert "~/.cache/honua-esri-assess/crashes/" in combined_output
+    assert "~/.cache/honua-migrate/assessment/crashes/" in combined_output
     assert crash_files[0].name in combined_output

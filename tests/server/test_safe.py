@@ -1,6 +1,6 @@
 """Credential redaction unit tests."""
 
-from honua_esri_assess.server._safe import credential_free_url, redact_params, safe_url
+from honua_migrate.assessment.server._safe import credential_free_url, redact_params, safe_url
 
 
 def test_redact_params_masks_credential_keys() -> None:

@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.9.1](https://github.com/honua-io/honua-migrate/compare/honua-migrate-v0.9.0...honua-migrate-v0.9.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* **migrate:** keep a partial apply receipt and stop sending the API key in the clear ([#228](https://github.com/honua-io/honua-migrate/issues/228)) ([6e82a72](https://github.com/honua-io/honua-migrate/commit/6e82a729c176118cded4ed046ce8ed040ad0a0ec))
+* **migrate:** run literal geometry.buffer jobs on the server ([#230](https://github.com/honua-io/honua-migrate/issues/230)) ([68fb735](https://github.com/honua-io/honua-migrate/commit/68fb735a74cadf46e3aa944fe0de8ed54c48a6e2)), closes [#229](https://github.com/honua-io/honua-migrate/issues/229)
+* resolve release dispatch repository without checkout ([#219](https://github.com/honua-io/honua-migrate/issues/219)) ([3619d16](https://github.com/honua-io/honua-migrate/commit/3619d16d9a6338b06cadff38419c2d4b27b0c214))
+
+
+### Dependencies
+
+* **python:** remove unused retry and Hatch CLI dependencies ([#216](https://github.com/honua-io/honua-migrate/issues/216)) ([fe47b13](https://github.com/honua-io/honua-migrate/commit/fe47b131848af8709e7675f1f15ed01035e882bf))
+
+
+### Documentation
+
+* **agents:** replace shared dev-environment rules with generated fleet block ([#224](https://github.com/honua-io/honua-migrate/issues/224)) ([e36d4d0](https://github.com/honua-io/honua-migrate/commit/e36d4d0d5bbfc4190049e3077e1134a9e70bc29e))
+* **agents:** trim AGENTS.md to a 75-line digest ([#225](https://github.com/honua-io/honua-migrate/issues/225)) ([e916568](https://github.com/honua-io/honua-migrate/commit/e9165688b150292e25373c4843628013e30d2029))
+
 ## [0.9.0](https://github.com/honua-io/honua-migrate/compare/honua-migrate-v0.8.0...honua-migrate-v0.9.0) (2026-10-24)
 
 

@@ -43,7 +43,7 @@ jobs:
         run: python scripts/validate_publish_tag.py --allow-untagged --package javascript
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs:
       - detect
       - validate-tag
