@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/honua-io/honua-migrate/compare/honua-migrate-v0.10.0...honua-migrate-v0.10.1) (2026-11-10)
+
+
+### Bug Fixes
+
+* **deps:** bump the github-actions group across 1 directory with 4 updates ([#247](https://github.com/honua-io/honua-migrate/issues/247)) ([58ce47d](https://github.com/honua-io/honua-migrate/commit/58ce47de2af8ce6cc86cccd8ea4e38ba785e7949))
+
 ## [0.10.0](https://github.com/honua-io/honua-migrate/compare/honua-migrate-v0.9.1...honua-migrate-v0.10.0) (2026-11-10)
 
 
