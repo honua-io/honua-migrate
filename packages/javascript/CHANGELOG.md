@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.0-beta.0](https://github.com/honua-io/honua-migrate/compare/javascript-v0.3.0-beta.0...javascript-v0.4.0-beta.0) (2026-11-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* use services geoservices-rest instead of services arcgis. The old route has no alias.
+
+### Bug Fixes
+
+* **deps-dev:** bump vitest from 4.1.11 to 5.0.5 in /packages/javascript ([#214](https://github.com/honua-io/honua-migrate/issues/214)) ([634b34b](https://github.com/honua-io/honua-migrate/commit/634b34bf0aae3b1d10fa74296bf36dd7bd816923))
+* **js-migration:** restore non-ASCII characters lost in the engine import ([#208](https://github.com/honua-io/honua-migrate/issues/208)) ([beba9a8](https://github.com/honua-io/honua-migrate/commit/beba9a845c5461e70fe98ed4553be99629293643))
+* rename the service migration command to GeoServices REST ([#252](https://github.com/honua-io/honua-migrate/issues/252)) ([61487f0](https://github.com/honua-io/honua-migrate/commit/61487f04d0d1d074504d50ee74a9fe49fe49b9de))
+
 ## [0.3.0-beta.0](https://github.com/honua-io/honua-migrate/compare/javascript-v0.2.0-beta.0...javascript-v0.3.0-beta.0) (2026-10-18)
 
 
