@@ -14,9 +14,9 @@ observations read-only. The collector output is designed to slot into the option
 observations only reach downstream consumers when a `scan` handler
 attaches them to the emitted footprint.
 
-> **Status.** The interim standalone
-> standalone `entitlements` subcommand has been retired alongside the
-> CLI consolidation in [E9](../README.md#command-line-usage). The Python
+> **Status.** The interim standalone `entitlements` subcommand has been
+> retired alongside the CLI consolidation in E9 (current commands are listed in
+> the [README](../README.md#commands)). The Python
 > collectors below remain the supported interim surface until scanner
 > integration lands; the CLI usage examples in earlier revisions of this
 > document apply only to pre-E9 releases.

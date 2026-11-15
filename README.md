@@ -51,11 +51,11 @@ grant. An anonymous "Tier 1" scan needs no credentials at all.
 
 ## Status
 
-Alpha, pre-1.0 (current source version 0.7.x — see the [CHANGELOG](CHANGELOG.md)).
+Alpha, pre-1.0 (release history in the [CHANGELOG](CHANGELOG.md)).
 The `AssessmentFootprint.json` schema is at **v0.2** and unstable until v1.0:
 breaking changes are permitted between v0.x minors, per the
-[versioning policy](docs/schemas/versioning.md). An installed command's
-`--version` output is the authoritative application version.
+[versioning policy](docs/schemas/versioning.md). The output of
+`honua-migrate assess --version` is the authoritative installed version.
 
 ## Quick start
 
