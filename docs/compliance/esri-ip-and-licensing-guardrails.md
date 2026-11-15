@@ -85,9 +85,9 @@ support **clean-room**:
   structure; copying layout details from Esri SDK headers or sample code whose
   license forbids it.
 - **File GDB specifically:** read via **GDAL `OpenFileGDB`**, not the closed Esri
-  FileGDB SDK. This repo already follows that rule (see
-  [README "Decisions"](../../README.md#decisions): "no ELv2 closed-product code
-  is vendored").
+  FileGDB SDK. This repo already follows that rule: `scan filegdb-workspace`
+  reads through `pyogrio`/GDAL (see the [README commands](../../README.md#commands)),
+  and no closed-product code is vendored.
 - **Other formats in the backlog:** I3S/SLPK, tile cache packages (`.tpk`/
   `.tpkx`), web map / web scene JSON, mobile map packages, and similar — same
   rule: published spec or community reader; never decompile/run-to-learn.
