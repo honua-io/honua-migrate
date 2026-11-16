@@ -460,7 +460,11 @@ Hosted platform docs: <https://honua.gitbook.io/honuaio/>
 
 ## Contributing
 
-Issues and PRs are welcome. Commits follow
+This repository does not accept outside code contributions. Bug reports, feature
+requests, and interoperability reports are welcome through GitHub Issues. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the policy and security-reporting guidance.
+
+For Honua Geo Inc. maintainers, commits follow
 [Conventional Commits](https://www.conventionalcommits.org/) (enforced by
 commitlint in CI); CI also runs the unit and smoke suites on Python 3.11–3.13
 plus `ruff`, `mypy`, and a dependency license guard. Releases go through
