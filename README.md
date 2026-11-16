@@ -462,7 +462,7 @@ Hosted platform docs: <https://honua.gitbook.io/honuaio/>
 
 This repository does not accept outside code contributions. Bug reports, feature
 requests, and interoperability reports are welcome through GitHub Issues. See
-[CONTRIBUTING.md](CONTRIBUTING.md) for the policy and security-reporting guidance.
+[CONTRIBUTING.md](.github/CONTRIBUTING.md) for the policy and security-reporting guidance.
 
 For Honua Geo Inc. maintainers, commits follow
 [Conventional Commits](https://www.conventionalcommits.org/) (enforced by
