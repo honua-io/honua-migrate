@@ -9,6 +9,7 @@ from honua_migrate.assessment.commands.common import (
     DEFAULT_OUTPUT,
     DEFAULT_USER_AGENT,
     AdminUsageOption,
+    AllowInsecureHttpOption,
     AccessOutputOption,
     AccessValidateOption,
     ForceOption,
@@ -49,6 +50,7 @@ def scan_agol(
     timeout: TimeoutOption = 30.0,
     validate: ValidateOption = False,
     force: ForceOption = False,
+    allow_insecure_http: AllowInsecureHttpOption = False,
 ) -> None:
     run_scan_command(
         handler_name="agol",
@@ -63,6 +65,7 @@ def scan_agol(
         timeout=timeout,
         validate=validate,
         force=force,
+        allow_insecure_http=allow_insecure_http,
     )
 
 
@@ -80,6 +83,7 @@ def scan_server(
     validate: ValidateOption = False,
     admin_usage: AdminUsageOption = False,
     force: ForceOption = False,
+    allow_insecure_http: AllowInsecureHttpOption = False,
 ) -> None:
     run_scan_command(
         handler_name="server",
@@ -95,6 +99,7 @@ def scan_server(
         validate=validate,
         admin_usage=admin_usage,
         force=force,
+        allow_insecure_http=allow_insecure_http,
     )
 
 
@@ -184,6 +189,7 @@ def scan_rbac(
     timeout: TimeoutOption = 30.0,
     validate: AccessValidateOption = False,
     force: ForceOption = False,
+    allow_insecure_http: AllowInsecureHttpOption = False,
 ) -> None:
     run_rbac_scan_command(
         target=target,
@@ -198,4 +204,5 @@ def scan_rbac(
         timeout=timeout,
         validate=validate,
         force=force,
+        allow_insecure_http=allow_insecure_http,
     )

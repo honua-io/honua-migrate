@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
+import pytest
 import responses
 
 from honua_migrate.assessment.portal import (
@@ -150,3 +151,53 @@ def test_deep_scan_skips_non_arcgis_service_url_without_token_leak(
     assert result.services == []
     assert any(diagnostic.context.get("itemId") == "external-service" for diagnostic in result.diagnostics)
     assert all("external.example.com" not in call.request.url for call in responses.calls)
+
+
+def _single_item_search(fixture_json: Callable[[str], dict[str, Any]], item_url: str) -> None:
+    base = "https://demo.maps.arcgis.com/sharing/rest"
+    responses.add(responses.GET, f"{base}/portals/self", json=fixture_json("portal_self.json"), status=200)
+    responses.add(responses.GET, f"{base}/community/groups", json=fixture_json("groups_page_1.json"), status=200)
+    responses.add(responses.GET, f"{base}/community/users", json=fixture_json("users_count.json"), status=200)
+    responses.add(
+        responses.GET,
+        f"{base}/search",
+        json={
+            "total": 1,
+            "start": 1,
+            "num": 1,
+            "nextStart": -1,
+            "results": [
+                {
+                    "id": "probe-item",
+                    "title": "Probe",
+                    "owner": "publisher",
+                    "type": "Feature Service",
+                    "access": "org",
+                    "url": item_url,
+                    "modified": 1714521600000,
+                }
+            ],
+        },
+        status=200,
+    )
+
+
+@pytest.mark.parametrize(
+    "item_url",
+    [
+        "http://demo.maps.arcgis.com/arcgis/rest/services/Parcels/FeatureServer",
+        "https://demo.maps.arcgis.com:8443/arcgis/rest/services/Parcels/FeatureServer",
+        "http://services.arcgis.com/org/arcgis/rest/services/Parcels/FeatureServer",
+    ],
+)
+@responses.activate
+def test_deep_scan_withholds_token_from_other_scheme_or_port(
+    fixture_json: Callable[[str], dict[str, Any]],
+    item_url: str,
+) -> None:
+    _single_item_search(fixture_json, item_url)
+
+    result = PortalScanner(PortalClient("https://demo.maps.arcgis.com", TokenCredential("secret-token")), deep=True).scan()
+
+    assert result.services == []
+    assert all(not call.request.url.startswith(item_url.split("/arcgis/")[0] + "/arcgis/") for call in responses.calls)

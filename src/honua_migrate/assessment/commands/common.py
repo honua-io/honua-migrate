@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import logging
 import os
@@ -10,6 +11,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Any
+from urllib.parse import urlsplit
 
 import typer
 
@@ -180,6 +182,13 @@ AdminUsageOption = Annotated[
         ),
     ),
 ]
+AllowInsecureHttpOption = Annotated[
+    bool,
+    typer.Option(
+        "--allow-insecure-http",
+        help="Send the --token-env token to a non-loopback http:// target.",
+    ),
+]
 AccessOutputOption = Annotated[
     Path,
     typer.Option(
@@ -221,9 +230,12 @@ def build_scan_options(
     admin_usage: bool = False,
     rbac_kind: str = "portal",
     force: bool = False,
+    allow_insecure_http: bool = False,
 ) -> ScanOptions:
     configure_logging(level=log_level.value, log_format=log_format.value)
     token = os.environ.get(token_env) if token_env else None
+    if token and not allow_insecure_http:
+        _refuse_token_over_plain_http(target)
     if token_env:
         LOGGER.info("using token from environment variable %s", token_env)
     return ScanOptions(
@@ -242,6 +254,29 @@ def build_scan_options(
         rbac_kind=rbac_kind,
         force=force,
     )
+
+
+def _refuse_token_over_plain_http(target: str) -> None:
+    """A source token travels only over HTTPS, or plain HTTP to a loopback host."""
+
+    parsed = urlsplit(target)
+    if parsed.scheme.lower() != "http" or _is_loopback(parsed.hostname or ""):
+        return
+    raise typer.BadParameter(
+        "A token is sent only over HTTPS. HTTP is allowed for loopback targets, "
+        "or pass --allow-insecure-http.",
+        param_hint="--target",
+    )
+
+
+def _is_loopback(hostname: str) -> bool:
+    host = hostname.strip("[]").lower()
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
 
 
 def persist_scan_result(options: ScanOptions, result: ScanResult) -> None:
@@ -279,6 +314,7 @@ def run_scan_command(
     validate: bool,
     admin_usage: bool = False,
     force: bool = False,
+    allow_insecure_http: bool = False,
 ) -> None:
     from honua_migrate.assessment.commands.scan_handlers import get_handler
 
@@ -295,6 +331,7 @@ def run_scan_command(
         validate=validate,
         admin_usage=admin_usage,
         force=force,
+        allow_insecure_http=allow_insecure_http,
     )
     try:
         result = get_handler(handler_name).run(options)
@@ -360,6 +397,7 @@ def run_rbac_scan_command(
     timeout: float,
     validate: bool,
     force: bool = False,
+    allow_insecure_http: bool = False,
 ) -> None:
     from honua_migrate.assessment.commands.scan_handlers import get_handler
 
@@ -376,6 +414,7 @@ def run_rbac_scan_command(
         validate=validate,
         rbac_kind=kind.value,
         force=force,
+        allow_insecure_http=allow_insecure_http,
     )
     try:
         result = get_handler("rbac").run(options)

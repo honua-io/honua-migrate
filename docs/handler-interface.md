@@ -41,7 +41,8 @@ treat every field as read-only.
 
 `--token-env` is the only credential entry point. The CLI resolves the named
 environment variable into `ScanOptions.token` and never exposes a plaintext
-`--token` flag. Handlers must not log token values. The
+`--token` flag. With a token, an `http://` target is refused unless it is a
+loopback host or `--allow-insecure-http` is set. Handlers must not log token values. The
 `no_network_telemetry_confirm` option is only an acknowledgement that the
 invocation did not enable network telemetry; it does not grant permission for a
 handler to send telemetry.
