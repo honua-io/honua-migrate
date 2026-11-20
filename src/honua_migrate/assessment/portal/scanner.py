@@ -484,9 +484,17 @@ def _is_service_url(url: str) -> bool:
 
 
 def _is_allowed_service_host(url: str, portal_url: str) -> bool:
-    service_host = urlparse(url).hostname or ""
-    portal_host = urlparse(portal_url).hostname or ""
-    return service_host == portal_host or service_host.endswith(".arcgis.com")
+    """The scan's credential goes only to the portal's own origin or to ArcGIS Online over HTTPS."""
+    service = urlparse(url)
+    portal = urlparse(portal_url)
+    service_port = service.port or _default_port(service.scheme)
+    if (service.hostname or "") == (portal.hostname or ""):
+        return service.scheme == portal.scheme and service_port == (portal.port or _default_port(portal.scheme))
+    return service.scheme == "https" and service_port == 443 and (service.hostname or "").endswith(".arcgis.com")
+
+
+def _default_port(scheme: str) -> int | None:
+    return {"https": 443, "http": 80}.get(scheme)
 
 
 def _service_type_from_url(url: str) -> str | None:

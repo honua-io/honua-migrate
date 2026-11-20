@@ -36,7 +36,8 @@ are enforced in code and by tests in this repository — not just promised:
 - **It mints no credentials.** You run it anonymously or hand it a
   pre-existing token via `--token-env VAR` (an environment variable name).
   There is deliberately no `--token` flag, no username/password input, and no
-  `generateToken` call.
+  `generateToken` call. A token is sent only over HTTPS (plain HTTP only to a
+  loopback host, or with `--allow-insecure-http`).
 - **Secrets never leak into outputs.** Tokens, query strings, and URL userinfo
   are redacted from logs and are never written into artifacts or diagnostics.
 - **It never opens your databases.** Storage information comes from documented

@@ -321,3 +321,16 @@ def test_publish_tag_validator_requires_one_tag_commit(
     monkeypatch.setenv("GITHUB_REF", "refs/tags/honua-migrate-v9.9.9")
     with pytest.raises(ValueError, match="GITHUB_REF"):
         module.validate_git_release_context(tag)
+
+
+def test_npm_publish_job_is_environment_gated_and_sha_pinned() -> None:
+    workflow = (REPO_ROOT / ".github" / "workflows" / "publish-javascript.yml").read_text(
+        encoding="utf-8"
+    )
+    publish_job = workflow.split("  publish:\n", maxsplit=1)[1]
+
+    assert "environment:\n      name: npm-honua-migrate" in publish_job
+    assert "id-token: write" in publish_job
+    uses = re.findall(r"uses: (\S+)", workflow)
+    assert uses
+    assert all(re.fullmatch(r"[\w.-]+/[\w.-]+@[0-9a-f]{40}", ref) for ref in uses), uses

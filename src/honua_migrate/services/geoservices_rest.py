@@ -88,6 +88,26 @@ def _allow_insecure_http_option() -> Any:
     )
 
 
+def _api_key_option() -> Any:
+    """The Honua API key comes from HONUA_API_KEY; a command-line value would land in shell history."""
+
+    return typer.Option(
+        None,
+        "--api-key",
+        envvar="HONUA_API_KEY",
+        hidden=True,
+        callback=_api_key_from_environment_only,
+    )
+
+
+def _api_key_from_environment_only(ctx: typer.Context, param: typer.CallbackParam, value: str | None) -> str | None:
+    # Typer ships its own click, so compare the source by name rather than by enum identity.
+    source = ctx.get_parameter_source(param.name) if param.name else None
+    if getattr(source, "name", None) == "COMMANDLINE":
+        raise typer.BadParameter("Set the Honua API key in HONUA_API_KEY instead of passing it on the command line.")
+    return value
+
+
 def _loopback_host(hostname: str) -> bool:
     host = hostname.strip("[]").lower()
     if host == "localhost":
@@ -627,7 +647,7 @@ def discover_command(
     output: Path | None = typer.Option(None, "--output", help="Write a versioned discovery artifact."),
     force: bool = typer.Option(False, "--force", help="Replace an existing output artifact."),
     honua_url: str | None = typer.Option(None, envvar="HONUA_URL"),
-    api_key: str | None = typer.Option(None, envvar="HONUA_API_KEY", hide_input=True),
+    api_key: str | None = _api_key_option(),
     timeout_seconds: int = typer.Option(30, min=1, max=600),
     retries: int = typer.Option(2, min=0, max=5),
     token_secret_ref: str | None = typer.Option(None, help="Server-side source token secret reference."),
@@ -838,7 +858,7 @@ def apply_command(
     output: Path | None = typer.Option(None, "--output"),
     force: bool = typer.Option(False, "--force", help="Replace an existing output artifact."),
     honua_url: str | None = typer.Option(None, envvar="HONUA_URL"),
-    api_key: str | None = typer.Option(None, envvar="HONUA_API_KEY", hide_input=True),
+    api_key: str | None = _api_key_option(),
     timeout_seconds: float = typer.Option(30, min=1), retries: int = typer.Option(2, min=0, max=5),
     token_secret_ref: str | None = typer.Option(
         None, help="Server-side source token secret reference; never stored in the plan."
@@ -872,7 +892,7 @@ def preflight_command(
     output: Path | None = typer.Option(None, "--output", help="Write readiness evidence."),
     force: bool = typer.Option(False, "--force", help="Replace an existing output artifact."),
     honua_url: str | None = typer.Option(None, envvar="HONUA_URL"),
-    api_key: str | None = typer.Option(None, envvar="HONUA_API_KEY", hide_input=True),
+    api_key: str | None = _api_key_option(),
     timeout_seconds: float = typer.Option(30, min=1),
     retries: int = typer.Option(2, min=0, max=5),
     allow_insecure_http: bool = _allow_insecure_http_option(),
@@ -934,7 +954,7 @@ def status_command(
     output: Path | None = typer.Option(None, "--output"),
     force: bool = typer.Option(False, "--force", help="Replace an existing output artifact."),
     honua_url: str | None = typer.Option(None, envvar="HONUA_URL"),
-    api_key: str | None = typer.Option(None, envvar="HONUA_API_KEY", hide_input=True),
+    api_key: str | None = _api_key_option(),
     timeout_seconds: float = typer.Option(30, min=1),
     retries: int = typer.Option(2, min=0, max=5),
     allow_insecure_http: bool = _allow_insecure_http_option(),
@@ -960,7 +980,7 @@ def list_command(
     output: Path | None = typer.Option(None, "--output"),
     force: bool = typer.Option(False, "--force", help="Replace an existing output artifact."),
     honua_url: str | None = typer.Option(None, envvar="HONUA_URL"),
-    api_key: str | None = typer.Option(None, envvar="HONUA_API_KEY", hide_input=True),
+    api_key: str | None = _api_key_option(),
     timeout_seconds: float = typer.Option(30, min=1),
     retries: int = typer.Option(2, min=0, max=5),
     allow_insecure_http: bool = _allow_insecure_http_option(),
@@ -987,7 +1007,7 @@ def resume_command(
     output: Path | None = typer.Option(None, "--output"),
     force: bool = typer.Option(False, "--force", help="Replace an existing output artifact."),
     honua_url: str | None = typer.Option(None, envvar="HONUA_URL"),
-    api_key: str | None = typer.Option(None, envvar="HONUA_API_KEY", hide_input=True),
+    api_key: str | None = _api_key_option(),
     timeout_seconds: float = typer.Option(30, min=1),
     retries: int = typer.Option(2, min=0, max=5),
     poll_interval_seconds: float = typer.Option(2, "--poll-interval", min=0.1, max=300),
@@ -1031,7 +1051,7 @@ def cancel_command(
     output: Path | None = typer.Option(None, "--output"),
     force: bool = typer.Option(False, "--force", help="Replace an existing output artifact."),
     honua_url: str | None = typer.Option(None, envvar="HONUA_URL"),
-    api_key: str | None = typer.Option(None, envvar="HONUA_API_KEY", hide_input=True),
+    api_key: str | None = _api_key_option(),
     timeout_seconds: float = typer.Option(30, min=1),
     retries: int = typer.Option(2, min=0, max=5),
     allow_insecure_http: bool = _allow_insecure_http_option(),
