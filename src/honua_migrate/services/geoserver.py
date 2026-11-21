@@ -16,7 +16,8 @@ import requests
 import typer
 
 from honua_migrate.contract_validation import validate_contract
-from honua_migrate.contracts import MigrationError, MigrationPlan
+from honua_migrate.contracts import MigrationError, MigrationPlan, MigrationRun, SafetyMode
+from honua_migrate.runs.orchestration import RunStore
 from honua_migrate.assessment.diagnostics import redact
 from honua_migrate.assessment.output_io import (
     OutputExistsError,
@@ -550,7 +551,9 @@ def _plan_request_without_credentials(
     }
 
 
-def _load_completed_plan(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+def _load_completed_plan_with_metadata(
+    path: Path,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -602,7 +605,238 @@ def _load_completed_plan(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
         or not isinstance(action.get("result"), dict)
     ):
         raise MigrationError("Plan does not contain completed dry-run evidence.")
+    return request, job, payload
+
+
+def _load_completed_plan(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+    request, job, _ = _load_completed_plan_with_metadata(path)
     return request, job
+
+
+def _normalize_server_snapshot(
+    raw: Mapping[str, Any],
+    *,
+    run_id: str,
+    plan_id: str,
+    plan_digest_value: str,
+) -> dict[str, Any]:
+    raw_service = raw.get("service")
+    if raw_service is not None and raw_service != "geoserver":
+        raise MigrationError(
+            "Server reconciliation snapshot service does not match geoserver."
+        )
+    raw_run_id = raw.get("runId", raw.get("run_id"))
+    if raw_run_id is not None and str(raw_run_id) != run_id:
+        raise MigrationError(
+            "Server reconciliation snapshot run identity does not match the migration run."
+        )
+    snapshot: dict[str, Any] = {
+        "run_id": run_id,
+        "plan_id": plan_id,
+        "plan_digest": plan_digest_value,
+        "service": "geoserver",
+    }
+    for mapping_key in ("counts", "schemas", "extents", "metadata"):
+        value = raw.get(mapping_key)
+        if isinstance(value, Mapping):
+            snapshot[mapping_key] = dict(value)
+    for list_key in ("samples", "relationships"):
+        value = raw.get(list_key)
+        if isinstance(value, list):
+            snapshot[list_key] = list(value)
+    supported_metadata = raw.get("supportedMetadata", raw.get("supported_metadata"))
+    if isinstance(supported_metadata, list):
+        snapshot["supported_metadata"] = [str(item) for item in supported_metadata]
+    return snapshot
+
+
+def _build_reconciliation_snapshots(
+    plan_payload: Mapping[str, Any],
+    terminal_job: Mapping[str, Any],
+    *,
+    run_id: str,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    plan_id = str(plan_payload["id"])
+    plan_digest_value = str(plan_payload["plan_digest"])
+    progress = terminal_job.get("progress")
+    if isinstance(progress, Mapping):
+        bundle = progress.get("reconciliationBundle")
+        if (
+            isinstance(bundle, Mapping)
+            and isinstance(bundle.get("sourceSnapshot"), Mapping)
+            and isinstance(bundle.get("targetSnapshot"), Mapping)
+        ):
+            bundle_service = bundle.get("service")
+            if bundle_service is not None and bundle_service != "geoserver":
+                raise MigrationError(
+                    "Server reconciliation bundle service does not match geoserver."
+                )
+            return (
+                _normalize_server_snapshot(
+                    bundle["sourceSnapshot"],
+                    run_id=run_id,
+                    plan_id=plan_id,
+                    plan_digest_value=plan_digest_value,
+                ),
+                _normalize_server_snapshot(
+                    bundle["targetSnapshot"],
+                    run_id=run_id,
+                    plan_id=plan_id,
+                    plan_digest_value=plan_digest_value,
+                ),
+            )
+
+    # Fallback when the server does not emit reconciliationBundle: source counts come
+    # from the reviewed plan (not the apply job's re-plan), and unmeasured categories
+    # are omitted so reconcile compare reports them as skipped / partial.
+    actions = plan_payload.get("actions")
+    first_action = actions[0] if isinstance(actions, list) and actions else None
+    plan_result = first_action.get("result") if isinstance(first_action, Mapping) else None
+    reviewed_apply_plan = (
+        plan_result.get("applyPlan") if isinstance(plan_result, Mapping) else None
+    )
+    planned_steps = (
+        reviewed_apply_plan.get("steps", [])
+        if isinstance(reviewed_apply_plan, Mapping)
+        and isinstance(reviewed_apply_plan.get("steps"), list)
+        else []
+    )
+    apply_execution = progress.get("applyExecution") if isinstance(progress, Mapping) else None
+    executed_steps = (
+        apply_execution.get("stepResults", [])
+        if isinstance(apply_execution, Mapping)
+        and isinstance(apply_execution.get("stepResults"), list)
+        else []
+    )
+    source_counts = {
+        "layers": sum(
+            1
+            for step in planned_steps
+            if isinstance(step, Mapping) and step.get("kind") == "layer"
+        ),
+        "styles": sum(
+            1
+            for step in planned_steps
+            if isinstance(step, Mapping) and step.get("kind") == "style"
+        ),
+    }
+    target_counts = {
+        "layers": sum(
+            1
+            for step in executed_steps
+            if isinstance(step, Mapping)
+            and step.get("kind") == "layer"
+            and step.get("outcome") in {"applied", "already-applied"}
+        ),
+        "styles": sum(
+            1
+            for step in executed_steps
+            if isinstance(step, Mapping)
+            and step.get("kind") == "style"
+            and step.get("outcome") in {"applied", "already-applied"}
+        ),
+    }
+    binding = {
+        "run_id": run_id,
+        "plan_id": plan_id,
+        "plan_digest": plan_digest_value,
+        "service": "geoserver",
+    }
+    return (
+        {**binding, "counts": source_counts},
+        {**binding, "counts": target_counts},
+    )
+
+
+def _ensure_distinct_output_paths(paths: list[Path | None]) -> None:
+    seen: set[Path] = set()
+    for path in paths:
+        if path is None:
+            continue
+        resolved = path.resolve()
+        if resolved in seen:
+            raise MigrationError(
+                "Output paths (--output, --run-out, --source-snapshot, --target-snapshot) must be distinct."
+            )
+        seen.add(resolved)
+
+
+def _derive_run_outcome(terminal_job: Mapping[str, Any]) -> str:
+    status = str(terminal_job.get("status", "")).lower()
+    if status == "completed":
+        progress = terminal_job.get("progress")
+        failed = (
+            progress.get("failedResources", 0)
+            if isinstance(progress, Mapping)
+            else 0
+        )
+        if isinstance(failed, int) and failed > 0:
+            return "partial"
+        return "succeeded"
+    if status == "cancelled":
+        return "cancelled"
+    return "failed"
+
+
+def _build_run_payload(
+    *,
+    plan_payload: Mapping[str, Any],
+    run_id: str,
+    job_id: str,
+    outcome: str,
+) -> dict[str, Any]:
+    return MigrationRun(
+        id=run_id,
+        plan_id=str(plan_payload["id"]),
+        plan_digest=str(plan_payload["plan_digest"]),
+        service="geoserver",
+        safety_mode=SafetyMode.APPLY,
+        job_ids=(job_id,),
+        checkpoints=(
+            {
+                "action_id": "geoserver-import",
+                "status": outcome,
+                "job_id": job_id,
+            },
+        ),
+        outcome=outcome,
+    ).to_dict()
+
+
+def _write_reconciliation_bundle(
+    *,
+    store: RunStore,
+    plan_payload: Mapping[str, Any],
+    terminal_job: Mapping[str, Any],
+    job_id: str,
+    run_id: str,
+    source_snapshot_path: Path,
+    target_snapshot_path: Path,
+    force: bool,
+) -> dict[str, Any]:
+    outcome = _derive_run_outcome(terminal_job)
+    run_payload = _build_run_payload(
+        plan_payload=plan_payload,
+        run_id=run_id,
+        job_id=job_id,
+        outcome=outcome,
+    )
+    store.save(run_payload)
+
+    source_snapshot, target_snapshot = _build_reconciliation_snapshots(
+        plan_payload,
+        terminal_job,
+        run_id=run_id,
+    )
+    write_artifact(source_snapshot, source_snapshot_path, force=force)
+    write_artifact(target_snapshot, target_snapshot_path, force=force)
+    return {
+        "runId": run_id,
+        "outcome": outcome,
+        "runPath": str(store.path),
+        "sourceSnapshotPath": str(source_snapshot_path),
+        "targetSnapshotPath": str(target_snapshot_path),
+    }
 
 
 def _verify_plan_job(
@@ -814,9 +1048,36 @@ def apply_command(
         ),
     ] = False,
     output: Annotated[Path | None, typer.Option("--output")] = None,
+    run_out: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-out",
+            help="Write a durable MigrationRun artifact after waiting for apply completion.",
+        ),
+    ] = None,
+    source_snapshot: Annotated[
+        Path | None,
+        typer.Option(
+            "--source-snapshot",
+            help="Write the portable source reconciliation snapshot JSON.",
+        ),
+    ] = None,
+    target_snapshot: Annotated[
+        Path | None,
+        typer.Option(
+            "--target-snapshot",
+            help="Write the portable target reconciliation snapshot JSON.",
+        ),
+    ] = None,
     force: Annotated[bool, typer.Option("--force")] = False,
     timeout: Annotated[float, typer.Option("--timeout")] = 120,
     retries: Annotated[int, typer.Option("--retries")] = 3,
+    wait_timeout: Annotated[
+        float, typer.Option("--wait-timeout")
+    ] = 600,
+    poll_interval: Annotated[
+        float, typer.Option("--poll-interval")
+    ] = 1,
     allow_insecure_http: bool = _allow_insecure_http_option(),
 ) -> None:
     """Apply a reviewed, completed plan with explicit acknowledgement."""
@@ -824,8 +1085,19 @@ def apply_command(
         raise typer.BadParameter(
             "--acknowledge-apply is required for target mutations."
         )
+    bundle_paths = (run_out, source_snapshot, target_snapshot)
+    emit_bundle = any(path is not None for path in bundle_paths)
+    if emit_bundle and not all(path is not None for path in bundle_paths):
+        raise typer.BadParameter(
+            "--run-out, --source-snapshot, and --target-snapshot must be supplied together."
+        )
     _preflight_output(output, force=force)
-    request, recorded_job = _load_completed_plan(plan)
+    if emit_bundle:
+        _ensure_distinct_output_paths([output, run_out, source_snapshot, target_snapshot])
+        _preflight_output(run_out, force=force)
+        _preflight_output(source_snapshot, force=force)
+        _preflight_output(target_snapshot, force=force)
+    request, recorded_job, plan_payload = _load_completed_plan_with_metadata(plan)
     password_reference = validate_server_secret_reference(
         geoserver_password_ref
     )
@@ -845,7 +1117,58 @@ def apply_command(
             "applyMode": True,
         }
     )
-    _emit(client.start(apply_request), output, force)
+    started = client.start(apply_request)
+    if not emit_bundle:
+        _emit(started, output, force)
+        return
+    job_id = started.get("jobId")
+    if not isinstance(job_id, str):
+        raise MigrationError("Honua did not return an apply job identity.")
+    validate_job_id(job_id)
+    assert run_out is not None
+    assert source_snapshot is not None
+    assert target_snapshot is not None
+    # Persist the running MigrationRun before waiting so the job identity is never lost on timeout.
+    run_id = f"geoserver-run-{job_id}"
+    store = RunStore(run_out)
+    initial_run = _build_run_payload(
+        plan_payload=plan_payload,
+        run_id=run_id,
+        job_id=job_id,
+        outcome="running",
+    )
+    if force and run_out.exists():
+        store.save(initial_run)
+    else:
+        store.create(initial_run)
+    terminal = client.wait_for_terminal(
+        job_id,
+        wait_timeout=wait_timeout,
+        poll_interval=poll_interval,
+    )
+    bundle_summary = _write_reconciliation_bundle(
+        store=store,
+        plan_payload=plan_payload,
+        terminal_job=terminal,
+        job_id=job_id,
+        run_id=run_id,
+        source_snapshot_path=source_snapshot,
+        target_snapshot_path=target_snapshot,
+        force=force,
+    )
+    _emit(
+        {
+            **started,
+            "terminalStatus": terminal.get("status"),
+            "reconciliationBundle": bundle_summary,
+        },
+        output,
+        force,
+    )
+    if bundle_summary["outcome"] in {"failed", "cancelled"}:
+        raise MigrationError(
+            f"GeoServer apply job ended with {bundle_summary['outcome']} status."
+        )
 
 
 def _job_command(
