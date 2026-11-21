@@ -229,3 +229,183 @@ def test_apply_reconcile_bundle_detects_missing_target_step_as_mismatched(
         reconcile_out,
     )
     assert reconciled["status"] == "mismatched"
+    checks_by_name = {check["name"]: check["status"] for check in reconciled["checks"]}
+    assert checks_by_name["relationships"] == "mismatched"
+
+
+def test_apply_reconcile_bundle_failed_job_writes_bundle_and_exits_nonzero(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(json.dumps(_plan_with_apply_plan()), encoding="utf-8")
+    bundle_dir = tmp_path / "bundle-failed"
+
+    class FakeClient:
+        def status(self, job_id: str) -> dict[str, Any]:
+            return {
+                "jobId": "job-1",
+                "status": "completed",
+                "completedAt": "2026-07-22T20:00:00Z",
+                "geoServerUrl": "https://geoserver.test/rest",
+                "progress": {},
+            }
+
+        def start(self, request: dict[str, Any]) -> dict[str, Any]:
+            return {"jobId": "apply-job-fail", "message": "started"}
+
+        def wait_for_terminal(self, job_id: str, **kwargs: Any) -> dict[str, Any]:
+            return {
+                "jobId": "apply-job-fail",
+                "status": "failed",
+                "completedAt": "2026-07-22T20:05:00Z",
+                "geoServerUrl": "https://geoserver.test/rest",
+                "progress": {},
+            }
+
+    monkeypatch.setattr("honua_migrate.services.geoserver._client", lambda *a, **k: FakeClient())
+
+    result = runner.invoke(
+        geoserver_app,
+        [
+            "apply",
+            "--honua-url",
+            "https://honua.test",
+            "--honua-api-key-ref",
+            "env:HONUA_KEY",
+            "--plan",
+            str(plan_path),
+            "--geoserver-password-ref",
+            "env:GEOSERVER_PASSWORD",
+            "--acknowledge-apply",
+            "--reconcile-bundle-dir",
+            str(bundle_dir),
+        ],
+    )
+
+    assert result.exit_code != 0
+    run_data = json.loads((bundle_dir / "run.json").read_text(encoding="utf-8"))
+    assert run_data["outcome"] == "failed"
+
+
+def test_apply_reconcile_bundle_missing_plan_and_execution_is_partial_not_matched(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    plan_payload = _plan_with_apply_plan()
+    del plan_payload["actions"][0]["result"]["applyPlan"]
+    del plan_payload["plan_digest"]
+    plan_payload["plan_digest"] = plan_digest(plan_payload)
+    plan_path = tmp_path / "plan-empty.json"
+    plan_path.write_text(json.dumps(plan_payload), encoding="utf-8")
+    bundle_dir = tmp_path / "bundle-partial"
+    reconcile_out = tmp_path / "reconciliation-partial.json"
+
+    class FakeClient:
+        def status(self, job_id: str) -> dict[str, Any]:
+            return {
+                "jobId": "job-1",
+                "status": "completed",
+                "completedAt": "2026-07-22T20:00:00Z",
+                "geoServerUrl": "https://geoserver.test/rest",
+                "progress": {},
+            }
+
+        def start(self, request: dict[str, Any]) -> dict[str, Any]:
+            return {"jobId": "apply-job-empty", "message": "started"}
+
+        def wait_for_terminal(self, job_id: str, **kwargs: Any) -> dict[str, Any]:
+            return {
+                "jobId": "apply-job-empty",
+                "status": "completed",
+                "completedAt": "2026-07-22T20:05:00Z",
+                "geoServerUrl": "https://geoserver.test/rest",
+                "progress": {},
+            }
+
+    monkeypatch.setattr("honua_migrate.services.geoserver._client", lambda *a, **k: FakeClient())
+
+    result = runner.invoke(
+        geoserver_app,
+        [
+            "apply",
+            "--honua-url",
+            "https://honua.test",
+            "--honua-api-key-ref",
+            "env:HONUA_KEY",
+            "--plan",
+            str(plan_path),
+            "--geoserver-password-ref",
+            "env:GEOSERVER_PASSWORD",
+            "--acknowledge-apply",
+            "--reconcile-bundle-dir",
+            str(bundle_dir),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    reconciled = reconcile_run(
+        bundle_dir / "run.json",
+        bundle_dir / "source-snapshot.json",
+        bundle_dir / "target-snapshot.json",
+        reconcile_out,
+    )
+    assert reconciled["status"] == "partial"
+
+
+def test_apply_reconcile_bundle_preflight_rejects_file_path_and_invalid_timeout_before_start(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(json.dumps(_plan_with_apply_plan()), encoding="utf-8")
+    existing_file = tmp_path / "not-a-dir"
+    existing_file.write_text("occupied", encoding="utf-8")
+    started = False
+
+    class FakeClient:
+        def start(self, request: dict[str, Any]) -> dict[str, Any]:
+            nonlocal started
+            started = True
+            return {"jobId": "should-not-run"}
+
+    monkeypatch.setattr("honua_migrate.services.geoserver._client", lambda *a, **k: FakeClient())
+
+    bad_dir_result = runner.invoke(
+        geoserver_app,
+        [
+            "apply",
+            "--honua-url",
+            "https://honua.test",
+            "--honua-api-key-ref",
+            "env:HONUA_KEY",
+            "--plan",
+            str(plan_path),
+            "--geoserver-password-ref",
+            "env:GEOSERVER_PASSWORD",
+            "--acknowledge-apply",
+            "--reconcile-bundle-dir",
+            str(existing_file),
+        ],
+    )
+    assert bad_dir_result.exit_code != 0
+    assert not started
+
+    bad_timeout_result = runner.invoke(
+        geoserver_app,
+        [
+            "apply",
+            "--honua-url",
+            "https://honua.test",
+            "--honua-api-key-ref",
+            "env:HONUA_KEY",
+            "--plan",
+            str(plan_path),
+            "--geoserver-password-ref",
+            "env:GEOSERVER_PASSWORD",
+            "--acknowledge-apply",
+            "--reconcile-bundle-dir",
+            str(tmp_path / "bundle-ok"),
+            "--wait-timeout",
+            "0",
+        ],
+    )
+    assert bad_timeout_result.exit_code != 0
+    assert not started

@@ -16,7 +16,7 @@ import requests
 import typer
 
 from honua_migrate.contract_validation import validate_contract
-from honua_migrate.contracts import MigrationError, MigrationPlan
+from honua_migrate.contracts import EXIT_REMOTE_ERROR, MigrationError, MigrationPlan
 from honua_migrate.assessment.diagnostics import redact
 from honua_migrate.assessment.output_io import (
     OutputExistsError,
@@ -551,7 +551,9 @@ def _plan_request_without_credentials(
     }
 
 
-def _load_completed_plan(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+def _load_completed_plan_artifact(
+    path: Path,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -603,6 +605,11 @@ def _load_completed_plan(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
         or not isinstance(action.get("result"), dict)
     ):
         raise MigrationError("Plan does not contain completed dry-run evidence.")
+    return payload, request, job
+
+
+def _load_completed_plan(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+    _, request, job = _load_completed_plan_artifact(path)
     return request, job
 
 
@@ -840,10 +847,17 @@ def apply_command(
         )
     _preflight_output(output, force=force)
     if reconcile_bundle_dir is not None:
+        if wait_timeout <= 0 or poll_interval < 0:
+            raise MigrationError(
+                "Wait timeout must be positive and poll interval cannot be negative."
+            )
+        if reconcile_bundle_dir.exists() and not reconcile_bundle_dir.is_dir():
+            raise MigrationError(
+                "Reconcile bundle path exists and is not a directory."
+            )
         for name in ("run.json", "source-snapshot.json", "target-snapshot.json"):
             _preflight_output(reconcile_bundle_dir / name, force=force)
-    request, recorded_job = _load_completed_plan(plan)
-    plan_payload = json.loads(plan.read_text(encoding="utf-8"))
+    plan_payload, request, recorded_job = _load_completed_plan_artifact(plan)
     password_reference = validate_server_secret_reference(
         geoserver_password_ref
     )
@@ -876,17 +890,25 @@ def apply_command(
         wait_timeout=wait_timeout,
         poll_interval=poll_interval,
     )
+    safe_config = redact_artifact(request)
     bundle_paths = write_geoserver_reconcile_bundle(
         reconcile_bundle_dir,
         plan_payload,
         terminal,
         write_fn=write_artifact,
-        redacted_config=_plan_request_without_credentials(request),
+        redacted_config=safe_config if isinstance(safe_config, Mapping) else {},
         force=force,
     )
+    terminal_status = str(terminal.get("status", "")).strip().lower()
     result_payload = dict(queued)
+    result_payload["terminalStatus"] = terminal_status
     result_payload["reconcileBundle"] = bundle_paths
     _emit(result_payload, output, force)
+    if terminal_status != "completed":
+        raise MigrationError(
+            f"GeoServer apply job ended with {terminal_status} status.",
+            exit_code=EXIT_REMOTE_ERROR,
+        )
 
 
 def _job_command(
