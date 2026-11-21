@@ -24,6 +24,7 @@ from honua_migrate.assessment.output_io import (
     ensure_overwrite_allowed,
 )
 from honua_migrate.assessment.redaction import sanitize_handoff_url
+from honua_migrate.services.geoserver_reconcile import write_geoserver_reconcile_bundle
 
 geoserver_app = typer.Typer(help="Migrate GeoServer catalogs through Honua jobs.")
 
@@ -814,9 +815,22 @@ def apply_command(
         ),
     ] = False,
     output: Annotated[Path | None, typer.Option("--output")] = None,
+    reconcile_bundle_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--reconcile-bundle-dir",
+            help="Wait for completion and emit run.json plus source/target reconciliation snapshots.",
+        ),
+    ] = None,
     force: Annotated[bool, typer.Option("--force")] = False,
     timeout: Annotated[float, typer.Option("--timeout")] = 120,
     retries: Annotated[int, typer.Option("--retries")] = 3,
+    wait_timeout: Annotated[
+        float, typer.Option("--wait-timeout")
+    ] = 600,
+    poll_interval: Annotated[
+        float, typer.Option("--poll-interval")
+    ] = 1,
     allow_insecure_http: bool = _allow_insecure_http_option(),
 ) -> None:
     """Apply a reviewed, completed plan with explicit acknowledgement."""
@@ -825,7 +839,11 @@ def apply_command(
             "--acknowledge-apply is required for target mutations."
         )
     _preflight_output(output, force=force)
+    if reconcile_bundle_dir is not None:
+        for name in ("run.json", "source-snapshot.json", "target-snapshot.json"):
+            _preflight_output(reconcile_bundle_dir / name, force=force)
     request, recorded_job = _load_completed_plan(plan)
+    plan_payload = json.loads(plan.read_text(encoding="utf-8"))
     password_reference = validate_server_secret_reference(
         geoserver_password_ref
     )
@@ -845,7 +863,30 @@ def apply_command(
             "applyMode": True,
         }
     )
-    _emit(client.start(apply_request), output, force)
+    queued = client.start(apply_request)
+    if reconcile_bundle_dir is None:
+        _emit(queued, output, force)
+        return
+    job_id = queued.get("jobId")
+    if not isinstance(job_id, str):
+        raise MigrationError("Honua did not return an apply job identity.")
+    validate_job_id(job_id)
+    terminal = client.wait_for_terminal(
+        job_id,
+        wait_timeout=wait_timeout,
+        poll_interval=poll_interval,
+    )
+    bundle_paths = write_geoserver_reconcile_bundle(
+        reconcile_bundle_dir,
+        plan_payload,
+        terminal,
+        write_fn=write_artifact,
+        redacted_config=_plan_request_without_credentials(request),
+        force=force,
+    )
+    result_payload = dict(queued)
+    result_payload["reconcileBundle"] = bundle_paths
+    _emit(result_payload, output, force)
 
 
 def _job_command(
