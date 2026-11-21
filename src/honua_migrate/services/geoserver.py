@@ -16,7 +16,8 @@ import requests
 import typer
 
 from honua_migrate.contract_validation import validate_contract
-from honua_migrate.contracts import MigrationError, MigrationPlan
+from honua_migrate.contracts import MigrationError, MigrationPlan, MigrationRun, SafetyMode
+from honua_migrate.runs.orchestration import RunStore
 from honua_migrate.assessment.diagnostics import redact
 from honua_migrate.assessment.output_io import (
     OutputExistsError,
@@ -550,7 +551,9 @@ def _plan_request_without_credentials(
     }
 
 
-def _load_completed_plan(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+def _load_completed_plan_with_metadata(
+    path: Path,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -602,7 +605,195 @@ def _load_completed_plan(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
         or not isinstance(action.get("result"), dict)
     ):
         raise MigrationError("Plan does not contain completed dry-run evidence.")
+    return request, job, payload
+
+
+def _load_completed_plan(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+    request, job, _ = _load_completed_plan_with_metadata(path)
     return request, job
+
+
+def _normalize_server_snapshot(
+    raw: Mapping[str, Any],
+    *,
+    run_id: str,
+    plan_id: str,
+    plan_digest_value: str,
+) -> dict[str, Any]:
+    supported_metadata = raw.get("supportedMetadata", raw.get("supported_metadata"))
+    if not isinstance(supported_metadata, list):
+        supported_metadata = []
+    return {
+        "run_id": run_id,
+        "plan_id": plan_id,
+        "plan_digest": plan_digest_value,
+        "service": "geoserver",
+        "counts": dict(raw.get("counts", {})) if isinstance(raw.get("counts"), Mapping) else {},
+        "schemas": dict(raw.get("schemas", {})) if isinstance(raw.get("schemas"), Mapping) else {},
+        "extents": dict(raw.get("extents", {})) if isinstance(raw.get("extents"), Mapping) else {},
+        "samples": list(raw.get("samples", [])) if isinstance(raw.get("samples"), list) else [],
+        "relationships": list(raw.get("relationships", [])) if isinstance(raw.get("relationships"), list) else [],
+        "metadata": dict(raw.get("metadata", {})) if isinstance(raw.get("metadata"), Mapping) else {},
+        "supported_metadata": [str(item) for item in supported_metadata],
+    }
+
+
+def _build_reconciliation_snapshots(
+    plan_payload: Mapping[str, Any],
+    terminal_job: Mapping[str, Any],
+    *,
+    run_id: str,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    plan_id = str(plan_payload["id"])
+    plan_digest_value = str(plan_payload["plan_digest"])
+    progress = terminal_job.get("progress")
+    if isinstance(progress, Mapping):
+        bundle = progress.get("reconciliationBundle")
+        if (
+            isinstance(bundle, Mapping)
+            and isinstance(bundle.get("sourceSnapshot"), Mapping)
+            and isinstance(bundle.get("targetSnapshot"), Mapping)
+        ):
+            return (
+                _normalize_server_snapshot(
+                    bundle["sourceSnapshot"],
+                    run_id=run_id,
+                    plan_id=plan_id,
+                    plan_digest_value=plan_digest_value,
+                ),
+                _normalize_server_snapshot(
+                    bundle["targetSnapshot"],
+                    run_id=run_id,
+                    plan_id=plan_id,
+                    plan_digest_value=plan_digest_value,
+                ),
+            )
+
+    apply_plan = progress.get("applyPlan") if isinstance(progress, Mapping) else None
+    apply_execution = progress.get("applyExecution") if isinstance(progress, Mapping) else None
+    planned_steps = (
+        apply_plan.get("steps", [])
+        if isinstance(apply_plan, Mapping) and isinstance(apply_plan.get("steps"), list)
+        else []
+    )
+    executed_steps = (
+        apply_execution.get("stepResults", [])
+        if isinstance(apply_execution, Mapping) and isinstance(apply_execution.get("stepResults"), list)
+        else []
+    )
+    source_counts = {
+        "layers": sum(1 for step in planned_steps if isinstance(step, Mapping) and step.get("kind") == "layer"),
+        "styles": sum(1 for step in planned_steps if isinstance(step, Mapping) and step.get("kind") == "style"),
+    }
+    target_counts = {
+        "layers": sum(
+            1
+            for step in executed_steps
+            if isinstance(step, Mapping)
+            and step.get("kind") == "layer"
+            and step.get("outcome") in {"applied", "already-applied"}
+        ),
+        "styles": sum(
+            1
+            for step in executed_steps
+            if isinstance(step, Mapping)
+            and step.get("kind") == "style"
+            and step.get("outcome") in {"applied", "already-applied"}
+        ),
+    }
+    binding = {
+        "run_id": run_id,
+        "plan_id": plan_id,
+        "plan_digest": plan_digest_value,
+        "service": "geoserver",
+    }
+    shared_meta = {
+        "sourceKind": "geoserver-rest",
+        "geoServerUrl": str(terminal_job.get("geoServerUrl", "")),
+    }
+    supported = ["sourceKind", "geoServerUrl"]
+    source_snapshot = {
+        **binding,
+        "counts": source_counts,
+        "schemas": {},
+        "extents": {},
+        "samples": [],
+        "relationships": [],
+        "metadata": shared_meta,
+        "supported_metadata": supported,
+    }
+    target_snapshot = {
+        **binding,
+        "counts": target_counts,
+        "schemas": {},
+        "extents": {},
+        "samples": [],
+        "relationships": [],
+        "metadata": shared_meta,
+        "supported_metadata": supported,
+    }
+    return source_snapshot, target_snapshot
+
+
+def _write_reconciliation_bundle(
+    *,
+    plan_payload: Mapping[str, Any],
+    terminal_job: Mapping[str, Any],
+    job_id: str,
+    run_out: Path,
+    source_snapshot_path: Path,
+    target_snapshot_path: Path,
+    force: bool,
+) -> dict[str, Any]:
+    progress = terminal_job.get("progress")
+    server_run_id = (
+        progress.get("migrationRunId")
+        if isinstance(progress, Mapping) and isinstance(progress.get("migrationRunId"), str)
+        else None
+    )
+    run_id = server_run_id or f"geoserver-run-{job_id}"
+    status = str(terminal_job.get("status", "")).lower()
+    outcome = {
+        "completed": "succeeded",
+        "failed": "failed",
+        "cancelled": "cancelled",
+    }.get(status, "failed")
+    run_payload = MigrationRun(
+        id=run_id,
+        plan_id=str(plan_payload["id"]),
+        plan_digest=str(plan_payload["plan_digest"]),
+        service="geoserver",
+        safety_mode=SafetyMode.APPLY,
+        job_ids=(job_id,),
+        checkpoints=(
+            {
+                "action_id": "geoserver-import",
+                "status": outcome,
+                "job_id": job_id,
+            },
+        ),
+        outcome=outcome,
+    ).to_dict()
+    store = RunStore(run_out)
+    if force and run_out.exists():
+        store.save(run_payload)
+    else:
+        store.create(run_payload)
+
+    source_snapshot, target_snapshot = _build_reconciliation_snapshots(
+        plan_payload,
+        terminal_job,
+        run_id=run_id,
+    )
+    write_artifact(source_snapshot, source_snapshot_path, force=force)
+    write_artifact(target_snapshot, target_snapshot_path, force=force)
+    return {
+        "runId": run_id,
+        "outcome": outcome,
+        "runPath": str(run_out),
+        "sourceSnapshotPath": str(source_snapshot_path),
+        "targetSnapshotPath": str(target_snapshot_path),
+    }
 
 
 def _verify_plan_job(
@@ -814,9 +1005,36 @@ def apply_command(
         ),
     ] = False,
     output: Annotated[Path | None, typer.Option("--output")] = None,
+    run_out: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-out",
+            help="Write a durable MigrationRun artifact after waiting for apply completion.",
+        ),
+    ] = None,
+    source_snapshot: Annotated[
+        Path | None,
+        typer.Option(
+            "--source-snapshot",
+            help="Write the portable source reconciliation snapshot JSON.",
+        ),
+    ] = None,
+    target_snapshot: Annotated[
+        Path | None,
+        typer.Option(
+            "--target-snapshot",
+            help="Write the portable target reconciliation snapshot JSON.",
+        ),
+    ] = None,
     force: Annotated[bool, typer.Option("--force")] = False,
     timeout: Annotated[float, typer.Option("--timeout")] = 120,
     retries: Annotated[int, typer.Option("--retries")] = 3,
+    wait_timeout: Annotated[
+        float, typer.Option("--wait-timeout")
+    ] = 600,
+    poll_interval: Annotated[
+        float, typer.Option("--poll-interval")
+    ] = 1,
     allow_insecure_http: bool = _allow_insecure_http_option(),
 ) -> None:
     """Apply a reviewed, completed plan with explicit acknowledgement."""
@@ -824,8 +1042,18 @@ def apply_command(
         raise typer.BadParameter(
             "--acknowledge-apply is required for target mutations."
         )
+    bundle_paths = (run_out, source_snapshot, target_snapshot)
+    emit_bundle = any(path is not None for path in bundle_paths)
+    if emit_bundle and not all(path is not None for path in bundle_paths):
+        raise typer.BadParameter(
+            "--run-out, --source-snapshot, and --target-snapshot must be supplied together."
+        )
     _preflight_output(output, force=force)
-    request, recorded_job = _load_completed_plan(plan)
+    if emit_bundle:
+        _preflight_output(run_out, force=force)
+        _preflight_output(source_snapshot, force=force)
+        _preflight_output(target_snapshot, force=force)
+    request, recorded_job, plan_payload = _load_completed_plan_with_metadata(plan)
     password_reference = validate_server_secret_reference(
         geoserver_password_ref
     )
@@ -845,7 +1073,40 @@ def apply_command(
             "applyMode": True,
         }
     )
-    _emit(client.start(apply_request), output, force)
+    started = client.start(apply_request)
+    if not emit_bundle:
+        _emit(started, output, force)
+        return
+    job_id = started.get("jobId")
+    if not isinstance(job_id, str):
+        raise MigrationError("Honua did not return an apply job identity.")
+    validate_job_id(job_id)
+    terminal = client.wait_for_terminal(
+        job_id,
+        wait_timeout=wait_timeout,
+        poll_interval=poll_interval,
+    )
+    assert run_out is not None
+    assert source_snapshot is not None
+    assert target_snapshot is not None
+    bundle_summary = _write_reconciliation_bundle(
+        plan_payload=plan_payload,
+        terminal_job=terminal,
+        job_id=job_id,
+        run_out=run_out,
+        source_snapshot_path=source_snapshot,
+        target_snapshot_path=target_snapshot,
+        force=force,
+    )
+    _emit(
+        {
+            **started,
+            "terminalStatus": terminal.get("status"),
+            "reconciliationBundle": bundle_summary,
+        },
+        output,
+        force,
+    )
 
 
 def _job_command(
