@@ -620,22 +620,34 @@ def _normalize_server_snapshot(
     plan_id: str,
     plan_digest_value: str,
 ) -> dict[str, Any]:
-    supported_metadata = raw.get("supportedMetadata", raw.get("supported_metadata"))
-    if not isinstance(supported_metadata, list):
-        supported_metadata = []
-    return {
+    raw_service = raw.get("service")
+    if raw_service is not None and raw_service != "geoserver":
+        raise MigrationError(
+            "Server reconciliation snapshot service does not match geoserver."
+        )
+    raw_run_id = raw.get("runId", raw.get("run_id"))
+    if raw_run_id is not None and str(raw_run_id) != run_id:
+        raise MigrationError(
+            "Server reconciliation snapshot run identity does not match the migration run."
+        )
+    snapshot: dict[str, Any] = {
         "run_id": run_id,
         "plan_id": plan_id,
         "plan_digest": plan_digest_value,
         "service": "geoserver",
-        "counts": dict(raw.get("counts", {})) if isinstance(raw.get("counts"), Mapping) else {},
-        "schemas": dict(raw.get("schemas", {})) if isinstance(raw.get("schemas"), Mapping) else {},
-        "extents": dict(raw.get("extents", {})) if isinstance(raw.get("extents"), Mapping) else {},
-        "samples": list(raw.get("samples", [])) if isinstance(raw.get("samples"), list) else [],
-        "relationships": list(raw.get("relationships", [])) if isinstance(raw.get("relationships"), list) else [],
-        "metadata": dict(raw.get("metadata", {})) if isinstance(raw.get("metadata"), Mapping) else {},
-        "supported_metadata": [str(item) for item in supported_metadata],
     }
+    for mapping_key in ("counts", "schemas", "extents", "metadata"):
+        value = raw.get(mapping_key)
+        if isinstance(value, Mapping):
+            snapshot[mapping_key] = dict(value)
+    for list_key in ("samples", "relationships"):
+        value = raw.get(list_key)
+        if isinstance(value, list):
+            snapshot[list_key] = list(value)
+    supported_metadata = raw.get("supportedMetadata", raw.get("supported_metadata"))
+    if isinstance(supported_metadata, list):
+        snapshot["supported_metadata"] = [str(item) for item in supported_metadata]
+    return snapshot
 
 
 def _build_reconciliation_snapshots(
@@ -654,6 +666,11 @@ def _build_reconciliation_snapshots(
             and isinstance(bundle.get("sourceSnapshot"), Mapping)
             and isinstance(bundle.get("targetSnapshot"), Mapping)
         ):
+            bundle_service = bundle.get("service")
+            if bundle_service is not None and bundle_service != "geoserver":
+                raise MigrationError(
+                    "Server reconciliation bundle service does not match geoserver."
+                )
             return (
                 _normalize_server_snapshot(
                     bundle["sourceSnapshot"],
@@ -669,21 +686,39 @@ def _build_reconciliation_snapshots(
                 ),
             )
 
-    apply_plan = progress.get("applyPlan") if isinstance(progress, Mapping) else None
-    apply_execution = progress.get("applyExecution") if isinstance(progress, Mapping) else None
+    # Fallback when the server does not emit reconciliationBundle: source counts come
+    # from the reviewed plan (not the apply job's re-plan), and unmeasured categories
+    # are omitted so reconcile compare reports them as skipped / partial.
+    actions = plan_payload.get("actions")
+    first_action = actions[0] if isinstance(actions, list) and actions else None
+    plan_result = first_action.get("result") if isinstance(first_action, Mapping) else None
+    reviewed_apply_plan = (
+        plan_result.get("applyPlan") if isinstance(plan_result, Mapping) else None
+    )
     planned_steps = (
-        apply_plan.get("steps", [])
-        if isinstance(apply_plan, Mapping) and isinstance(apply_plan.get("steps"), list)
+        reviewed_apply_plan.get("steps", [])
+        if isinstance(reviewed_apply_plan, Mapping)
+        and isinstance(reviewed_apply_plan.get("steps"), list)
         else []
     )
+    apply_execution = progress.get("applyExecution") if isinstance(progress, Mapping) else None
     executed_steps = (
         apply_execution.get("stepResults", [])
-        if isinstance(apply_execution, Mapping) and isinstance(apply_execution.get("stepResults"), list)
+        if isinstance(apply_execution, Mapping)
+        and isinstance(apply_execution.get("stepResults"), list)
         else []
     )
     source_counts = {
-        "layers": sum(1 for step in planned_steps if isinstance(step, Mapping) and step.get("kind") == "layer"),
-        "styles": sum(1 for step in planned_steps if isinstance(step, Mapping) and step.get("kind") == "style"),
+        "layers": sum(
+            1
+            for step in planned_steps
+            if isinstance(step, Mapping) and step.get("kind") == "layer"
+        ),
+        "styles": sum(
+            1
+            for step in planned_steps
+            if isinstance(step, Mapping) and step.get("kind") == "style"
+        ),
     }
     target_counts = {
         "layers": sum(
@@ -707,58 +742,50 @@ def _build_reconciliation_snapshots(
         "plan_digest": plan_digest_value,
         "service": "geoserver",
     }
-    shared_meta = {
-        "sourceKind": "geoserver-rest",
-        "geoServerUrl": str(terminal_job.get("geoServerUrl", "")),
-    }
-    supported = ["sourceKind", "geoServerUrl"]
-    source_snapshot = {
-        **binding,
-        "counts": source_counts,
-        "schemas": {},
-        "extents": {},
-        "samples": [],
-        "relationships": [],
-        "metadata": shared_meta,
-        "supported_metadata": supported,
-    }
-    target_snapshot = {
-        **binding,
-        "counts": target_counts,
-        "schemas": {},
-        "extents": {},
-        "samples": [],
-        "relationships": [],
-        "metadata": shared_meta,
-        "supported_metadata": supported,
-    }
-    return source_snapshot, target_snapshot
+    return (
+        {**binding, "counts": source_counts},
+        {**binding, "counts": target_counts},
+    )
 
 
-def _write_reconciliation_bundle(
+def _ensure_distinct_output_paths(paths: list[Path | None]) -> None:
+    seen: set[Path] = set()
+    for path in paths:
+        if path is None:
+            continue
+        resolved = path.resolve()
+        if resolved in seen:
+            raise MigrationError(
+                "Output paths (--output, --run-out, --source-snapshot, --target-snapshot) must be distinct."
+            )
+        seen.add(resolved)
+
+
+def _derive_run_outcome(terminal_job: Mapping[str, Any]) -> str:
+    status = str(terminal_job.get("status", "")).lower()
+    if status == "completed":
+        progress = terminal_job.get("progress")
+        failed = (
+            progress.get("failedResources", 0)
+            if isinstance(progress, Mapping)
+            else 0
+        )
+        if isinstance(failed, int) and failed > 0:
+            return "partial"
+        return "succeeded"
+    if status == "cancelled":
+        return "cancelled"
+    return "failed"
+
+
+def _build_run_payload(
     *,
     plan_payload: Mapping[str, Any],
-    terminal_job: Mapping[str, Any],
+    run_id: str,
     job_id: str,
-    run_out: Path,
-    source_snapshot_path: Path,
-    target_snapshot_path: Path,
-    force: bool,
+    outcome: str,
 ) -> dict[str, Any]:
-    progress = terminal_job.get("progress")
-    server_run_id = (
-        progress.get("migrationRunId")
-        if isinstance(progress, Mapping) and isinstance(progress.get("migrationRunId"), str)
-        else None
-    )
-    run_id = server_run_id or f"geoserver-run-{job_id}"
-    status = str(terminal_job.get("status", "")).lower()
-    outcome = {
-        "completed": "succeeded",
-        "failed": "failed",
-        "cancelled": "cancelled",
-    }.get(status, "failed")
-    run_payload = MigrationRun(
+    return MigrationRun(
         id=run_id,
         plan_id=str(plan_payload["id"]),
         plan_digest=str(plan_payload["plan_digest"]),
@@ -774,11 +801,27 @@ def _write_reconciliation_bundle(
         ),
         outcome=outcome,
     ).to_dict()
-    store = RunStore(run_out)
-    if force and run_out.exists():
-        store.save(run_payload)
-    else:
-        store.create(run_payload)
+
+
+def _write_reconciliation_bundle(
+    *,
+    store: RunStore,
+    plan_payload: Mapping[str, Any],
+    terminal_job: Mapping[str, Any],
+    job_id: str,
+    run_id: str,
+    source_snapshot_path: Path,
+    target_snapshot_path: Path,
+    force: bool,
+) -> dict[str, Any]:
+    outcome = _derive_run_outcome(terminal_job)
+    run_payload = _build_run_payload(
+        plan_payload=plan_payload,
+        run_id=run_id,
+        job_id=job_id,
+        outcome=outcome,
+    )
+    store.save(run_payload)
 
     source_snapshot, target_snapshot = _build_reconciliation_snapshots(
         plan_payload,
@@ -790,7 +833,7 @@ def _write_reconciliation_bundle(
     return {
         "runId": run_id,
         "outcome": outcome,
-        "runPath": str(run_out),
+        "runPath": str(store.path),
         "sourceSnapshotPath": str(source_snapshot_path),
         "targetSnapshotPath": str(target_snapshot_path),
     }
@@ -1050,6 +1093,7 @@ def apply_command(
         )
     _preflight_output(output, force=force)
     if emit_bundle:
+        _ensure_distinct_output_paths([output, run_out, source_snapshot, target_snapshot])
         _preflight_output(run_out, force=force)
         _preflight_output(source_snapshot, force=force)
         _preflight_output(target_snapshot, force=force)
@@ -1081,19 +1125,33 @@ def apply_command(
     if not isinstance(job_id, str):
         raise MigrationError("Honua did not return an apply job identity.")
     validate_job_id(job_id)
+    assert run_out is not None
+    assert source_snapshot is not None
+    assert target_snapshot is not None
+    # Persist the running MigrationRun before waiting so the job identity is never lost on timeout.
+    run_id = f"geoserver-run-{job_id}"
+    store = RunStore(run_out)
+    initial_run = _build_run_payload(
+        plan_payload=plan_payload,
+        run_id=run_id,
+        job_id=job_id,
+        outcome="running",
+    )
+    if force and run_out.exists():
+        store.save(initial_run)
+    else:
+        store.create(initial_run)
     terminal = client.wait_for_terminal(
         job_id,
         wait_timeout=wait_timeout,
         poll_interval=poll_interval,
     )
-    assert run_out is not None
-    assert source_snapshot is not None
-    assert target_snapshot is not None
     bundle_summary = _write_reconciliation_bundle(
+        store=store,
         plan_payload=plan_payload,
         terminal_job=terminal,
         job_id=job_id,
-        run_out=run_out,
+        run_id=run_id,
         source_snapshot_path=source_snapshot,
         target_snapshot_path=target_snapshot,
         force=force,
@@ -1107,6 +1165,10 @@ def apply_command(
         output,
         force,
     )
+    if bundle_summary["outcome"] in {"failed", "cancelled"}:
+        raise MigrationError(
+            f"GeoServer apply job ended with {bundle_summary['outcome']} status."
+        )
 
 
 def _job_command(

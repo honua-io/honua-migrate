@@ -1040,3 +1040,118 @@ def test_apply_requires_all_reconciliation_bundle_paths_together(
     )
     assert result.exit_code != 0
     assert "--run-out, --source-snapshot, and --target-snapshot" in unstyle(result.output)
+
+
+def test_apply_fallback_snapshots_mark_unmeasured_categories_skipped_and_partial(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from honua_migrate.runs.reconciliation import reconcile_run
+
+    plan_path = tmp_path / "plan.json"
+    plan_payload = _plan_payload()
+    plan_payload["actions"][0]["result"] = {
+        "failedResources": 0,
+        "applyPlan": {
+            "steps": [
+                {"stepId": "resource:layer:demo:roads", "kind": "layer", "disposition": "ready"}
+            ]
+        },
+    }
+    unsigned = {k: v for k, v in plan_payload.items() if k != "plan_digest"}
+    plan_payload["plan_digest"] = plan_digest(unsigned)
+    plan_path.write_text(json.dumps(plan_payload), encoding="utf-8")
+
+    run_path = tmp_path / "geoserver-run.json"
+    source_path = tmp_path / "source-snapshot.json"
+    target_path = tmp_path / "target-snapshot.json"
+    recon_out = tmp_path / "reconciliation.json"
+
+    class Client:
+        def status(self, job_id: str) -> dict[str, Any]:
+            return _completed_job(job_id)
+
+        def start(self, request: dict[str, Any]) -> dict[str, Any]:
+            return {"jobId": "apply-fallback-1"}
+
+        def wait_for_terminal(
+            self,
+            job_id: str,
+            *,
+            wait_timeout: float,
+            poll_interval: float,
+        ) -> dict[str, Any]:
+            job = _completed_job(job_id)
+            job["progress"]["applyExecution"] = {
+                "stepResults": [
+                    {"stepId": "resource:layer:demo:roads", "kind": "layer", "outcome": "applied"}
+                ]
+            }
+            return job
+
+    monkeypatch.setattr(
+        "honua_migrate.services.geoserver._client",
+        lambda *args, **kwargs: Client(),
+    )
+
+    result = runner.invoke(
+        geoserver_app,
+        [
+            "apply",
+            "--honua-url",
+            "https://honua.test",
+            "--honua-api-key-ref",
+            "env:KEY",
+            "--plan",
+            str(plan_path),
+            "--geoserver-password-ref",
+            "env:GS_PASS",
+            "--acknowledge-apply",
+            "--run-out",
+            str(run_path),
+            "--source-snapshot",
+            str(source_path),
+            "--target-snapshot",
+            str(target_path),
+            "--poll-interval",
+            "0",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    reconciliation = reconcile_run(run_path, source_path, target_path, recon_out)
+    assert reconciliation["status"] == "partial"
+    statuses = {check["name"]: check["status"] for check in reconciliation["checks"]}
+    assert statuses["counts"] == "matched"
+    assert statuses["schemas"] == "skipped"
+    assert statuses["extents"] == "skipped"
+    assert statuses["metadata"] == "skipped"
+
+
+def test_apply_rejects_duplicate_bundle_output_paths(tmp_path: Path) -> None:
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(json.dumps(_plan_payload()), encoding="utf-8")
+    same_path = tmp_path / "same.json"
+
+    result = runner.invoke(
+        geoserver_app,
+        [
+            "apply",
+            "--honua-url",
+            "https://honua.test",
+            "--honua-api-key-ref",
+            "env:KEY",
+            "--plan",
+            str(plan_path),
+            "--geoserver-password-ref",
+            "env:GS_PASS",
+            "--acknowledge-apply",
+            "--run-out",
+            str(same_path),
+            "--source-snapshot",
+            str(same_path),
+            "--target-snapshot",
+            str(tmp_path / "target.json"),
+        ],
+    )
+    assert result.exit_code != 0
+    assert "must be distinct" in unstyle(result.output)
