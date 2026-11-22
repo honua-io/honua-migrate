@@ -174,12 +174,12 @@ Fabric, or LRS that Honua does not implement).
 
 ### Draft crosswalk (temporary)
 
-The crosswalk `caps` ships with today
+The crosswalk `caps` ships with by default
 (`src/honua_migrate/assessment/data/honua-crosswalk.fixture.json`) is a **draft
 placeholder**, not the canonical mapping. The canonical
 `capability-keys.v1.json` artifact — with the reconciled
 `esri-assess-registry → capability` crosswalk — is produced by honua-server
-(honua-io/honua-server#2893) and will replace it. Every `caps` run stamps the
+and can be supplied via `--crosswalk`. Every `caps` run stamps the
 crosswalk's own `source` string into `honua-caps.json`
 (`"crosswalk.source"`) so output generated against the draft is never
 mistaken for the reconciled mapping.
@@ -240,7 +240,7 @@ any artifact after the fact.
 
 - Canonical sample footprint: [`docs/samples/assessment-footprint.sample.json`](docs/samples/assessment-footprint.sample.json)
 - Sample readiness report: [`docs/samples/readiness-report.sample.md`](docs/samples/readiness-report.sample.md)
-- `honua-caps.json` is produced by `caps` (see [Capability crosswalk](#capability-crosswalk-caps)); it is not yet a published JSON Schema since its crosswalk input is a draft fixture pending honua-io/honua-server#2893.
+- `honua-caps.json` is produced by `caps` (see [Capability crosswalk](#capability-crosswalk-caps)); it does not yet ship a published JSON Schema while its bundled default crosswalk remains the draft fixture.
 - Readiness report guide (exit codes, sections, heuristics): [`docs/readiness-report.md`](docs/readiness-report.md)
 - Versioning & deprecation policy: [`docs/schemas/versioning.md`](docs/schemas/versioning.md)
 - Prospect-facing handoff contract: [`docs/schemas/handoff-contract.md`](docs/schemas/handoff-contract.md)
