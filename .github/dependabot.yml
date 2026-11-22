@@ -10,6 +10,8 @@ updates:
           - "minor"
           - "patch"
 
+  # "/" also scans requirements/release.in and the uv-compiled, hash-locked
+  # requirements/release.txt; do not add "/requirements" as a second entry.
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
