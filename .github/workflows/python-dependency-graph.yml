@@ -1,0 +1,50 @@
+name: Python release dependency graph
+
+on:
+  push:
+    branches: [trunk]
+    paths:
+      - requirements/release.in
+      - requirements/release.txt
+      - scripts/python_dependency_snapshot.py
+      - .github/workflows/python-dependency-graph.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Serialize submissions so an older lock cannot replace a newer snapshot.
+concurrency:
+  group: python-release-dependency-graph
+  cancel-in-progress: false
+
+jobs:
+  submit:
+    if: github.ref == 'refs/heads/trunk'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: trunk
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+      - name: Install locked parser dependency
+        run: python -m pip install --require-hashes --no-deps -r requirements/release.txt
+      - name: Describe the complete release lock
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >-
+          python scripts/python_dependency_snapshot.py
+          --sha "$(git rev-parse HEAD)" --ref refs/heads/trunk
+          --run-id "$GITHUB_RUN_ID" --run-url "$RUN_URL"
+          > "$RUNNER_TEMP/python-dependency-snapshot.json"
+      - name: Submit release dependency graph
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh api --method POST "repos/$GITHUB_REPOSITORY/dependency-graph/snapshots"
+          --input "$RUNNER_TEMP/python-dependency-snapshot.json"
