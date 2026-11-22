@@ -97,9 +97,9 @@ is `https://gis.example.com/arcgis` in the example above.
 | Portal `…/sharing/rest/community/groups`, `security/users`, `security/roles` | Portal-side identity/roles |
 
 > `honua-migrate assess scan rbac` and `honua-migrate assess scan server --admin-usage`
-> read these Tier 2 endpoints (and the underlying scanners are also available as
-> library modules). The endpoints and privilege requirements above are what that
-> tier reads.
+> read the RBAC and usage endpoints above (and the underlying scanners are also
+> available as library modules). The endpoints and privilege requirements above
+> are what that tier reads.
 
 ## Least privilege — what to actually grant
 
