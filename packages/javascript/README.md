@@ -227,7 +227,7 @@ npx honua-js-migrate migrate ./my-app --apply <planDigest> --install \
    dependencies, configuration references, holds and stages that did not
    pass, each with an action.
 
-The package's tests run this path on `test/fixtures/js-migration-pipeline-app`.
+The package's tests run this path on `upstream/test/fixtures/js-migration-pipeline-app`.
 The migrated app builds with Vite; in headless Chromium it queries a fixture
 FeatureServer, shows the two trails the app's filter selects, and makes no
 request outside the page's origin.
