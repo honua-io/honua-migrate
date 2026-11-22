@@ -172,31 +172,29 @@ one of two ways: mapped into `capabilities`, or listed in `unmapped` with a
 `"not-supported"` (a source-specific capability such as Utility Network, Parcel
 Fabric, or LRS that Honua does not implement).
 
-### Draft crosswalk (temporary)
+### Bundled crosswalk snapshot
 
-The crosswalk `caps` ships with today
-(`src/honua_migrate/assessment/data/honua-crosswalk.fixture.json`) is a **draft
-placeholder**, not the canonical mapping. The canonical
-`capability-keys.v1.json` artifact — with the reconciled
-`esri-assess-registry → capability` crosswalk — is produced by honua-server
-(honua-io/honua-server#2893) and will replace it. Every `caps` run stamps the
+The crosswalk `caps` bundles by default
+(`src/honua_migrate/assessment/data/honua-crosswalk.fixture.json`) is a snapshot
+synced from `honua-server`'s canonical `capability-keys.v1.json` crosswalk
+(established in `honua-io/honua-server#2893`). Every `caps` run stamps the
 crosswalk's own `source` string into `honua-caps.json`
-(`"crosswalk.source"`) so output generated against the draft is never
-mistaken for the reconciled mapping.
+(`"crosswalk.source"`) so output generated against the bundled snapshot is
+always distinguishable from a newer override passed via `--crosswalk`.
 
 ### Air-gapped usage
 
-`caps` makes **no network call by default** — the bundled draft fixture is
+`caps` makes **no network call by default** — the bundled crosswalk snapshot is
 read from the installed package. Use `--crosswalk <path>` to point at a local
-file (e.g. a copy of the published artifact carried into an air-gapped
+file (e.g. a newer copy of `capability-keys.v1.json` carried into an air-gapped
 network) with zero network access:
 
 ```bash
 honua-migrate assess caps --input AssessmentFootprint.json --crosswalk ./capability-keys.v1.json
 ```
 
-`--crosswalk` also accepts an `http(s)://` URL once the canonical artifact is
-published — this is the *one* deliberate, explicit exception to the tool's
+`--crosswalk` also accepts an `http(s)://` URL for a published crosswalk
+artifact — this is the *one* deliberate, explicit exception to the tool's
 no-network posture, and it only runs when you pass a URL yourself:
 
 ```bash
@@ -240,7 +238,7 @@ any artifact after the fact.
 
 - Canonical sample footprint: [`docs/samples/assessment-footprint.sample.json`](docs/samples/assessment-footprint.sample.json)
 - Sample readiness report: [`docs/samples/readiness-report.sample.md`](docs/samples/readiness-report.sample.md)
-- `honua-caps.json` is produced by `caps` (see [Capability crosswalk](#capability-crosswalk-caps)); it is not yet a published JSON Schema since its crosswalk input is a draft fixture pending honua-io/honua-server#2893.
+- `honua-caps.json` is produced by `caps` (see [Capability crosswalk](#capability-crosswalk-caps)); it does not yet have a published JSON Schema (pass `honua-server`'s `capability-keys.v1.json` via `--crosswalk` to override the bundled crosswalk snapshot).
 - Readiness report guide (exit codes, sections, heuristics): [`docs/readiness-report.md`](docs/readiness-report.md)
 - Versioning & deprecation policy: [`docs/schemas/versioning.md`](docs/schemas/versioning.md)
 - Prospect-facing handoff contract: [`docs/schemas/handoff-contract.md`](docs/schemas/handoff-contract.md)

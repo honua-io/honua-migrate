@@ -96,9 +96,11 @@ is `https://gis.example.com/arcgis` in the example above.
 | `…/admin/data/items` | Data-store **registrations** (storage type → binding-mode hint) |
 | Portal `…/sharing/rest/community/groups`, `security/users`, `security/roles` | Portal-side identity/roles |
 
-> The authorized RBAC/usage scanners ship as library modules today; the
-> dedicated `scan rbac` / usage CLI surface is on the roadmap. The endpoints and
-> privilege requirements above are what that tier reads.
+> The authorized RBAC and usage scanners are available through
+> `honua-migrate assess scan rbac` and
+> `honua-migrate assess scan server --admin-usage` (as well as the underlying
+> Python library modules). The endpoints and privilege requirements above are
+> what that tier reads.
 
 ## Least privilege — what to actually grant
 
