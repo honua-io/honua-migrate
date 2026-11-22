@@ -13,4 +13,4 @@ concurrency:
 
 jobs:
   repo-hygiene:
-    uses: honua-io/.github/.github/workflows/repo-hygiene.yml@fe9517f40a39eaea9caee394ba867522d9ef0d7f
+    uses: honua-io/.github/.github/workflows/repo-hygiene.yml@ac1810ad6ef51b72204898a44c0cbeee90e57914
