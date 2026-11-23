@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.11.0](https://github.com/honua-io/honua-migrate/compare/honua-migrate-v0.10.1...honua-migrate-v0.11.0) (2026-11-23)
+
+
+### Features
+
+* **geoserver:** emit durable MigrationRun and portable reconciliation snapshots ([#274](https://github.com/honua-io/honua-migrate/issues/274)) ([6c5f0e3](https://github.com/honua-io/honua-migrate/commit/6c5f0e3751406860b1dc514005ae1ee1e6c345e5))
+
+
+### Bug Fixes
+
+* **deps:** bump honua-io/.github/.github/workflows/repo-hygiene.yml from a1e43b6e72c716f33a61aeaf6674fd9cac09d17c to fe9517f40a39eaea9caee394ba867522d9ef0d7f ([#268](https://github.com/honua-io/honua-migrate/issues/268)) ([7f30d67](https://github.com/honua-io/honua-migrate/commit/7f30d67369e2a660aacc94c8f1141b98dec1060a))
+* **deps:** bump honua-io/.github/.github/workflows/repo-hygiene.yml from f4bdc749161f1a037a0a9c55b6995aa5295ba2c7 to a1e43b6e72c716f33a61aeaf6674fd9cac09d17c ([#258](https://github.com/honua-io/honua-migrate/issues/258)) ([e3c3125](https://github.com/honua-io/honua-migrate/commit/e3c31251c24497845ee76c82016c9ad799f5806f))
+* **deps:** bump honua-io/.github/.github/workflows/repo-hygiene.yml from fe9517f40a39eaea9caee394ba867522d9ef0d7f to ac1810ad6ef51b72204898a44c0cbeee90e57914 ([#281](https://github.com/honua-io/honua-migrate/issues/281)) ([ac5dab1](https://github.com/honua-io/honua-migrate/commit/ac5dab1e43b3ba682647e1f5951fb703ac904e2a))
+* **deps:** bump ruff from 0.17.5 to 0.17.6 in the pip group ([#284](https://github.com/honua-io/honua-migrate/issues/284)) ([29e4a29](https://github.com/honua-io/honua-migrate/commit/29e4a29a1c88c154dbb81fdc28a5cb008b9b474c))
+* **deps:** bump the pip group with 2 updates ([#269](https://github.com/honua-io/honua-migrate/issues/269)) ([910bcf9](https://github.com/honua-io/honua-migrate/commit/910bcf9d62f16c9d331d11005986efb555d02c69))
+* **deps:** bump the pip group with 3 updates ([#259](https://github.com/honua-io/honua-migrate/issues/259)) ([53c1132](https://github.com/honua-io/honua-migrate/commit/53c113276c1e6bf7242ae46451aa175582826387))
+* **deps:** bump typer from 0.29.1 to 0.29.2 in the pip group ([#279](https://github.com/honua-io/honua-migrate/issues/279)) ([f52f9a4](https://github.com/honua-io/honua-migrate/commit/f52f9a4f0ff902939d89e823d1af91eb2c6e7edd))
+* **security:** scope scan and migration credentials to safe transports ([7cde7e4](https://github.com/honua-io/honua-migrate/commit/7cde7e45dd87c08cf9be3090b7999695506011f5))
+* **security:** scope scan and migration credentials to safe transports ([aa74458](https://github.com/honua-io/honua-migrate/commit/aa744586543aa65268d262c94a743bfaee7f7873)), closes [#266](https://github.com/honua-io/honua-migrate/issues/266)
+
+
+### Dependencies
+
+* update hash-locked release tools for Dependabot advisories ([#273](https://github.com/honua-io/honua-migrate/issues/273)) ([70a7f55](https://github.com/honua-io/honua-migrate/commit/70a7f552aca5f3350db6eca794ce8502dac609cd))
+
+
+### Documentation
+
+* clarify outside contribution policy ([#265](https://github.com/honua-io/honua-migrate/issues/265)) ([4da5eda](https://github.com/honua-io/honua-migrate/commit/4da5eda963efb8aa49df4cfe7537c1c3ccc2cf38))
+* fix broken README anchors, stale version text and licence quote ([#263](https://github.com/honua-io/honua-migrate/issues/263)) ([157e592](https://github.com/honua-io/honua-migrate/commit/157e59294441de1c256a00a0dbbeea2b7b00a73f))
+* fix RBAC scan roadmap note, JS fixture path, and [#2893](https://github.com/honua-io/honua-migrate/issues/2893) crosswalk wording ([#282](https://github.com/honua-io/honua-migrate/issues/282)) ([2c9e67e](https://github.com/honua-io/honua-migrate/commit/2c9e67eb9c5f69d46f352db9e722eb571b90a2af))
+
 ## [0.10.1](https://github.com/honua-io/honua-migrate/compare/honua-migrate-v0.10.0...honua-migrate-v0.10.1) (2026-11-10)
 
 
